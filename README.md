@@ -13,7 +13,7 @@ A Simple Chat Serv
 
 
 ### 架构
-由不同的业务GROUP构成，GROUP内的进程均可平行扩展  
+由不同的业务SET构成，SET内的进程均可平行扩展  
 ![架构](https://github.com/nmsoccer/schat/blob/master/pic/schat.jpg)
 
 

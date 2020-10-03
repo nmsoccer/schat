@@ -1,0 +1,42 @@
+<html>
+<head>
+</head>
+<title>
+index
+</title>
+<h3>MAIN</h3>
+<form action="./cmd" method="post">
+  ProcName(regular exp support) <input type="text" name="proc_name" />  
+  Operation <select name="operation">
+  <option value="reload_cfg">reload(cfg)</option>
+  <option value="reload_table">reload(table)</option>
+  <option value="stop_server">stop(server)</option>
+  <option value="log_level">log_level</option>
+  <option value="log_degree">log_degree</option>
+  <option value="log_rotate">log_rotate</option>
+  <option value="log_size">log_size</option>
+  <option value="start_gprof">start_gprof</option>
+  <option value="end_gprof">end_gprof</option>
+  </select>
+  ExtValue
+  <input type="text" name="ext_value"></input>  
+  <input type="submit" value="submit" /> <br/>
+</form>
+
+
+<b>TOTAL:{{ len . }} </b><br/>
+
+{{ range $proc_id , $watch := . }}
+{{ with $watch }}
+<a href="./detail?proc={{ $proc_id }}">{{ .ProcName }}</a> <br/>
+{{ with .Stat}}
+Start: {{ if (le .StartTime.Unix 0) }} <font color="red">{{ 0 }}</font> {{ else }} <font color="green">{{ .StartTime.Format "2006-01-02 15:04:05" }}</font> {{ end }} 
+Heart: {{ if (le .HeartBeat.Unix 0) }} <font color="red">{{ 0 }}</font> {{ else }} <font color="green">{{ .HeartBeat.Format "2006-01-02 15:04:05" }}</font> {{ end }}
+Stop: {{ if (le .StopTime.Unix 0) }} <font color="green">{{ 0 }}</font> {{ else }} <font color="red">{{ .StopTime.Format "2006-01-02 15:04:05" }}</font> {{ end }}
+{{ if (ne .ConnStr "") }} {{ .ConnStr }}: <font color="green">{{ .ConnNum }}</font> {{ end }}
+Command: {{ if (le .CmdTime.Unix 0) }} <font color="green">{{ print "\"\"" }}</font> {{ else }} <font color="green">{{ .CmdTime.Format "2006-01-02 15:04:05" }} ({{ .CmdInfo }})</font> {{ if (eq .CmdStat "ing") }} <font color="red">[{{ .CmdStat }}]</font>{{ else }} <font color="green">[{{ .CmdStat }}]</font>{{ end }} {{ end }}
+<br/>
+{{ end}}
+{{ end}}
+{{ end }}
+</html>

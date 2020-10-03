@@ -1,0 +1,314 @@
+syntax="proto3";
+package ss;
+
+import "chat.proto";
+import "disp.proto";
+import "user_info.proto";
+/*
+Server-Server Proto
+*/
+
+//proto type
+enum SS_PROTO_TYPE {
+  HEART_BEAT_REQ = 0;
+  HEART_BEAT_RSP = 1;
+  PING_REQ = 2;
+  PING_RSP = 3;
+  LOGIN_REQ = 4;
+  LOGIN_RSP = 5;
+  LOGOUT_REQ = 6;
+  LOGOUT_RSP = 7;
+  REG_REQ = 8;
+  REG_RSP = 9;
+  CREATE_GROUP_REQ = 12;
+  CREATE_GROUP_RSP = 13;
+  USE_DISP_PROTO = 14;  // serv <--> disp <--> serv
+  APPLY_GROUP_REQ = 16;
+  APPLY_GROUP_RSP = 17;
+  APPLY_GROUP_NOTIFY = 18;
+  APPLY_GROUP_AUDIT  = 19;
+  FETCH_APPLY_GROUP_REQ = 20;
+  FETCH_APPLY_GROUP_RSP = 21;
+  COMMON_NOTIFY = 22;
+  FETCH_AUDIT_GROUP_REQ = 23;
+  FETCH_AUDIT_GROUP_RSP = 24;
+  ENTER_GROUP_REQ = 25;
+  ENTER_GROUP_RSP = 26;
+  LOAD_GROUP_REQ = 27;
+  LOAD_GROUP_RSP = 28;
+  SEND_CHAT_REQ  = 29;
+  SEND_CHAT_RSP  = 30;
+  SAVE_GROUP_REQ = 31;
+  SAVE_GROUP_RSP = 32;
+  FETCH_CHAT_REQ = 33;
+  FETCH_CHAT_RSP = 34;
+  SYNC_CHAT_LIST = 35;
+  //new proto defined could add to servers/comm/ss_pack.go:GenSSPkg  
+}
+
+enum SS_COMMON_RESULT {
+  SUCCESS = 0;
+  FAILED = 1;
+  NOEXIST = 2;
+}
+
+enum SS_COMMON_REASON {
+  REASON_TICK = 0;  //ticker save
+  REASON_UPDATE = 1; //activate save
+  REASON_EXIT = 2; //server exit
+}
+
+
+//main msg
+message SSMsg {
+  SS_PROTO_TYPE proto_type = 1;
+  oneof msg_body {
+    MsgHeartBeatReq heart_beat_req = 20;       
+	MsgPingReq ping_req = 22;
+	MsgPingRsp ping_rsp = 23;
+	MsgLoginReq login_req = 24;
+	MsgLoginRsp login_rsp = 25;
+	MsgLogoutReq logout_req = 26;
+	MsgLogoutRsp logout_rsp = 27;
+	MsgRegReq reg_req = 28;
+	MsgRegRsp reg_rsp = 29;	
+	MsgCreateGrpReq create_group_req = 30;
+	MsgCreateGrpRsp create_group_rsp = 31;
+	MsgDisp  msg_disp = 32;
+    MsgApplyGroupReq apply_group_req = 34;
+    MsgApplyGroupRsp apply_group_rsp = 35;
+    MsgApplyGroupNotify apply_group_notify = 36;
+    MsgApplyGroupAudit  apply_group_audit = 37;
+    MsgFetchApplyGrpReq fetch_apply_req = 38;
+    MsgFetchApplyGrpRsp fetch_apply_rsp = 39;
+    MsgCommonNotify   common_notify = 40;
+	MsgFetchAuditGrpReq fetch_audit_req = 41;
+	MsgFetchAuditGrpRsp fetch_audit_rsp = 42;
+	MsgEnterGroupReq enter_group_req = 43;
+    MsgEnterGroupRsp enter_group_rsp = 44;
+	MsgLoadGroupReq load_group_req = 45;
+	MsgLoadGroupRsp load_group_rsp = 46;
+	MsgSendChatReq  send_chat_req  = 47;
+	MsgSendChatRsp  send_chat_rsp  = 48;
+	MsgSaveGroupReq save_group_req = 49;
+	MsgSaveGroupRsp save_group_rsp = 50;
+	MsgFetchChatReq  fetch_chat_req = 51;
+    MsgFetchChatRsp  fetch_chat_rsp = 52;
+	MsgSyncChatList  sync_chat_list = 53;
+  }  
+}
+
+
+
+/**********SUB MSG*************/
+//heartbeat
+message MsgHeartBeatReq {
+  int64 ts = 1;
+}
+
+//ping
+message MsgPingReq {
+  int64 ts = 1;
+  int64 client_key = 2;
+}
+
+message MsgPingRsp {
+  int64 ts = 1;
+  int64 client_key = 2;
+}
+
+
+//login
+message MsgLoginReq { 
+  int64 c_key = 20;
+  int64 uid = 21; //0 use default role
+  string name = 22; //acc name
+  string pass=23;
+  string device=24;    
+}
+
+enum USER_LOGIN_RET {
+  LOGIN_SUCCESS = 0;
+  LOGIN_EMPTY = 1;
+  LOGIN_PASS = 2;
+  LOGIN_ERR = 3;
+  LOGIN_MULTI_ON = 4; //multi online
+}
+
+message MsgLoginRsp {
+  USER_LOGIN_RET result=1;
+  int64 c_key=2;
+  string name=3; //acc name
+  int64 uid = 4; //may empty
+  UserInfo user_info=20;
+  int32 online_logic=21;
+}
+
+//logout
+enum USER_LOGOUT_REASON {
+  LOGOUT_CLIENT_EXIT = 0; //client positive logout
+  LOGOUT_CONN_CLOSED = 1; //client connection closed
+  LOGOUT_SERVER_KICK_RECONN = 2; //server kickout for reconn
+  LOGOUT_SERVER_KICK_BAN = 3; //server kickout for ban
+  LOGOUT_CLIENT_TIMEOUT = 4; //client timeout
+  LOGOUT_OFFLINE_USER   = 5; //user off-line still logout update online-logic
+}
+
+
+message MsgLogoutReq {
+  int64 uid = 1;
+  USER_LOGOUT_REASON reason = 2;
+  UserInfo user_info = 3;  
+}
+
+message MsgLogoutRsp {
+  int64 uid = 1;
+  USER_LOGOUT_REASON reason = 2;
+  string msg = 3;
+}
+
+//register
+message MsgRegReq {
+  int64 c_key = 20;
+  string name = 21;
+  string pass = 22;
+  bool sex=23;
+  string addr=24;
+}
+
+enum REG_RESULT {
+  REG_SUCCESS = 0;
+  REG_DUP_NAME = 1;
+  REG_DB_ERR = 2;
+}
+
+message MsgRegRsp {
+  REG_RESULT result=1;
+  int64 c_key=2;
+  string name=3;
+}
+
+
+//create group
+enum CREATE_GROUP_RESULT {
+  CREATE_RET_SUCCESS = 0;
+  CREATE_RET_DUPLICATE = 1; //same name
+  CREATE_RET_DB_ERR = 2; //db-error
+  CREATE_RET_MAX_NUM = 3; //max group
+  CREATE_RET_FAIL = 4; //other fail
+}
+
+message MsgCreateGrpReq {
+  int64 uid = 1;
+  string grp_name = 2;
+  string grp_pass = 3;
+}
+
+message MsgCreateGrpRsp {
+  CREATE_GROUP_RESULT ret = 1;
+  int64 uid = 2;
+  int64 grp_id = 3;
+  string grp_name = 4;
+  int32 mem_count = 5;
+  int64 create_ts = 6;
+}
+
+//Fetch Apply Group
+message MsgFetchApplyGrpReq {
+    int64 uid = 1;
+    int32 fetch_count = 2;	
+}
+
+message MsgFetchApplyGrpRsp {
+  int64 uid = 1;
+  int32 complete = 2; //1:no more
+  int32 fetch_count = 3;
+  repeated MsgApplyGroupNotify notify_list = 20;
+}
+
+//Fetch Audit Group
+message MsgFetchAuditGrpReq {
+    int64 uid = 1;
+    int32 fetch_count = 2;	
+}
+
+message MsgFetchAuditGrpRsp {
+  int64 uid = 1;
+  int32 complete = 2; //1:no more
+  int32 fetch_count = 3;
+  repeated MsgApplyGroupAudit audit_list = 20;
+}
+
+//Load Group
+enum LOAD_GROUP_REASON {  
+  LOAD_GRP_SEND_CHAT = 0;  //send chat
+}
+
+message MsgLoadGroupReq {
+  LOAD_GROUP_REASON reason = 1;
+  int64 grp_id = 2;
+  int64 uid = 3;
+  int64 temp_id = 4;
+  
+  //carry
+  int64 occoupy = 20;
+  int64 int_v = 21;
+  string str_v = 22;
+  ChatMsg chat_msg = 23;
+}
+
+message MsgLoadGroupRsp {
+  LOAD_GROUP_REASON reason = 1;
+  SS_COMMON_RESULT load_result = 2;
+  int64 grp_id = 3;
+  int64 uid = 4;
+  int64 temp_id = 5;
+  GroupInfo grp_info = 6;
+  
+  //carry info
+  int64 occoupy = 20;
+  int64 int_v = 21;
+  string str_v = 22;
+  ChatMsg chat_msg = 23;     
+}
+
+
+//Save Group
+message MsgSaveGroupReq {
+  int64 grp_id = 1;
+  SS_COMMON_REASON reason = 2;
+  int32 load_serv = 3;
+  
+  int64 msg_count = 20;
+}
+
+message MsgSaveGroupRsp {
+  SS_COMMON_RESULT result = 1;
+  int64 grp_id = 2;  
+}
+
+//Fetch Chat
+message MsgFetchChatReq {
+    int64 uid = 1;
+	int64 grp_id = 2;
+	int64 latest_msg_id = 3; //readed msg id
+    int32 fetch_count = 4;
+}
+
+message MsgFetchChatRsp {
+  SS_COMMON_RESULT result = 1;
+  int64 uid = 2;
+  int64 grp_id = 3;  
+  int32 complete = 4; //1:no more
+  int32 fetch_count = 5;
+  repeated ChatMsg chat_list = 6;
+   
+}
+
+message MsgSyncChatList {
+  int64 uid = 1;
+  int64 grp_id = 2;
+  int32 count = 3;
+  repeated ChatMsg chat_list = 4;
+}
+

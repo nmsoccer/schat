@@ -1,0 +1,45 @@
+syntax="proto3";
+package ss;
+
+
+enum CHAT_MSG_TYPE {
+  CHAT_TYPE_TEXT = 0; //text
+  CHAT_TYPE_IMG = 1; //msg
+}
+
+
+message ChatMsg {
+  CHAT_MSG_TYPE chat_type = 1; //chat type
+  int64 msg_id = 2; //msg id(filled by group svr)
+  int64 group_id = 3;  //chat group id
+  int64 sender_uid = 4; //sender uid
+  string sender = 5;
+  int64 send_ts = 6;
+  string content = 7; //chat content
+}
+
+
+message UserChatGroup {
+  int64 group_id = 1;
+  string group_name = 2;
+  int64 last_read_id = 3; //latest msg id
+}
+
+message UserChatInfo {
+  int32 all_group = 20;
+  map<int64 , UserChatGroup> all_groups = 21;
+  int32 master_group = 22;
+  map<int64 , bool> master_groups = 23;
+  map<int64 , bool> entering_group = 24; //entering group process  
+}
+
+message GroupInfo {
+  int64 group_id = 1;
+  string group_name = 2;
+  int64 master_uid = 3;
+  int64 latest_msg_id = 4; //latest chat msg id
+  int64 created_ts = 5;  
+  int32 mem_count = 6;
+  
+  map<int64 , int32> members = 20; 
+}

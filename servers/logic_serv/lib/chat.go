@@ -1,0 +1,990 @@
+package lib;
+
+import (
+    "schat/proto/ss"
+    "schat/servers/comm"
+)
+
+const (
+    FETCH_APPLY_GROUP_COUNT = 20
+    FETCH_AUDIT_GROUP_COUNT = 20
+    FETCH_CHAT_COUNT = 40
+    PERIOD_FETCH_APPLY_GROUP_INTV = 10000 //10s
+)
+
+func InitUserChatInfo(pconfig *Config , pinfo *ss.UserChatInfo , uid int64) {
+    var _func_ = "<InitUserChatInfo>"
+    log := pconfig.Comm.Log
+
+    //init map
+    if pinfo.AllGroup <= 0 {
+        pinfo.AllGroups = make(map[int64]*ss.UserChatGroup) //no effect
+        pinfo.AllGroup = 0
+    }
+
+    if pinfo.MasterGroup <= 0 {
+        pinfo.MasterGroups = make(map[int64]bool) //no effect
+        pinfo.MasterGroup = 0
+    }
+
+    log.Info("%s finish! uid:%d" , _func_ , uid)
+}
+
+
+func RecvCreateGroupReq(pconfig *Config , preq *ss.MsgCreateGrpReq , msg []byte) {
+    var _func_ = "<RecvCreateGroupReq>"
+    log := pconfig.Comm.Log
+    uid := preq.Uid
+
+    log.Info("%s uid:%d grp_name:%s" , _func_ , uid , preq.GrpName)
+    //get user
+    puser := GetUserInfo(pconfig , uid)
+    if puser == nil {
+        log.Err("%s fail! uid:%d offline!" ,_func_ , uid)
+        return
+    }
+
+    //check chat
+    pchat_info := puser.user_info.BlobInfo.GetChatInfo()
+    if pchat_info == nil {
+        puser.user_info.BlobInfo.ChatInfo = new(ss.UserChatInfo)
+        InitUserChatInfo(pconfig , puser.user_info.BlobInfo.ChatInfo , uid)
+        pchat_info = puser.user_info.BlobInfo.GetChatInfo()
+    }
+
+    //check max
+    if pchat_info.MasterGroup >= 100 {
+        log.Err("%s fail! master group to max! uid:%d" , _func_ , uid)
+        SendCreateGroupErrRsp(pconfig , uid , ss.CREATE_GROUP_RESULT_CREATE_RET_MAX_NUM)
+        return
+    }
+
+    //check duplicate
+    for grp_id , _ := range pchat_info.MasterGroups {
+        if pgrp , ok := pchat_info.AllGroups[grp_id]; ok {
+            if pgrp.GroupName == preq.GrpName {
+                log.Err("%s fail! created group %s already in use! uid:%d" , _func_ , preq.GrpName , uid)
+                SendCreateGroupErrRsp(pconfig , uid , ss.CREATE_GROUP_RESULT_CREATE_RET_DUPLICATE)
+                return
+            }
+        }
+    }
+
+
+    //To DB
+    SendToDb(pconfig , msg)
+}
+
+
+func RecvCreateGroupRsp(pconfig *Config , prsp *ss.MsgCreateGrpRsp , msg []byte) {
+    var _func_ = "<RecvCreateGroupRsp>"
+    log := pconfig.Comm.Log
+    uid := prsp.Uid
+
+    log.Info("%s uid:%d ret:%d grp_name:%s" , _func_ , uid , prsp.Ret , prsp.GrpName)
+    //get user
+    puser := GetUserInfo(pconfig , uid)
+    if puser == nil {
+        log.Err("%s fail! uid:%d offline! ret:%d group:%s" , _func_ , uid , prsp.Ret , prsp.GrpName)
+        return
+    }
+
+    //if failed direct to connect
+    if prsp.Ret != ss.CREATE_GROUP_RESULT_CREATE_RET_SUCCESS {
+        SendToConnect(pconfig , msg)
+        return
+    }
+
+    //success
+    pchat_info := puser.user_info.BlobInfo.GetChatInfo()
+    if pchat_info == nil {
+        puser.user_info.BlobInfo.ChatInfo = new(ss.UserChatInfo)
+        InitUserChatInfo(pconfig , puser.user_info.BlobInfo.ChatInfo , uid)
+        pchat_info = puser.user_info.BlobInfo.GetChatInfo()
+    }
+
+    //set chat info
+    pchat_info.MasterGroup += 1
+    if pchat_info.MasterGroups == nil {
+        pchat_info.MasterGroups = make(map[int64] bool)
+    }
+    pchat_info.MasterGroups[prsp.GrpId] = true
+
+    pchat_info.AllGroup += 1
+    if pchat_info.AllGroups == nil {
+        pchat_info.AllGroups = make(map[int64] *ss.UserChatGroup)
+    }
+    pchat_info.AllGroups[prsp.GrpId] = new(ss.UserChatGroup)
+    pgrp := pchat_info.AllGroups[prsp.GrpId]
+    pgrp.GroupId = prsp.GrpId
+    pgrp.GroupName = prsp.GrpName
+    pgrp.LastReadId = 0
+    log.Info("%s create group success! uid:%d grp:%s grp_id:%d master_group:%d all_group:%d" , _func_ ,
+        uid , prsp.GrpName , prsp.GrpId , pchat_info.MasterGroup , pchat_info.AllGroup)
+    //to Connect
+    SendToConnect(pconfig , msg)
+
+}
+
+
+
+func SendCreateGroupErrRsp(pconfig *Config , uid int64 , ret ss.CREATE_GROUP_RESULT) {
+    var _func_ = "<SendCreateGroupRsp>"
+    log := pconfig.Comm.Log
+
+    //ss_msg
+    var ss_msg ss.SSMsg
+    pCreateGroupRsp := new(ss.MsgCreateGrpRsp)
+    pCreateGroupRsp.Ret = ret
+    pCreateGroupRsp.Uid = uid
+
+
+    //gen
+    err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_CREATE_GROUP_RSP , pCreateGroupRsp)
+    if err != nil {
+        log.Err("%s gen ss! uid:%d result:%d" , _func_ , uid , ret)
+        return
+    }
+
+    //send to connect
+    SendToConnect(pconfig , &ss_msg)
+}
+
+//Apply
+func RecvApplyGroupReq(pconfig *Config , preq *ss.MsgApplyGroupReq) {
+    var _func_ = "<RecvApplyGroupReq>"
+    log := pconfig.Comm.Log
+    uid := preq.ApplyUid
+
+    log.Info("%s uid:%d grp_id:%d" , _func_ , uid , preq.GroupId)
+    //get user
+    puser := GetUserInfo(pconfig , uid)
+    if puser == nil {
+        log.Err("%s fail! uid:%d offline!" ,_func_ , uid)
+        return
+    }
+
+    //check exist
+    chat_info := puser.user_info.BlobInfo.GetChatInfo()
+    if chat_info.AllGroup>0 && chat_info.AllGroups != nil {
+        if grp_info , exist := chat_info.AllGroups[preq.GroupId]; exist {
+            log.Err("%s fail! already in group! uid:%d grp_id:%d" , _func_ , uid , preq.GroupId)
+            prsp := new(ss.MsgApplyGroupRsp)
+            prsp.ApplyUid = preq.ApplyUid
+            prsp.Result = ss.APPLY_GROUP_RESULT_APPLY_GRP_EXIST
+            prsp.GroupName = grp_info.GroupName
+            prsp.GroupId = preq.GroupId
+            SendApplyGroupRsp(pconfig , prsp)
+            return
+        }
+    }
+
+
+    //fill info
+    preq.ApplyName = puser.user_info.BasicInfo.Name
+
+    //Pack Disp Pkg
+    //apply disp msg == MsgApplyGroupReq
+    pss_msg , err := comm.GenDispMsg(ss.DISP_MSG_TARGET_CHAT_SERVER , ss.DISP_MSG_METHOD_HASH , ss.DISP_PROTO_TYPE_DISP_APPLY_GROUP_REQ ,
+        0 , pconfig.ProcId , preq.GroupId , preq)
+    if err != nil {
+        log.Err("%s GenDispMsg Failed! uid:%d err:%v" , _func_ , uid , err)
+        return
+    }
+
+    //pack
+    enc_data , err := ss.Pack(pss_msg)
+    if err != nil {
+        log.Err("%s pack failed! uid:%d err:%v" , _func_ , uid , err)
+        return
+    }
+
+    //To Disp
+    SendToDisp(pconfig , 0 , enc_data)
+}
+
+
+func RecvApplyGroupRsp(pconfig *Config , prsp *ss.MsgApplyGroupRsp) {
+    var _func_ = "<RecvApplyGroupRsp>"
+    log := pconfig.Comm.Log
+    uid := prsp.ApplyUid
+
+    //check uid
+    puser_info := GetUserInfo(pconfig , uid)
+    if puser_info == nil {
+        log.Err("%s uid:%d offline!" , _func_ , uid)
+        return
+    }
+
+    log.Debug("%s uid:%d result:%d grp_id:%d grp_name:%s" , _func_ , uid , prsp.Result , prsp.GroupId , prsp.GroupName)
+    //back to connect
+    SendApplyGroupRsp(pconfig , prsp)
+}
+
+
+func SendApplyGroupRsp(pconfig *Config , prsp *ss.MsgApplyGroupRsp) {
+    var _func_ = "<SendApplyGroupRsp>"
+    log := pconfig.Comm.Log
+
+    //ss_msg
+    var ss_msg ss.SSMsg
+
+    //gen ss
+    err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_APPLY_GROUP_RSP , prsp)
+    if err != nil {
+        log.Err("%s gen ssfail! uid:%d result:%d" , _func_ , prsp.ApplyUid , prsp.Result)
+        return
+    }
+
+    //send to connect
+    SendToConnect(pconfig , &ss_msg)
+}
+
+func RecvApplyGroupNotify(pconfig *Config , pnotify *ss.MsgApplyGroupNotify) {
+    var _func = "<RecvApplyGroupNotify>"
+    log := pconfig.Comm.Log
+
+    log.Debug("%s uid:%d grp_id:%d grp_name:%s" , _func , pnotify.MasterUid , pnotify.GroupId , pnotify.GroupName)
+    //check online
+    puser := GetUserInfo(pconfig , pnotify.MasterUid)
+    if puser == nil {
+        log.Info("%s uid:%d offline!" , _func , pnotify.MasterUid)
+        return
+    }
+
+    //to client
+    var ss_msg ss.SSMsg
+    err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_APPLY_GROUP_NOTIFY , pnotify)
+    if err != nil {
+        log.Err("%s fill ss failed! uid:%d" , _func , pnotify.MasterUid)
+        return
+    }
+
+    SendToConnect(pconfig , &ss_msg)
+}
+
+//fetch apply group
+func SendFetchApplyGroupReq(pconfig *Config , uid int64) {
+    var _func_ = "<SendFetchApplyGroupReq>"
+    log := pconfig.Comm.Log
+
+    //check online
+    puser := GetUserInfo(pconfig , uid)
+    if puser == nil {
+        log.Err("%s fail! uid:%d offline!" , _func_ , uid)
+        return
+    }
+
+    //ss_msg
+    var ss_msg ss.SSMsg
+    pfetch := new(ss.MsgFetchApplyGrpReq)
+    pfetch.Uid = uid
+    pfetch.FetchCount = FETCH_APPLY_GROUP_COUNT
+
+    err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_FETCH_APPLY_GROUP_REQ , pfetch)
+    if err != nil {
+        log.Err("%s gen ss fail! err:%v" , _func_ , err)
+        return
+    }
+
+    //to db
+    SendToDb(pconfig , &ss_msg)
+}
+
+//recv fetch apply
+func RecvFetchApplyGroupRsp(pconfig *Config , pfetch *ss.MsgFetchApplyGrpRsp) {
+    var _func_ = "<RecvFetchApplyGroupRsp>"
+    log := pconfig.Comm.Log
+    uid := pfetch.Uid
+
+    log.Debug("%s uid:%d fetch_count:%d complete:%d" , _func_ , uid , pfetch.FetchCount , pfetch.Complete)
+    //get user info
+    puser := GetUserInfo(pconfig , pfetch.Uid)
+    if puser == nil {
+        log.Info("%s user offline! uid:%d" , _func_ , pfetch.Uid)
+        return
+    }
+
+    //condition
+    if pfetch.Complete == 1 {
+        log.Debug("%s fetch complete! uid:%d" , _func_ , uid)
+        puser.fetch_apply_complete = true
+        return
+    }
+    if pfetch.FetchCount == 0 || len(pfetch.NotifyList)==0 {
+        log.Debug("%s fetch empty! uid:%d" , _func_ , uid)
+        return
+    }
+
+    //pack and send
+    var ss_msg ss.SSMsg
+    var err error
+    for i:=0; i<int(pfetch.FetchCount); i++ {
+        err = comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_APPLY_GROUP_NOTIFY , pfetch.NotifyList[i])
+        if err != nil {
+            log.Err("%s gen ss failed! err:%v uid:%d grp_id:%d grp_name:%s" , _func_ , err , uid , pfetch.NotifyList[i].GroupId ,
+                pfetch.NotifyList[i].GroupName)
+            continue
+        }
+        SendToConnect(pconfig , &ss_msg)
+    }
+
+}
+
+
+func RecvApplyGroupAudit(pconfig *Config , preq *ss.MsgApplyGroupAudit , msg []byte) {
+    var _func_ = "<RecvApplyGroupAudit>"
+    log := pconfig.Comm.Log
+    uid := preq.Uid
+
+    //check online
+    puser := GetUserInfo(pconfig , uid)
+    if puser == nil {
+        log.Err("%s uid:%d offline!" , _func_ , uid)
+        return
+    }
+    log.Debug("%s uid:%d grp_id:%d apply_uid:%d result:%d" , _func_ , uid , preq.GroupId , preq.ApplyUid , preq.Result)
+
+    //check master
+    pchat_info := puser.user_info.BlobInfo.ChatInfo
+    if pchat_info.MasterGroup == 0 || pchat_info.MasterGroups==nil {
+        log.Err("%s uid:%d owns none group!" , _func_ , uid)
+        return
+    }
+    _ , exist := pchat_info.MasterGroups[preq.GroupId]
+    if !exist {
+        log.Err("%s do not own this group! uid:%d grp_id:%d" , _func_ , uid , preq.GroupId)
+        return
+    }
+
+
+    SendToDb(pconfig , msg)
+}
+
+func RecvApplyGroupAuditNotify(pconfig *Config , pnotify *ss.MsgCommonNotify) {
+    var _func_ = "<RecvApplyGroupAuditNotify>"
+    log := pconfig.Comm.Log
+    uid := pnotify.Uid
+
+    //diff logic
+    if int(pnotify.IntV) != pconfig.ProcId {
+        log.Debug("%s will trans to logic:%d uid:%d" , _func_ , pnotify.IntV , uid)
+        pss_msg , err := comm.GenDispMsg(ss.DISP_MSG_TARGET_LOGIC_SERVER , ss.DISP_MSG_METHOD_SPEC , ss.DISP_PROTO_TYPE_DISP_COMMON_NOTIFY ,
+            int(pnotify.IntV) , pconfig.ProcId , 0 , pnotify)
+        if err != nil {
+            log.Err("%s gen dispmsg failed! err:%v uid:%d" , _func_ , err , uid)
+            return
+        }
+        SendToDisp(pconfig , 0 , pss_msg)
+        return
+    }
+
+    //same logic
+    puser := GetUserInfo(pconfig , uid)
+    if puser == nil {
+        log.Err("%s offline! uid:%d" , _func_ , uid)
+        return
+    }
+    log.Debug("%s get auidit notify! uid:%d" , _func_ , uid)
+
+    //fetch
+    SendFetchAuditGroupReq(pconfig , uid)
+}
+
+
+func SendFetchAuditGroupReq(pconfig *Config , uid int64) {
+    var _func_ = "<SendFetchAuditGroupReq>"
+    log := pconfig.Comm.Log
+
+    //get user info
+    puser := GetUserInfo(pconfig , uid)
+    if puser == nil {
+        log.Err("%s user offline! uid:%d" , _func_ , uid)
+        return
+    }
+
+    //ss
+    var ss_msg ss.SSMsg
+    preq := new(ss.MsgFetchAuditGrpReq)
+    preq.Uid = uid
+    preq.FetchCount = FETCH_AUDIT_GROUP_COUNT
+
+    err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_FETCH_AUDIT_GROUP_REQ , preq)
+    if err != nil {
+        log.Err("%s gen ss failed! err:%v uid:%d" , _func_ , err , uid)
+        return
+    }
+
+    //send
+    SendToDb(pconfig , &ss_msg)
+}
+
+func RecvFetchAuditGroupRsp(pconfig *Config , prsp *ss.MsgFetchAuditGrpRsp) {
+    var _func_ = "<RecvFetchAuditGroupRsp>"
+    log := pconfig.Comm.Log
+    uid := prsp.Uid
+
+    //get user info
+    puser := GetUserInfo(pconfig , uid)
+    if puser == nil {
+        log.Err("%s user offline! uid:%d" , _func_ , uid)
+        return
+    }
+
+    //complete
+    if prsp.Complete == 1 {
+        log.Debug("%s complete! uid:%d" , _func_ , uid)
+    }
+
+    if prsp.FetchCount == 0 {
+        log.Debug("%s fetch nothing! uid:%d" , _func_ , uid)
+        return
+    }
+
+    //entering group
+    pchat_info := puser.user_info.BlobInfo.ChatInfo
+      //init
+    if pchat_info.EnteringGroup == nil {
+        pchat_info.EnteringGroup = make(map[int64]bool)
+    }
+    if pchat_info.AllGroups == nil {
+        pchat_info.AllGroups = make(map[int64]*ss.UserChatGroup)
+    }
+
+    //iter
+    var ss_msg ss.SSMsg
+    var exist bool
+    var paudit *ss.MsgApplyGroupAudit
+    for i:=0; i<int(prsp.FetchCount); i++ {
+        //get pointer
+        paudit = prsp.AuditList[i]
+        if paudit == nil {
+            log.Err("%s nil audit! i:%d fetch:%d" , _func_ , i , prsp.FetchCount)
+            continue
+        }
+
+        //allow
+        if paudit.Result == ss.APPLY_GROUP_RESULT_APPLY_GRP_ALLOW {
+            _, exist = pchat_info.AllGroups[paudit.GroupId]
+            if exist {
+                log.Debug("%s already in group! uid:%d grp_id:%d", _func_, prsp.Uid, paudit.GroupId)
+                continue
+            }
+
+            if pchat_info.EnteringGroup[paudit.GroupId] {
+                log.Info("%s send reentering grp req! uid:%d grp_id:%d", _func_, prsp.Uid, paudit.GroupId)
+                SendEnterGroupReq(pconfig , uid , paudit.GroupId)
+                continue
+            }
+
+            //enter group
+            pchat_info.EnteringGroup[paudit.GroupId] = true //entering group
+            SendEnterGroupReq(pconfig , uid , paudit.GroupId)
+        }
+
+
+
+        //send to client apply result
+        papply := new(ss.MsgApplyGroupRsp)
+        papply.Result = prsp.AuditList[i].Result
+        papply.GroupName = prsp.AuditList[i].GroupName
+        papply.GroupId = prsp.AuditList[i].GroupId
+        papply.ApplyUid = prsp.Uid
+
+        err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_APPLY_GROUP_RSP , papply)
+        if err != nil {
+            log.Err("%s gen apply group rsp failed! err:%v uid:%d group_id:%d" , _func_ , err , prsp.Uid , paudit.GroupId)
+            continue
+        }
+
+        //back
+        SendToConnect(pconfig , &ss_msg)
+    }
+
+}
+
+func SendEnterGroupReq(pconfig *Config , uid int64 , grp_id int64) {
+    var _func_ = "<SendEnterGroupReq>"
+    log := pconfig.Comm.Log
+
+    //dis ss msg
+    preq := new(ss.MsgEnterGroupReq)
+    preq.Uid = uid
+    preq.GrpId = grp_id
+    pss_msg , err := comm.GenDispMsg(ss.DISP_MSG_TARGET_CHAT_SERVER , ss.DISP_MSG_METHOD_HASH , ss.DISP_PROTO_TYPE_DISP_ENTER_GROUP_REQ , 0 ,
+        pconfig.ProcId , grp_id , preq)
+    if err != nil {
+        log.Err("%s failed! err:%v uid:%d grp_id:%d" , _func_ , err , uid , grp_id)
+        return
+    }
+
+    //send
+    SendToDisp(pconfig , grp_id , pss_msg)
+}
+
+
+func CheckEnteringGroup(pconfig *Config , uid int64) {
+    var _func_ = "<CheckEnteringGroup>"
+    log := pconfig.Comm.Log
+
+    //user info
+    puser_info := GetUserInfo(pconfig , uid)
+    if puser_info == nil {
+        log.Err("%s offline! uid:%d" , _func_ , uid)
+        return
+    }
+
+    //chat info
+    pchat_info := puser_info.user_info.BlobInfo.ChatInfo
+    if pchat_info.EnteringGroup != nil {
+        for grp_id , _ := range(pchat_info.EnteringGroup) {
+            log.Debug("%s will enter %d uid:%d" , _func_ , grp_id , uid)
+            SendEnterGroupReq(pconfig , uid , grp_id)
+        }
+    }
+
+    log.Debug("%s finish! uid:%d" , _func_ , uid)
+}
+
+func RecvEnterGroupRsp(pconfig *Config , prsp *ss.MsgEnterGroupRsp) {
+    var _func_ = "<RecvEnterGroupRsp>"
+    log := pconfig.Comm.Log
+
+    log.Debug("%s uid:%d grp_id:%d grp_name:%s ret:%d" , _func_ , prsp.Uid , prsp.GrpId , prsp.GrpName , prsp.Result)
+    //get user
+    puser_info := GetUserInfo(pconfig , prsp.Uid)
+    if puser_info == nil {
+        log.Err("%s offline! uid:%d grp_id:%d" , _func_ , prsp.Uid , prsp.GrpId)
+        return
+    }
+
+    pchat_info := puser_info.user_info.BlobInfo.ChatInfo
+    if prsp.Result == 0 { //enter success
+        //Add
+        if pchat_info.AllGroups == nil {
+            pchat_info.AllGroups = make(map[int64]*ss.UserChatGroup)
+        }
+
+        grp_id := prsp.GrpId
+        //check exist
+        _ , ok := pchat_info.AllGroups[grp_id]
+        if ok {
+            log.Info("%s already in group:%d uid:%d" , _func_ , grp_id , prsp.Uid)
+        } else {
+            pchat_info.AllGroups[grp_id] = new(ss.UserChatGroup)
+            pchat_info.AllGroups[grp_id].GroupId = prsp.GrpId
+            pchat_info.AllGroups[grp_id].GroupName = prsp.GrpName
+            pchat_info.AllGroups[grp_id].LastReadId = 0
+            pchat_info.AllGroup++
+            log.Info("%s enter group success! uid:%d grp_id:%d grp_name:%s", _func_, prsp.Uid, prsp.GrpId, prsp.GrpName)
+        }
+    } else { //no group
+        log.Info("%s group not exist anymore! uid:%d grp_id:%d" , _func_ , prsp.Uid , prsp.GrpId)
+    }
+
+    //del enter flag
+    if pchat_info.EnteringGroup != nil {
+        delete(pchat_info.EnteringGroup , prsp.GrpId)
+    }
+
+}
+
+
+func TickFetchApplyGroup(arg interface{}) {
+    pconfig  , ok := arg.(*Config)
+    if !ok {
+        return
+    }
+
+    //fetch
+    if pconfig.Users.curr_online > 0 {
+        for uid , info := range pconfig.Users.user_map {
+            if info!=nil && info.fetch_apply_complete==false {
+                SendFetchApplyGroupReq(pconfig , uid)
+            }
+        }
+    }
+
+}
+
+
+func RecvSendChatReq(pconfig *Config , preq *ss.MsgSendChatReq) {
+    var _func_ = "<RecvSendChatReq>"
+    log := pconfig.Comm.Log
+
+    log.Debug("%s uid:%d temp_id:%d type:%d content:%s grp_id:%d" , _func_ , preq.Uid , preq.TempId , preq.ChatMsg.ChatType ,
+        preq.ChatMsg.Content , preq.ChatMsg.GroupId)
+    //get user
+    puser_info := GetUserInfo(pconfig , preq.Uid)
+    if puser_info == nil {
+        log.Err("%s offline! uid:%d" , _func_ , preq.Uid)
+        return
+    }
+
+    //check in group
+    pchat_info := puser_info.user_info.BlobInfo.ChatInfo
+    if pchat_info.AllGroup<=0 || pchat_info.AllGroups == nil {
+        log.Err("%s in none group! uid:%d" , _func_ , preq.Uid)
+        return
+    }
+    _ , exist := pchat_info.AllGroups[preq.ChatMsg.GroupId]
+    if !exist {
+        log.Err("%s not in group! uid:%d group:%d" , _func_ , preq.Uid , preq.ChatMsg.GroupId)
+        return
+    }
+
+
+
+    //fill info
+    preq.ChatMsg.SenderUid = preq.Uid
+    preq.ChatMsg.Sender = puser_info.user_info.BasicInfo.Name
+
+    //disp ss
+    pss_msg , err := comm.GenDispMsg(ss.DISP_MSG_TARGET_CHAT_SERVER , ss.DISP_MSG_METHOD_HASH , ss.DISP_PROTO_TYPE_DISP_SEND_CHAT_REQ ,
+        0 , pconfig.ProcId , preq.ChatMsg.GroupId , preq)
+    if err != nil {
+        log.Err("%s gen disp ss fail! uid:%d err:%v" , _func_ , preq.Uid , err)
+        return
+    }
+
+    //send
+    SendToDisp(pconfig , 0 , pss_msg)
+}
+
+func RecvSendChatRsp(pconfig *Config , prsp *ss.MsgSendChatRsp) {
+    var _func_ = "<RecvSendChatRsp>"
+    log := pconfig.Comm.Log
+
+    log.Debug("%s uid:%d temp_id:%d type:%d content:%s grp_id:%d result:%d" , _func_ , prsp.Uid , prsp.TempId , prsp.ChatMsg.ChatType ,
+        prsp.ChatMsg.Content , prsp.ChatMsg.GroupId , prsp.Result)
+    //get user
+    puser_info := GetUserInfo(pconfig , prsp.Uid)
+    if puser_info == nil {
+        log.Err("%s offline! uid:%d" , _func_ , prsp.Uid)
+        return
+    }
+
+    //gen ss
+    var ss_msg ss.SSMsg
+    err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_SEND_CHAT_RSP , prsp)
+    if err != nil {
+        log.Err("%s gen ss fail! err:%v uid:%d" , _func_ , err , prsp.Uid)
+        return
+    }
+
+    //to connect
+    SendToConnect(pconfig , &ss_msg)
+}
+
+//grp_id==0 fetch all group
+func SendFetchChatReq(pconfig *Config , uid int64 , spec_grp int64) {
+    var _func_ = "<SendFetchChatReq>"
+    log := pconfig.Comm.Log
+
+    //get user info
+    puser := GetUserInfo(pconfig , uid)
+    if puser == nil {
+        log.Err("%s user offline! uid:%d" , _func_ , uid)
+        return
+    }
+
+    //get chat_info
+    pchat_info := puser.user_info.BlobInfo.ChatInfo
+    if pchat_info.AllGroup <= 0 || pchat_info.AllGroups == nil {
+        return
+    }
+
+
+    //ss
+    var ss_msg ss.SSMsg
+    var grp_id int64
+    var grp_info *ss.UserChatGroup
+    var ok bool
+
+    preq := new(ss.MsgFetchChatReq)
+    preq.Uid = uid
+    preq.FetchCount = FETCH_CHAT_COUNT
+    if spec_grp == 0 { //all group
+        for grp_id, grp_info = range (pchat_info.AllGroups) {
+            preq.GrpId = grp_id
+            preq.LatestMsgId = grp_info.LastReadId
+
+            err := comm.FillSSPkg(&ss_msg, ss.SS_PROTO_TYPE_FETCH_CHAT_REQ, preq)
+            if err != nil {
+                log.Err("%s gen ss failed! err:%v uid:%d grp_id:%d", _func_, err, uid, grp_id)
+                continue
+            }
+
+            //send
+            SendToDb(pconfig, &ss_msg)
+        }
+    } else { //spec group
+        grp_info , ok = pchat_info.AllGroups[spec_grp]
+        if !ok {
+            log.Err("%s failed! spec_grp:%d not in! uid:%d" , _func_ , spec_grp , uid)
+            return
+        }
+        preq.GrpId = spec_grp
+        preq.LatestMsgId = grp_info.LastReadId
+
+        err := comm.FillSSPkg(&ss_msg, ss.SS_PROTO_TYPE_FETCH_CHAT_REQ, preq)
+        if err != nil {
+            log.Err("%s gen ss2 failed! err:%v uid:%d spec_grp:%d", _func_, err, uid, spec_grp)
+            return
+        }
+
+        //send
+        SendToDb(pconfig, &ss_msg)
+    }
+}
+
+func RecvFetchChatRsp(pconfig *Config , prsp *ss.MsgFetchChatRsp) {
+    var _func_ = "<RecvFetchChatRsp>"
+    log := pconfig.Comm.Log
+    uid := prsp.Uid
+    grp_id := prsp.GrpId
+
+    log.Debug("%s uid:%d grp_id:%d result:%d" , _func_ , uid , grp_id , prsp.Result)
+    //check result
+    if prsp.Result == ss.SS_COMMON_RESULT_FAILED {
+        return
+    }
+
+    //get user info
+    puser := GetUserInfo(pconfig , uid)
+    if puser == nil {
+        log.Err("%s user offline! uid:%d" , _func_ , uid)
+        return
+    }
+
+    //get chat_info
+    pchat_info := puser.user_info.BlobInfo.ChatInfo
+    if pchat_info.AllGroup <= 0 || pchat_info.AllGroups == nil {
+        log.Err("%s has nothing group! uid:%d" , _func_ , uid)
+        return
+    }
+
+
+    //check group
+    grp_info , ok := pchat_info.AllGroups[grp_id]
+    if !ok {
+        log.Err("%s not enter group! uid:%d grp_id:%d" , _func_ , uid , grp_id)
+        return
+    }
+
+    //Not Exist
+    if prsp.Result == ss.SS_COMMON_RESULT_NOEXIST {
+        log.Info("%s group is deleted! uid:%d grp_id:%d" , _func_ , uid , grp_id)
+            //master group may not happen here
+        if pchat_info.MasterGroups!=nil && pchat_info.MasterGroups[grp_id]==true {
+            delete(pchat_info.MasterGroups , grp_id)
+            pchat_info.MasterGroup--
+        }
+
+        delete(pchat_info.AllGroups , grp_id)
+        pchat_info.AllGroup--
+
+        if pchat_info.MasterGroup < 0 {
+            pchat_info.MasterGroup = 0
+        }
+        if pchat_info.AllGroup < 0 {
+            pchat_info.AllGroup = 0
+        }
+        return
+    }
+
+    //step.Sync Chat
+    //no data
+    if prsp.FetchCount <= 0 || len(prsp.ChatList)<=0{
+        return
+    }
+
+    //sync chat
+    var old_readed = grp_info.LastReadId
+    var ss_msg ss.SSMsg
+    var idx int
+
+    psync := new(ss.MsgSyncChatList)
+    psync.Uid = prsp.Uid
+    psync.GrpId = prsp.GrpId
+    psync.ChatList = make([]*ss.ChatMsg , prsp.FetchCount)
+    for i:=0; i<int(prsp.FetchCount); i++ {
+        if prsp.ChatList[i] == nil {
+           log.Err("%s chat msg nil! uid:%d grp_id:%d" , _func_ , uid , grp_id)
+           continue
+        }
+
+        //fill
+        psync.ChatList[idx] = prsp.ChatList[i]
+        idx++
+        log.Debug("%s msg_id:%d content:%s" , _func_ , prsp.ChatList[i].MsgId , prsp.ChatList[i].Content)
+
+        //update
+        if prsp.ChatList[i].MsgId > old_readed {
+            old_readed = prsp.ChatList[i].MsgId
+        }
+    }
+    psync.Count = int32(idx)
+
+    //pack
+    err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_SYNC_CHAT_LIST , psync)
+    if err != nil {
+        log.Err("%s gen sync ss failed! uid:%d grp_id:%d err:%v" , _func_ , uid , grp_id , err)
+        return
+    }
+
+    //send
+    ok = SendToConnect(pconfig , &ss_msg)
+    if !ok {
+        return
+    }
+
+
+    grp_info.LastReadId = old_readed
+    //step. ReFetch
+    if prsp.Complete == 1 {
+        return
+    }
+
+    SendFetchChatReq(pconfig , uid , grp_id)
+}
+
+func RecvNewMsgNotify(pconfig *Config , preq *ss.MsgCommonNotify) {
+    var _func_ = "<RecvNewMsgNotify>"
+    log := pconfig.Comm.Log
+    uid := preq.Uid
+    grp_id := preq.GrpId
+
+    log.Debug("%s grp_id:%d uid:%d" , _func_ , grp_id , uid)
+    //Get User
+    puser_info := GetUserInfo(pconfig , uid)
+    if puser_info == nil {
+        log.Err("%s offline! uid:%d" , _func_ , uid)
+        return
+    }
+
+    //Check chat
+    pchat_info := puser_info.user_info.BlobInfo.ChatInfo
+    if pchat_info.AllGroups == nil {
+        log.Err("%s all group nil! uid:%d" , _func_ , uid)
+        return
+    }
+
+    pgrp_info , ok := pchat_info.AllGroups[grp_id]
+    if !ok {
+        log.Err("%s not in group! uid:%d grp_id:%d" , _func_ , uid , grp_id)
+        return
+    }
+
+    //Check Msg
+    //proper next msg direct to client
+    if preq.ChatMsg != nil && preq.ChatMsg.MsgId == pgrp_info.LastReadId+1 {
+        log.Debug("%s just the next msg! to client! uid:%d latest_read:%d msg_id:%d grp_id:%d" , _func_ , uid , pgrp_info.LastReadId ,
+            preq.ChatMsg.MsgId , grp_id)
+
+        psync := new(ss.MsgSyncChatList)
+        psync.Uid = uid
+        psync.GrpId = grp_id
+        psync.ChatList = make([]*ss.ChatMsg , 1)
+        psync.ChatList[0] = preq.ChatMsg
+        psync.Count = 1
+
+        //gen ss
+        var ss_msg ss.SSMsg
+        err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_SYNC_CHAT_LIST , psync)
+        if err != nil {
+            log.Err("%s gen sync ss failed! err:%v uid:%d grp_id:%d" , _func_ , err , uid , grp_id)
+        } else {
+            SendToConnect(pconfig , &ss_msg)
+            pgrp_info.LastReadId++
+            return
+        }
+
+    }
+
+    //Fetch From Db
+    if ! puser_info.fetch_apply_complete { //in fetching chain
+        return
+    }
+
+    SendFetchChatReq(pconfig , uid , grp_id)
+}
+
+
+func RecvUploadFileNotify(pconfig *Config , pnotify *ss.MsgCommonNotify , file_server int) {
+    var _func_ = "<RecvUploadFileNotify>"
+    var puser_info *UserOnLine
+    log := pconfig.Comm.Log
+    uid := pnotify.Uid
+    grp_id := pnotify.GrpId
+    url := pnotify.StrV
+    check_err := 0
+
+    log.Debug("%s. uid:%d grp_id:%d url:%s tmp_id:%d", _func_, uid, grp_id, pnotify.StrV , pnotify.IntV)
+    for {
+        //check online
+        puser_info = GetUserInfo(pconfig, uid)
+        if puser_info == nil {
+            log.Err("%s not online!! uid:%d" , _func_ , uid)
+            check_err = 1
+            break
+        }
+
+        //check group
+        pchat_info := puser_info.user_info.BlobInfo.ChatInfo
+        if pchat_info.AllGroup<=0 || pchat_info.AllGroups == nil {
+            log.Err("%s enter no group!! uid:%d grp_id:%d" , _func_ , uid , grp_id)
+            check_err = 2
+            break
+        }
+
+        _ , ok := pchat_info.AllGroups[grp_id]
+        if !ok {
+            log.Err("%s no in group!! uid:%d grp_id:%d" , _func_ , uid , grp_id)
+            check_err = 2
+            break
+        }
+
+        break
+    }
+    //check value
+    if check_err != 0 {
+        pnotify.IntV = int64(check_err)
+        pss_msg , err := comm.GenDispMsg(ss.DISP_MSG_TARGET_FILE_SERVER , ss.DISP_MSG_METHOD_SPEC , ss.DISP_PROTO_TYPE_DISP_COMMON_NOTIFY ,
+            file_server , pconfig.ProcId , 0 , pnotify)
+
+        if err != nil {
+            log.Err("%s gen -->file ss msg failed! err:%v uid:%d grp_id:%d url:%s" , _func_ , err , uid , grp_id , url)
+            return
+        }
+
+        //send
+        SendToDisp(pconfig , 0 , pss_msg)
+        return
+    }
+
+    //check passed
+    //create req
+    log.Debug("%s check passed! will create chat_msg! uid:%d grp_id:%d url:%s" , _func_ , uid , grp_id , url)
+    preq := new(ss.MsgSendChatReq)
+    preq.Uid = uid
+    preq.TempId = pnotify.IntV
+    pchat := new(ss.ChatMsg)
+    pchat.GroupId = grp_id
+    pchat.Content = url
+    pchat.SenderUid = uid
+    pchat.Sender = puser_info.user_info.BasicInfo.Name
+    pchat.ChatType = ss.CHAT_MSG_TYPE_CHAT_TYPE_IMG
+    preq.ChatMsg = pchat
+
+    //ss
+    pss_msg , err := comm.GenDispMsg(ss.DISP_MSG_TARGET_CHAT_SERVER , ss.DISP_MSG_METHOD_HASH , ss.DISP_PROTO_TYPE_DISP_SEND_CHAT_REQ ,
+        0 , pconfig.ProcId , grp_id , preq)
+    if err != nil {
+        log.Err("%s gen send_chat ss failed! err:%v uid:%d grp_id:%d content:%s" , _func_ , err , uid , grp_id , url)
+        return
+    }
+
+    //to chat_serv
+    SendToDisp(pconfig , 0 , pss_msg)
+}

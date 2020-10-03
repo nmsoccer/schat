@@ -1,0 +1,202 @@
+syntax="proto3";
+package ss;
+
+import "chat.proto";
+/*
+Target Server Type
+*/
+enum DISP_MSG_TARGET {
+  NON_SERVER = 0; //no target type specified
+  LOGIC_SERVER = 1;
+  CHAT_SERVER = 2;
+  ONLINE_SERVER = 3;
+  FILE_SERVER = 4;
+  DIR_SERVER = 5;
+}
+
+/*
+Choose Target Server Method
+*/
+enum DISP_MSG_METHOD {
+  RAND = 0;  
+  HASH = 1;
+  SPEC = 2; //sepcify target
+  ALL  = 3; //all target
+}
+
+
+/*
+* Disp Proto <serv1 -- disp -- serv2>
+* 
+*/
+enum DISP_PROTO_TYPE {
+  DISP_HELLO = 0;
+  DISP_KICK_DUPLICATE_USER = 1; //kick duplicate user on other line
+  DISP_APPLY_GROUP_REQ = 2;
+  DISP_APPLY_GROUP_RSP = 3;
+  DISP_APPLY_GROUP_NOTIFY = 4; //notify apply to group master
+  DISP_APPLY_GROUP_AUDIT = 5;  //master audit apply
+  DISP_COMMON_NOTIFY = 6;
+  DISP_ENTER_GROUP_REQ = 7;
+  DISP_ENTER_GROUP_RSP = 8;
+  DISP_SEND_CHAT_REQ = 9;
+  DISP_SEND_CHAT_RSP = 10;  
+  //Add Proto Should Also Modify servers/comm/disp.go:GenDispMsg  
+}
+
+
+
+//DispMsg
+//Tips:DisMsg mostly may carry occupy member to passthrough
+message MsgDisp {
+  DISP_PROTO_TYPE proto_type = 1;
+  DISP_MSG_TARGET target = 2;
+  DISP_MSG_METHOD method = 3;
+  int32 spec_server = 4; //only for METHOD_SPEC
+  int32 from_server = 5;
+  int64 hash_v = 6; //only for METHOD_HASH
+  
+  oneof disp_body {
+    MsgDispHello hello = 20;
+    MsgDispKickDupUser kick_dup_user = 21;
+    MsgApplyGroupReq apply_group_req = 22;
+    MsgApplyGroupRsp apply_group_rsp = 23;
+    MsgApplyGroupNotify apply_group_notify = 24;
+    MsgApplyGroupAudit  apply_group_audit = 25;
+    MsgCommonNotify   common_notify = 26;
+    MsgEnterGroupReq enter_group_req = 27;
+    MsgEnterGroupRsp enter_group_rsp = 28;
+    MsgSendChatReq   send_chat_req  = 29;
+	MsgSendChatRsp   send_chat_rsp  = 30;    
+  }  
+}
+
+
+/**********DISP SUB MSG*************/
+message MsgDispHello {
+  string content = 1;
+}
+
+message MsgDispKickDupUser {
+  int64 target_uid = 1; //target uid
+}
+
+
+//apply group. this will exist in main and disp msg
+enum APPLY_GROUP_RESULT {
+  APPLY_GRP_DONE  = 0; //apply done
+  APPLY_GRP_ALLOW = 1;
+  APPLY_GRP_DENY  = 2;
+  APPLY_GRP_NONE  = 3; // not exist
+  APPLY_GRP_PASS  = 4;  //pass error
+  APPLY_GRP_EXIST = 5;  //already in
+  APPLY_GRP_ERR   = 6;  //sys err
+}
+
+
+//apply group
+message MsgApplyGroupReq {
+  int64 group_id = 1;
+  string group_name = 2;
+  string pass = 3;
+  int64 apply_uid = 4;
+  string apply_name = 5;
+  string apply_msg = 6; //apply msg
+  int64  occupy = 20; //payload
+}
+
+
+message MsgApplyGroupRsp {
+  APPLY_GROUP_RESULT result = 1;
+  int64 group_id = 2;
+  string group_name = 3;
+  int64 apply_uid = 4;
+  string apply_name = 5;
+  int64  occupy = 20; //payload
+}
+
+message MsgApplyGroupNotify {
+  int64 group_id = 1;
+  string group_name = 2;
+  int64 master_uid = 3; //group master
+  int64 apply_uid = 4; //apply uid
+  string apply_name = 5; //apply user
+  string apply_msg = 6;
+  
+  int32 occupy_size = 20;
+  repeated int64 occupy = 21; //occupy data
+}
+
+message MsgApplyGroupAudit { //master audit apply
+  APPLY_GROUP_RESULT result = 1; //only use ALLOW&DENY
+  int64 group_id = 2;
+  string group_name = 3;
+  int64 apply_uid = 4;
+  int64 uid = 5;
+  
+  //int32 occupy_size = 20;
+  //repeated int64 occupy = 21; //occupy data
+}
+
+//common notify
+enum COMMON_NOTIFY_TYPE {
+  NOTIFY_NEW_AUDIT = 0; //new audit info
+  NOTIFY_USER_LOGIN = 1; //user login
+  NOTIFY_USER_LOGOUT = 2; //user logout
+  NOTIFY_NEW_MSG     = 3; //new chat msg
+  NOTIFY_UPLOAD_FILE = 4; //upload file
+  NOTIFY_SERV_LOAD   = 5; //notify server load
+}
+
+message MsgCommonNotify {
+  COMMON_NOTIFY_TYPE notify_type = 1;
+  int64 uid = 2;
+  int64 int_v = 3;
+  string str_v = 4;
+  int64 grp_id = 5;
+  
+  map<int64 , int32> members = 20;
+  ChatMsg chat_msg = 21;
+}
+
+//enter group
+message MsgEnterGroupReq {
+  int64 uid = 1;
+  int64 grp_id = 2;
+  
+  int64 occupy = 20;
+}
+
+message MsgEnterGroupRsp {
+  int64 uid = 1;
+  int64 grp_id = 2;
+  string grp_name = 3;
+  int32 result = 4; //0:success 1:group not exist
+  
+  int64 occupy = 20;
+}
+
+//Send Chat
+enum SEND_CHAT_RESULT {
+  SEND_CHAT_SUCCESS = 0;
+  SEND_CHAT_NONE_GROUP = 1; //group not exist
+  SEND_CHAT_FAIL = 2;
+}
+
+message MsgSendChatReq {
+  int64 uid = 1;
+  int64 temp_id = 2;
+  ChatMsg chat_msg = 3;
+  
+  int64 occupy = 20;
+}
+
+message MsgSendChatRsp {
+  SEND_CHAT_RESULT result = 1;
+  int64 uid = 2;
+  int64 temp_id = 3;
+  ChatMsg chat_msg = 4;
+  
+  int64 occupy = 20;
+}
+

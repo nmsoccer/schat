@@ -386,3 +386,74 @@ func SaveGroupOnExit(pconfig *Config) {
 	}
 }
 
+func RecvExitGroupNotify(pconfig *Config , pnotify *ss.MsgCommonNotify) {
+	var _func_ = "<RecvExitGroupNotify>"
+	log := pconfig.Comm.Log
+	uid := pnotify.Uid
+	grp_id := pnotify.GrpId
+
+	//grp_info
+	pgrp_info := GetGroupInfo(pconfig , grp_id)
+	if pgrp_info == nil {
+		log.Info("%s grp offline! grp_id:%d" , _func_ , grp_id)
+		return
+	}
+
+	//check member
+	_ , ok := pgrp_info.db_group_info.Members[uid]
+	if !ok {
+		log.Info("%s grp:%d has no member:%d" , _func_ , grp_id , uid)
+		return
+	}
+
+	//del it
+	delete(pgrp_info.db_group_info.Members , uid)
+	pgrp_info.db_group_info.MemCount--
+	if pgrp_info.db_group_info.MemCount < 0 {
+		pgrp_info.db_group_info.MemCount = 0
+	}
+    log.Info("%s success! mem_count:%d grp_id:%d uid:%d" , _func_ , pgrp_info.db_group_info.MemCount , grp_id , uid)
+}
+
+
+func RecvDelGroupNotify(pconfig *Config , pnotify *ss.MsgCommonNotify) {
+	var _func_ = "<RecvExitGroupNotify>"
+	log := pconfig.Comm.Log
+	uid := pnotify.Uid
+	grp_id := pnotify.GrpId
+
+	//grp_info
+	pgrp_info := GetGroupInfo(pconfig, grp_id)
+	if pgrp_info == nil {
+		log.Info("%s grp offline! grp_id:%d", _func_, grp_id)
+		return
+	}
+
+	//check master
+	if pgrp_info.db_group_info.MasterUid != uid {
+		log.Err("%s fail! not master! grp_id:%d uid:%d master:%d" , _func_ , grp_id , uid , pgrp_info.db_group_info.MasterUid)
+		return
+	}
+
+	//save members
+	pnotify.Members = pgrp_info.db_group_info.Members
+
+	//del online
+	delete(pconfig.GroupList.group_map , grp_id)
+	pconfig.GroupList.online_count--
+	if pconfig.GroupList.online_count < 0 {
+		pconfig.GroupList.online_count = 0
+	}
+	log.Info("%s done! grp_id:%d master:%d" , _func_ , grp_id , uid)
+
+
+	//notify online member
+	pss_msg , err := comm.GenDispMsg(ss.DISP_MSG_TARGET_ONLINE_SERVER , ss.DISP_MSG_METHOD_RAND , ss.DISP_PROTO_TYPE_DISP_COMMON_NOTIFY , 0 ,
+		pconfig.ProcId , 0 , pnotify)
+	if err != nil {
+		log.Err("%s gen ss failed! err:%v grp_id:%d uid:%d" , _func_ , err , grp_id , uid)
+		return
+	}
+	//to online
+	SendToDisp(pconfig , 0 , pss_msg)
+}

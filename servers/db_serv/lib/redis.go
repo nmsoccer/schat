@@ -19,6 +19,12 @@ import (
 * #chat_msg:[group]:[index] +list+ <chat_msg encoded>
  */
 
+/*--------------------INSTRUCTION--------------------
+        *********GROUP TABLE*********
+                 group:grp_id
+    group:mem:grp_id group:apply:grp_id chat_msg:group:index
+*/
+
 const (
 	PASSWD_SALT_LEN = 32
 	LOGIN_LOCK_LIFE = 20 //login lock life (second)
@@ -37,7 +43,9 @@ const (
 	FORMAT_TAB_USER_GROUP_AUDITED = "user:group:audited:" //user:group:audited:[uid] +list+ <grp_id|grp_name|result>
     FORMAT_TAB_CHAT_MSG_LIST      = "chat_msg:%d:%d" //chat_msg:[group]:[index] +list+ <chat_msg encoded>
 	//Useful FIELD
-	FIELD_USER_INFO_ONLINE_LOGIC = "online_logic"
+	FIELD_USER_INFO_ONLINE_LOGIC  = "online_logic"
+	FIELD_GROUP_INFO_MSG_COUNT    = "msg_count"
+	FILED_GROUP_INFO_NAME         = "name"
 
 )
 

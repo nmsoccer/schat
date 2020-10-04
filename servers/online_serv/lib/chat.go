@@ -27,23 +27,20 @@ func RecvNewMsgNotify(pconfig *Config , preq *ss.MsgCommonNotify) {
     pusr_info := GetUserInfo(pconfig , preq.Uid)
     if pusr_info != nil {
     	pnotify.Uid = preq.Uid
-        SendNewMsgNotify(pconfig , pnotify , pusr_info.login_serv)
+		SendSpecCommNotify(pconfig , ss.DISP_MSG_TARGET_LOGIC_SERVER , pusr_info.login_serv , pnotify)
 	}
 
 	//to members
-	if preq.Members == nil {
-		log.Err("%s req no member contain!" , _func_)
+	if preq.Members == nil || len(preq.Members)==0 {
+		log.Info("%s req no member contain!" , _func_)
 		return
 	}
-	if pconfig.world_online.user_map == nil {
-		log.Err("%s online user_map nil! grp_id:%d" , _func_ , preq.GrpId)
-		return
-	}
-	for uid , _ := range(pconfig.world_online.user_map) {
+	for uid , _ := range(preq.Members) {
 		pusr_info = GetUserInfo(pconfig , uid)
 		if pusr_info != nil {
 			pnotify.Uid = uid
-			SendNewMsgNotify(pconfig , pnotify , pusr_info.login_serv)
+			//SendNewMsgNotify(pconfig , pnotify , pusr_info.login_serv)
+			SendSpecCommNotify(pconfig , ss.DISP_MSG_TARGET_LOGIC_SERVER , pusr_info.login_serv , pnotify)
 		}
 	}
 

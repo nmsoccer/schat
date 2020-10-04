@@ -87,7 +87,7 @@ func RecvSendChatRsp(pconfig *Config , prsp *ss.MsgSendChatRsp) {
     pnotify.Uid = pgrp_info.db_group_info.MasterUid //master
     pnotify.Members = pgrp_info.db_group_info.Members
     pnotify.ChatMsg = prsp.ChatMsg //carry latest
-    pss_msg , err = comm.GenDispMsg(ss.DISP_MSG_TARGET_ONLINE_SERVER , ss.DISP_MSG_METHOD_ALL , ss.DISP_PROTO_TYPE_DISP_COMMON_NOTIFY ,
+    pss_msg , err = comm.GenDispMsg(ss.DISP_MSG_TARGET_ONLINE_SERVER , ss.DISP_MSG_METHOD_RAND , ss.DISP_PROTO_TYPE_DISP_COMMON_NOTIFY ,
     	0 , pconfig.ProcId , 0 , pnotify)
     if err!= nil {
     	log.Err("%s broadcast failed! gen ss fail! err:%v grp_id:%d" , _func_ , err , grp_id)

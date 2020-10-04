@@ -28,6 +28,7 @@ const (
 	CMD_APPLY_GROUP        = "apply"
 	CMD_AUDIT_GROUP        = "audit"
 	CMD_CHAT               = "chat"
+	CMD_QUIT               = "quit"
 
 	BUFF_LEN = (10 * 1024)
 
@@ -68,6 +69,7 @@ func init() {
 	cmd_map[CMD_APPLY_GROUP] = "apply group <group_id> <group_pass> <apply_msg>"
 	cmd_map[CMD_AUDIT_GROUP] = "audit group apply <group_id><grp_name><apply_uid><audit 0|1>"
 	cmd_map[CMD_CHAT] = "chat <chat_type><group_id><msg>" //type:0:text 1:img
+	cmd_map[CMD_QUIT] = "quit group <group_id>"
 }
 
 func v_print(format string, arg ...interface{}) {
@@ -413,6 +415,16 @@ func RecvPkg(conn *net.TCPConn) {
 					return
 				}
 			}
+		case cs.CS_PROTO_EXIT_GROUP_RSP:
+			prsp, ok := gmsg.SubMsg.(*cs.CSExitGroupRsp)
+			if ok {
+				v_print("exit_group_rsp grp_id:%d grp_name:%s result:%d del_group:%d\n", prsp.GrpId, prsp.GrpName , prsp.Result ,
+					prsp.DelGroup)
+				if *method == METHOD_COMMAND {
+					exit_ch <- true
+					return
+				}
+			}
 		default:
 			fmt.Printf("illegal proto:%d\n", gmsg.ProtoId)
 		}
@@ -539,6 +551,16 @@ func SendPkg(conn *net.TCPConn, cmd string) {
 		psub.Content = args[3]
 		psub.TempMsgId = GenerateLocalId(1, &seq)
 		v_print("send chat req:%v\n", *psub)
+		gmsg.SubMsg = psub
+	case CMD_QUIT:	// quit group <group_id>
+		if len(args) != 2 {
+			show_cmd()
+			return
+		}
+		gmsg.ProtoId = cs.CS_PROTO_EXIT_GROUP_REQ
+		psub := new(cs.CSExitGroupReq)
+		psub.GrpId, _ = strconv.ParseInt(args[1], 10, 64)
+		v_print("exit group req:%v\n", *psub)
 		gmsg.SubMsg = psub
 	default:
 		fmt.Printf("illegal cmd:%s\n", cmd)
@@ -670,7 +692,7 @@ func main() {
 			n, _ := os.Stdin.Read(rs)
 			rs = rs[:n-1] //trip last \n
 
-			if string(rs) == "exit" {
+			if string(rs) == "EXIT" {
 				fmt.Println("byte...")
 				exit_ch <- true
 				break

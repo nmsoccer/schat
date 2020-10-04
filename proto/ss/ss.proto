@@ -43,6 +43,8 @@ enum SS_PROTO_TYPE {
   FETCH_CHAT_REQ = 33;
   FETCH_CHAT_RSP = 34;
   SYNC_CHAT_LIST = 35;
+  EXIT_GROUP_REQ = 36;
+  EXIT_GROUP_RSP = 37;
   //new proto defined could add to servers/comm/ss_pack.go:GenSSPkg  
 }
 
@@ -95,6 +97,8 @@ message SSMsg {
 	MsgFetchChatReq  fetch_chat_req = 51;
     MsgFetchChatRsp  fetch_chat_rsp = 52;
 	MsgSyncChatList  sync_chat_list = 53;
+	MsgExitGroupReq  exit_group_req = 54;
+	MsgExitGroupRsp  exit_group_rsp = 55;
   }  
 }
 
@@ -311,4 +315,22 @@ message MsgSyncChatList {
   int32 count = 3;
   repeated ChatMsg chat_list = 4;
 }
+
+//Exit Group
+message MsgExitGroupReq {
+  int64 uid = 1;
+  int64 grp_id = 2;
+  string grp_name = 3;
+  int32  del_group = 4;
+}
+
+message MsgExitGroupRsp {
+  SS_COMMON_RESULT result = 1;
+  int64 uid = 2;
+  int64 grp_id = 3;
+  string grp_name = 4;
+  int32  del_group = 5;  
+}
+
+
 

@@ -80,6 +80,8 @@ func RecvMsg(pconfig *Config) int64 {
 			RecvSendChatRsp(pconfig , ss_msg.GetSendChatRsp())
 		case ss.SS_PROTO_TYPE_SYNC_CHAT_LIST:
 			RecvSyncChatList(pconfig , ss_msg.GetSyncChatList())
+		case ss.SS_PROTO_TYPE_EXIT_GROUP_RSP:
+			RecvExitGroupRsp(pconfig , ss_msg.GetExitGroupRsp())
 		default:
 			log.Err("%s fail! unknown proto type:%v", _func_, ss_msg.ProtoType)
 		}

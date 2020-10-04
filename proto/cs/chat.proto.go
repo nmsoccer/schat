@@ -77,3 +77,16 @@ type CSSyncChatList struct {
 	Count  int   `json:"count"`
 	ChatList []*ChatMsg `json:"chat_list"`
 }
+
+type CSExitGroupReq  struct {
+	GrpId  int64 `json:"grp_id"`
+}
+
+type CSExitGroupRsp  struct {
+	Result int `json:"result"`
+	GrpId  int64 `json:"grp_id"`
+	GrpName string `json:"grp_name"`
+	DelGroup int `json:"del_group"`
+}
+
+

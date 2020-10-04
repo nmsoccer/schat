@@ -264,6 +264,22 @@ func FillSSPkg(ss_msg *ss.SSMsg , proto ss.SS_PROTO_TYPE , pmsg interface{}) err
 		}
 		body.SyncChatList = pv
 		ss_msg.MsgBody = body
+	case ss.SS_PROTO_TYPE_EXIT_GROUP_REQ:
+		body := new(ss.SSMsg_ExitGroupReq)
+		pv , ok := pmsg.(*ss.MsgExitGroupReq)
+		if !ok {
+			return errors.New("not MsgExitGroupReq")
+		}
+		body.ExitGroupReq = pv
+		ss_msg.MsgBody = body
+	case ss.SS_PROTO_TYPE_EXIT_GROUP_RSP:
+		body := new(ss.SSMsg_ExitGroupRsp)
+		pv , ok := pmsg.(*ss.MsgExitGroupRsp)
+		if !ok {
+			return errors.New("not MsgExitGroupRsp")
+		}
+		body.ExitGroupRsp = pv
+		ss_msg.MsgBody = body
 	default:
 		return errors.New(fmt.Sprintf("disp proto:%d not handled" , proto))
 	}

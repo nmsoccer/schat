@@ -146,6 +146,8 @@ enum COMMON_NOTIFY_TYPE {
   NOTIFY_NEW_MSG     = 3; //new chat msg
   NOTIFY_UPLOAD_FILE = 4; //upload file
   NOTIFY_SERV_LOAD   = 5; //notify server load
+  NOTIFY_EXIT_GROUP  = 6; //notify exit group
+  NOTIFY_DEL_GROUP   = 7; //notify del group
 }
 
 message MsgCommonNotify {
@@ -199,4 +201,5 @@ message MsgSendChatRsp {
   
   int64 occupy = 20;
 }
+
 

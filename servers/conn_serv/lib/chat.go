@@ -308,3 +308,57 @@ func RecvSyncChatList(pconfig *Config , prsp *ss.MsgSyncChatList) {
 	//To Client
 	SendToClient(pconfig , c_key , cs.CS_PROTO_SYNC_CHAT_LIST , pmsg)
 }
+
+func SendExitGroupReq(pconfig *Config , uid int64 , pexit *cs.CSExitGroupReq) {
+	var _func_ = "<SendExitGroupReq>"
+	log := pconfig.Comm.Log
+
+	//ss
+	var ss_msg ss.SSMsg
+	preq := new(ss.MsgExitGroupReq)
+	preq.Uid = uid
+	preq.GrpId = pexit.GrpId
+
+	err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_EXIT_GROUP_REQ , preq)
+	if err != nil {
+		log.Err("%s gen ss failed! err:%v uid:%d grp_id:%d" , _func_ , err , uid , pexit.GrpId)
+		return
+	}
+
+	//send
+	SendToLogic(pconfig , &ss_msg)
+}
+
+func RecvExitGroupRsp(pconfig *Config , prsp *ss.MsgExitGroupRsp) {
+	var _func_ = "<SendExitGroupRsp>"
+	log := pconfig.Comm.Log
+
+	//c_key
+	c_key := GetClientKey(pconfig , prsp.Uid)
+	if c_key <= 0 {
+		log.Err("%s user offline! uid:%d" , _func_ , prsp.Uid)
+		return
+	}
+
+	//cs
+	pv , err := cs.Proto2Msg(cs.CS_PROTO_EXIT_GROUP_RSP)
+	if err != nil {
+		log.Err("%s get msg fail! uid:%d err:%v" , _func_ , prsp.Uid , err)
+		return
+	}
+	pmsg , ok := pv.(*cs.CSExitGroupRsp)
+	if !ok {
+		log.Err("%s not CSExitGroupRsp! uid:%d" , _func_ , prsp.Uid)
+		return
+	}
+
+	log.Debug("%s uid:%d grp_id:%d result:%d" , _func_ , prsp.Uid , prsp.GrpId , prsp.Result)
+	//fill
+	pmsg.Result = int(prsp.Result)
+	pmsg.GrpId = prsp.GrpId
+	pmsg.GrpName = prsp.GrpName
+	pmsg.DelGroup = int(prsp.DelGroup)
+
+	//to client
+    SendToClient(pconfig , c_key , cs.CS_PROTO_EXIT_GROUP_RSP , pmsg)
+}

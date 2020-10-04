@@ -257,6 +257,12 @@ func HandleClientPkg(pconfig *Config, pclient *comm.ClientPkg) {
 			SendSendChatReq(pconfig , uid , pmsg)
 			conv_err = false
 		}
+	case cs.CS_PROTO_EXIT_GROUP_REQ:
+		pmsg, ok := gmsg.SubMsg.(*cs.CSExitGroupReq)
+		if ok {
+			SendExitGroupReq(pconfig , uid , pmsg)
+			conv_err = false
+		}
 	default:
 		log.Err("%s illegal proto:%d", _func_, proto_id)
 		return

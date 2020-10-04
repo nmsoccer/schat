@@ -2,6 +2,7 @@ package lib
 
 import (
 	"schat/proto/ss"
+	"schat/servers/comm"
 )
 
 func RecvDispMsg(pconfig *Config, pdisp *ss.MsgDisp) {
@@ -39,7 +40,27 @@ func RecvCommNotify(pconfig *Config , pnotify *ss.MsgCommonNotify , src_serv int
 		RecvNewMsgNotify(pconfig , pnotify)
 	case ss.COMMON_NOTIFY_TYPE_NOTIFY_UPLOAD_FILE:
 		RecvUploadFileNotify(pconfig , pnotify , src_serv)
+	case ss.COMMON_NOTIFY_TYPE_NOTIFY_DEL_GROUP:
+		RecvDelGroupNotify(pconfig , pnotify)
 	default:
 		log.Err("%s unhandled notify:%d src:%d" , _func_ , pnotify.NotifyType , src_serv)
 	}
+}
+
+
+func SendSpecCommNotify(pconfig *Config , disp_target ss.DISP_MSG_TARGET , spec_serv int , pnotify *ss.MsgCommonNotify) {
+	var _func_ = "<SendSpecCommNotify>"
+	log := pconfig.Comm.Log
+
+	//GEN SS
+	pss_msg , err := comm.GenDispMsg(disp_target , ss.DISP_MSG_METHOD_SPEC , ss.DISP_PROTO_TYPE_DISP_COMMON_NOTIFY ,
+		spec_serv , pconfig.ProcId , 0 , pnotify)
+	if err != nil {
+		log.Err("%s gen ss failed! err:%v uid:%d grp_id:%d disp_target:%d spec:%d" , _func_ , err , pnotify.Uid , pnotify.GrpId ,
+			disp_target , spec_serv)
+		return
+	}
+
+	//Send
+	SendToDisp(pconfig , 0 , pss_msg)
 }

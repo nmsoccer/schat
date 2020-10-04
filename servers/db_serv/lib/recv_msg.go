@@ -84,6 +84,8 @@ func RecvMsg(pconfig *Config) int64 {
 			RecvSaveChatGroupReq(pconfig , ss_msg.GetSaveGroupReq() , pmsg.sender)
 		case ss.SS_PROTO_TYPE_FETCH_CHAT_REQ:
 			RecvFetchChatReq(pconfig , ss_msg.GetFetchChatReq() , pmsg.sender)
+		case ss.SS_PROTO_TYPE_EXIT_GROUP_REQ:
+			RecvExitGroupReq(pconfig , ss_msg.GetExitGroupReq() , pmsg.sender)
 		default:
 			log.Err("%s fail! unknown proto type:%v", _func_, ss_msg.ProtoType)
 		}

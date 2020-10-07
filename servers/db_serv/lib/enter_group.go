@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"schat/proto/ss"
 	"schat/servers/comm"
+	"strconv"
 )
 
 func RecvEnterGroupReq(pconfig *Config , preq *ss.MsgEnterGroupReq , from int) {
@@ -26,19 +27,36 @@ func RecvEnterGroupReq(pconfig *Config , preq *ss.MsgEnterGroupReq , from int) {
 
 		//Get Group Info
 		tab_name := fmt.Sprintf(FORMAT_TAB_GROUP_INFO_PREFIX + "%d" , grp_id)
-		res , err := pconfig.RedisClient.RedisExeCmdSync(phead , "HGET" , tab_name , "name")
+		res , err := pconfig.RedisClient.RedisExeCmdSync(phead , "HMGET" , tab_name , FILED_GROUP_INFO_NAME , FIELD_GROUP_INFO_MSG_COUNT)
 		if err != nil {
 			log.Err("%s query group failed! err:%v uid:%d grp_id:%d" , _func_ , err ,grp_id , uid)
 			return
 		}
 		if res == nil {
-			log.Err("%s group not exist! uid:%d grp_id:%d" , _func_ , uid , grp_id)
-			SendEnterGroupRsp(pconfig , preq , "" , from , 1)
+			log.Info("%s group not exist! uid:%d grp_id:%d" , _func_ , uid , grp_id)
+			SendEnterGroupRsp(pconfig , preq , "" , 0 , from , 1)
 			return
 		}
-		grp_name , err := comm.Conv2String(res)
+		strs , err := comm.Conv2Strings(res)
 		if err != nil {
-			log.Err("%s group name convert failed!! uid:%d grp_id:%d res:%v err:%v" , _func_ , uid , grp_id , res , err)
+			log.Err("%s conv res to strings failed! err:%v res:%v uid:%d grp_id:%d" , _func_ , err , res , uid , grp_id)
+			return
+		}
+		if len(strs) != 2 {
+			log.Err("%s strs len illegal! res:%v uid:%d grp_id:%d" , _func_ , res , uid , grp_id)
+			return
+		}
+		if strs[0]=="" || strs[1]=="" {
+			log.Info("%s group not exist! uid:%d grp_id:%d" , _func_ , uid , grp_id)
+			SendEnterGroupRsp(pconfig , preq , "" , 0 , from , 1)
+			return
+		}
+
+		//convert
+		grp_name := strs[0]
+		msg_count , err := strconv.ParseInt(strs[1] , 10 , 64)
+		if err != nil {
+			log.Err("%s convert msg count failed!! uid:%d grp_id:%d v:%v err:%v" , _func_ , uid , grp_id , strs[1] , err)
 			return
 		}
 
@@ -58,12 +76,12 @@ func RecvEnterGroupReq(pconfig *Config , preq *ss.MsgEnterGroupReq , from int) {
 
 
 		//Resp
-		SendEnterGroupRsp(pconfig , preq , grp_name , from , 0)
+		SendEnterGroupRsp(pconfig , preq , grp_name , msg_count , from , 0)
 	}()
 }
 
 //ret:0:ok 1:no-exist
-func SendEnterGroupRsp(pconfig *Config , preq *ss.MsgEnterGroupReq , grp_name string , target_serv int , ret int32) {
+func SendEnterGroupRsp(pconfig *Config , preq *ss.MsgEnterGroupReq , grp_name string , msg_count int64 , target_serv int , ret int32) {
 	var _func_ = "<SendEnterGroupRsp>"
 	log := pconfig.Comm.Log
 
@@ -73,6 +91,7 @@ func SendEnterGroupRsp(pconfig *Config , preq *ss.MsgEnterGroupReq , grp_name st
 	prsp.GrpId = preq.GrpId
 	prsp.GrpName = grp_name
 	prsp.Result = ret
+	prsp.MsgCount = msg_count
 	prsp.Occupy = preq.Occupy
 
 	var ss_msg ss.SSMsg

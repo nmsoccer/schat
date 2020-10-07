@@ -52,3 +52,5 @@ func RecvPingRsp(pconfig *Config, prsp *ss.MsgPingRsp) {
 	//send
 	SendToClient(pconfig, prsp.ClientKey, cs.CS_PROTO_PING_RSP, pmsg)
 }
+
+

@@ -148,6 +148,8 @@ enum COMMON_NOTIFY_TYPE {
   NOTIFY_SERV_LOAD   = 5; //notify server load
   NOTIFY_EXIT_GROUP  = 6; //notify exit group
   NOTIFY_DEL_GROUP   = 7; //notify del group
+  NOTIFY_FILE_ADDR   = 8; //notify file addr
+  NOTIFY_BATCH_USER_ONLINE = 9; //notify batch user online serv
 }
 
 message MsgCommonNotify {
@@ -159,6 +161,7 @@ message MsgCommonNotify {
   
   map<int64 , int32> members = 20;
   ChatMsg chat_msg = 21;
+  repeated string strs = 22;
 }
 
 //enter group
@@ -174,6 +177,7 @@ message MsgEnterGroupRsp {
   int64 grp_id = 2;
   string grp_name = 3;
   int32 result = 4; //0:success 1:group not exist
+  int64 msg_count = 5; 
   
   int64 occupy = 20;
 }

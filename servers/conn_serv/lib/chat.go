@@ -291,6 +291,7 @@ func RecvSyncChatList(pconfig *Config , prsp *ss.MsgSyncChatList) {
 	}
 
 	pmsg.GrpId = prsp.GrpId
+	pmsg.SyncType = int8(prsp.SyncType)
 	pmsg.Count = int(prsp.Count)
 	pmsg.ChatList = make([]*cs.ChatMsg , pmsg.Count)
 	for i:=0; i<int(prsp.Count); i++ {
@@ -361,4 +362,30 @@ func RecvExitGroupRsp(pconfig *Config , prsp *ss.MsgExitGroupRsp) {
 
 	//to client
     SendToClient(pconfig , c_key , cs.CS_PROTO_EXIT_GROUP_RSP , pmsg)
+}
+
+
+func SendFetchChatHistroyReq(pconfig *Config , uid int64 , pfetch *cs.CSChatHistoryReq) {
+	var _func_ = "<SendFetchChatHistroyReq>"
+	log := pconfig.Comm.Log
+
+	//ss
+	preq := new(ss.MsgFetchChatReq)
+	preq.Uid = uid
+	preq.GrpId = pfetch.GrpId
+	preq.FetchType = ss.SS_COMMON_TYPE_COMM_TYPE_HISTORY
+	preq.LatestMsgId = pfetch.NowMsgId
+	if preq.LatestMsgId < 0 {
+		preq.LatestMsgId = 0
+	}
+
+	var ss_msg ss.SSMsg
+	err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_FETCH_CHAT_REQ , preq)
+	if err != nil {
+		log.Err("%s gen ss failed! uid:%d err:%v" , _func_ , err , uid)
+		return
+	}
+
+	//to logic
+	SendToLogic(pconfig , &ss_msg)
 }

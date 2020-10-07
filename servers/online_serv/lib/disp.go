@@ -9,8 +9,8 @@ func RecvDispMsg(pconfig *Config, pdisp *ss.MsgDisp) {
 	var _func_ = "<RecvDispMsg>"
 	log := pconfig.Comm.Log
 
-	log.Debug("%s disp_proto:%d disp_from:%d target:%d spec:%d method:%d", _func_, pdisp.ProtoType, pdisp.FromServer, pdisp.Target,
-		pdisp.SpecServer, pdisp.Method)
+	//log.Debug("%s disp_proto:%d disp_from:%d target:%d spec:%d method:%d", _func_, pdisp.ProtoType, pdisp.FromServer, pdisp.Target,
+	//	pdisp.SpecServer, pdisp.Method)
 
 	switch pdisp.ProtoType {
 	case ss.DISP_PROTO_TYPE_DISP_HELLO:
@@ -30,7 +30,7 @@ func RecvCommNotify(pconfig *Config , pnotify *ss.MsgCommonNotify , src_serv int
     var _func_ = "<RecvCommNotify>"
     log := pconfig.Comm.Log
 
-    log.Debug("%s notify:%d src_serv:%d" , _func_ , pnotify.NotifyType , src_serv)
+    //log.Debug("%s notify:%d src_serv:%d" , _func_ , pnotify.NotifyType , src_serv)
     switch pnotify.NotifyType {
 	case ss.COMMON_NOTIFY_TYPE_NOTIFY_USER_LOGIN:
 		RecvLoginNotify(pconfig , pnotify.Uid , src_serv)
@@ -42,6 +42,8 @@ func RecvCommNotify(pconfig *Config , pnotify *ss.MsgCommonNotify , src_serv int
 		RecvUploadFileNotify(pconfig , pnotify , src_serv)
 	case ss.COMMON_NOTIFY_TYPE_NOTIFY_DEL_GROUP:
 		RecvDelGroupNotify(pconfig , pnotify)
+	case ss.COMMON_NOTIFY_TYPE_NOTIFY_BATCH_USER_ONLINE:
+		RecvBatchOnLineNotify(pconfig , pnotify , src_serv)
 	default:
 		log.Err("%s unhandled notify:%d src:%d" , _func_ , pnotify.NotifyType , src_serv)
 	}

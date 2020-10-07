@@ -106,52 +106,101 @@ func RecvSaveChatGroupReq(pconfig *Config , preq *ss.MsgSaveGroupReq , from int)
 		}
 		defer pconfig.RedisClient.FreeSyncCmdHead(phead)
 
+		prsp := new(ss.MsgSaveGroupRsp)
+		prsp.GrpId = preq.GrpId
 		var result = ss.SS_COMMON_RESULT_FAILED
 		//Handle
 		for {
-			//Step1. Check Exist
-			tab_name := fmt.Sprintf(FORMAT_TAB_GROUP_INFO_PREFIX+"%d", grp_id)
-			res, err := pconfig.RedisClient.RedisExeCmdSync(phead, "HEXISTS", tab_name, "gid")
-			if err != nil {
-				log.Err("%s check %s exist failed! err:%v grp_id:%d", _func_, tab_name, err, grp_id)
-				return
-			}
-			int_v, err := comm.Conv2Int(res)
-			if err != nil {
-				log.Err("%s convert exist res failed! err:%v res:%v grp_id:%d" , _func_ , err , res , grp_id)
-				return
-			}
-			if int_v == 0 { //not exist
-				log.Info("%s group not exist! grp_id:%d" , _func_ , grp_id)
-				result = ss.SS_COMMON_RESULT_NOEXIST
+			//Step1. Check Group Exist
+			_ , result = GetGroupInfo(pconfig , phead , grp_id , FILED_GROUP_INFO_NAME)
+			if result != ss.SS_COMMON_RESULT_SUCCESS {
+				log.Err("%s check grp exist failed! grp_id:%d", _func_, grp_id)
 				break
 			}
 
-			//Step2. Save Group
-			res , err = pconfig.RedisClient.RedisExeCmdSync(phead , "HMSET" , tab_name , "msg_count" , preq.MsgCount , "load_serv" ,
+
+			//Step2. Save Group Info
+			tab_name := fmt.Sprintf(FORMAT_TAB_GROUP_INFO_PREFIX+"%d", grp_id)
+			res , err := pconfig.RedisClient.RedisExeCmdSync(phead , "HMSET" , tab_name , "msg_count" , preq.MsgCount , "load_serv" ,
 				preq.LoadServ)
 			if err != nil {
 				log.Err("%s hmset %s failed! err:%v grp_id:%d", _func_, tab_name, err, grp_id)
-				return
+				break
 			}
+			/*
 			str_v , err := comm.Conv2String(res)
 			if err != nil {
 				log.Err("%s convert hmset res failed! err:%v res:%v grp_id:%d" , _func_ , err , res , grp_id)
-				return
+				break
 			}
 			if str_v != "OK" {
 				log.Err("%s save failed! err:%v res:%v grp_id:%d" , _func_ , err , res , grp_id)
-			} else {
-				log.Debug("%s save success! grp_id:%d" , _func_ , grp_id)
-				result = ss.SS_COMMON_RESULT_SUCCESS
+			}*/
+			//log.Debug("%s save stat success! grp_id:%d" , _func_ , grp_id)
+			result = ss.SS_COMMON_RESULT_SUCCESS
+
+			//server exit no need further
+			if preq.Reason == ss.SS_COMMON_REASON_REASON_EXIT {
+				break
+			}
+
+
+			//step3. Get MemCount
+			tab_name = fmt.Sprintf(FORMAT_TAB_GROUP_MEMBERS + "%d" , grp_id)
+			res , err = pconfig.RedisClient.RedisExeCmdSync(phead , "SCARD" , tab_name)
+			if err != nil {
+				log.Err("%s scard %s failed! err:%v grp_id:%d", _func_, tab_name, err, grp_id)
+				break
+			}
+			mem_count , err := comm.Conv2Int(res)
+			if err != nil {
+				log.Err("%s convert mem_count failed! err:%v grp_id:%d res:%v", _func_, err, grp_id , res)
+				break
+			}
+			//count equal
+			if mem_count == int(preq.MemCount) {
+				break
+			}
+
+			log.Debug("%s mem_count not match will reload members! %d:%d grp_Id:%d" , _func_ , mem_count , preq.MemCount , grp_id)
+			//count not match will sync
+			prsp.MemberChged = 1
+			if mem_count == 0 {	//no more member
+				break
+			}
+
+			//step4. Load Members
+			res , err = pconfig.RedisClient.RedisExeCmdSync(phead , "SMEMBERS" , tab_name)
+			if err != nil {
+				log.Err("%s smembers %s failed! err:%v grp_id:%d", _func_, tab_name, err, grp_id)
+				break
+			}
+			strs, err := comm.Conv2Strings(res)
+			if err != nil {
+				log.Err("%s convert members failed!err:%v grp_id:%d", _func_, err, grp_id)
+				break
+			}
+			if len(strs) == 0 {
+				log.Info("%s empty member! grp_id:%d" , _func_ , grp_id)
+				break
+			}
+
+			//Member
+			prsp.Members = make(map[int64]int32)
+			var member_uid int64 = 0
+			for i:=0; i<len(strs); i++ {
+				member_uid , err = strconv.ParseInt(strs[i] , 10 , 64)
+				if err != nil {
+					log.Err("%s convert member_uid failed!err:%v grp_id:%d str:%s", _func_, err, grp_id , strs[i])
+					continue
+				}
+				prsp.Members[member_uid] = 1
 			}
 			break
 		}
 
 		//Pack
 		var ss_msg ss.SSMsg
-		prsp := new(ss.MsgSaveGroupRsp)
-		prsp.GrpId = preq.GrpId
 		prsp.Result = result
 
 		err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_SAVE_GROUP_RSP , prsp)

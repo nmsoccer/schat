@@ -134,10 +134,16 @@ func LocalSet(pconfig *Config) bool {
 		CheckClientTimeout, pconfig)
 	pconfig.Comm.TickPool.AddTicker("recv_cmd", comm.TICKER_TYPE_CIRCLE, 0, comm.PERIOD_RECV_REPORT_CMD_DEFAULT, RecvReportCmd, pconfig)
 	pconfig.Comm.TickPool.AddTicker("tick_fetch" , comm.TICKER_TYPE_CIRCLE , 0 , PERIOD_FETCH_APPLY_GROUP_INTV , TickFetchApplyGroup , pconfig)
+	pconfig.Comm.TickPool.AddTicker("tick_online" , comm.TICKER_TYPE_CIRCLE , 0 , PERIOD_NOTIFY_USERS_ONLINE , TickNotifyOnline , pconfig)
 	return true
 }
 
 func ServerExit(pconfig *Config) {
+	//Save Roles
+	SaveRolesOnExit(pconfig)
+	time.Sleep(1 * time.Second)
+
+
 	//close proc
 	if pconfig.Comm.Proc != nil {
 		pconfig.Comm.Proc.Close()

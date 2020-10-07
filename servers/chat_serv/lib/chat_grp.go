@@ -7,7 +7,8 @@ import (
 )
 
 const (
-	PERIOD_CHECK_SAVE_CHAT_GROUP = 30000 //30 sec
+	PERIOD_CHECK_SAVE_CHAT_GROUP = 10000 //10 sec
+	SAVE_GROUP_TIME_SPAN = 40 //40sec expire
 )
 
 type OnLineGroup struct {
@@ -140,7 +141,7 @@ func RecvEnterGroupRsp(pconfig *Config  , prsp *ss.MsgEnterGroupRsp) {
 	grp_id := prsp.GrpId
 
     log.Debug("%s uid:%d grp_id:%d ret:%d" , _func_ , uid , grp_id , prsp.Result)
-	SendEnterGroupRsp(pconfig , uid , grp_id , prsp.GrpName , int(prsp.Occupy) , prsp.Result)
+	SendEnterGroupRsp(pconfig , uid , grp_id , prsp.GrpName , prsp.MsgCount , int(prsp.Occupy) , prsp.Result)
 
 	//Update Online Group
 	//fail
@@ -162,7 +163,7 @@ func RecvEnterGroupRsp(pconfig *Config  , prsp *ss.MsgEnterGroupRsp) {
 }
 
 
-func SendEnterGroupRsp(pconfig *Config , uid int64 , grp_id int64 , grp_name string , target_serv int , result int32) {
+func SendEnterGroupRsp(pconfig *Config , uid int64 , grp_id int64 , grp_name string , msg_count int64 , target_serv int , result int32) {
 	var _func_ = "<SendEnterGroupRsp>"
 	log := pconfig.Comm.Log
 
@@ -171,6 +172,7 @@ func SendEnterGroupRsp(pconfig *Config , uid int64 , grp_id int64 , grp_name str
 	prsp.Uid = uid
 	prsp.GrpId = grp_id
 	prsp.GrpName = grp_name
+	prsp.MsgCount = msg_count
 	prsp.Result = result
 	pss_msg , err := comm.GenDispMsg(ss.DISP_MSG_TARGET_LOGIC_SERVER , ss.DISP_MSG_METHOD_SPEC , ss.DISP_PROTO_TYPE_DISP_ENTER_GROUP_RSP ,
 		target_serv , pconfig.ProcId , 0 , prsp)
@@ -310,6 +312,7 @@ func SaveChatGroup(pconfig *Config , grp_id int64 , reason ss.SS_COMMON_REASON) 
 	preq.GrpId = grp_id
 	preq.MsgCount = pgroup_Info.db_group_info.LatestMsgId
 	preq.Reason = reason
+	preq.MemCount = pgroup_Info.db_group_info.MemCount
 	if reason == ss.SS_COMMON_REASON_REASON_EXIT {
 		preq.LoadServ = -1
 	} else {
@@ -351,7 +354,25 @@ func RecvSaveChatRsp(pconfig *Config , prsp *ss.MsgSaveGroupRsp) {
 		log.Err("%s offline! grp_id:%d" , _func_ , grp_id)
 		return
 	}
-	pgroup_info.last_save = time.Now().Unix()
+
+	//check member changed
+	if prsp.MemberChged == 0 {
+		return
+	}
+
+	//update members
+	log.Info("%s will update member map! grp_id:%d" ,_func_ , grp_id)
+	if prsp.Members == nil {	//no member any more
+		log.Info("%s no member any more! will clear map! grp_id:%d" , _func_ , grp_id)
+		pgroup_info.db_group_info.MemCount = 0
+		pgroup_info.db_group_info.Members = make(map[int64]int32) //new map
+		return
+	}
+
+	log.Info("%s will override member info!member count %d-->%d" , _func_ , pgroup_info.db_group_info.MemCount ,
+		len(prsp.Members))
+	pgroup_info.db_group_info.MemCount = int32(len(prsp.Members))
+	pgroup_info.db_group_info.Members = prsp.Members
 }
 
 
@@ -367,10 +388,11 @@ func SaveGroupOnTick(arg interface{}) {
 	curr_ts := time.Now().Unix()
 	//save each
 	for grp_id , info := range pconfig.GroupList.group_map {
-		if info.last_save + PERIOD_CHECK_SAVE_CHAT_GROUP > curr_ts {
+		if info.last_save + SAVE_GROUP_TIME_SPAN > curr_ts {
 			continue
 		}
 		SaveChatGroup(pconfig , grp_id , ss.SS_COMMON_REASON_REASON_TICK)
+		info.last_save = curr_ts
 	}
 }
 

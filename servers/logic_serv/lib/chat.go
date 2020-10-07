@@ -575,12 +575,12 @@ func RecvEnterGroupRsp(pconfig *Config , prsp *ss.MsgEnterGroupRsp) {
             pchat_info.AllGroups[grp_id] = new(ss.UserChatGroup)
             pchat_info.AllGroups[grp_id].GroupId = grp_id
             pchat_info.AllGroups[grp_id].GroupName = prsp.GrpName
-            pchat_info.AllGroups[grp_id].LastReadId = 0
+            pchat_info.AllGroups[grp_id].LastReadId = prsp.MsgCount //set read id
             pchat_info.AllGroup++
             log.Info("%s enter group success! uid:%d grp_id:%d grp_name:%s", _func_, uid, grp_id, prsp.GrpName)
 
             //Fetch Group Chat
-            SendFetchChatReq(pconfig , uid , grp_id)
+            //SendFetchChatReq(pconfig , uid , grp_id)
         }
     } else { //no group
         log.Info("%s group not exist anymore! uid:%d grp_id:%d" , _func_ , uid , grp_id)
@@ -680,7 +680,75 @@ func RecvSendChatRsp(pconfig *Config , prsp *ss.MsgSendChatRsp) {
     SendToConnect(pconfig , &ss_msg)
 }
 
+func RecvFetchChatReq(pconfig *Config , preq *ss.MsgFetchChatReq) {
+    var _func_ = "<RecvFetchChatReq>"
+    log := pconfig.Comm.Log
+
+    switch preq.FetchType {
+    case ss.SS_COMMON_TYPE_COMM_TYPE_HISTORY:
+        DoFetchChatHistroy(pconfig , preq)
+    default:
+        log.Err("%s type not support! type:%d uid:%d grp_id:%d" , _func_ , preq.FetchType , preq.Uid , preq.GrpId)
+        return
+    }
+
+}
+
+
+func DoFetchChatHistroy(pconfig *Config , preq *ss.MsgFetchChatReq) {
+    var _func_ = "<DoFetchChatHistroy>"
+    log := pconfig.Comm.Log
+    uid := preq.Uid
+    grp_id := preq.GrpId
+
+    //user_info
+    puser_info := GetUserInfo(pconfig , uid)
+    if puser_info == nil {
+        log.Err("%s user offline! uid:%d grp_id:%d" , _func_ , uid , grp_id)
+        return
+    }
+
+    //chat_info
+    pchat_info := puser_info.user_info.BlobInfo.ChatInfo
+    if pchat_info.AllGroup <= 0 || pchat_info.AllGroups == nil {
+        log.Err("%s user enter no group! uid:%d grp_id:%d" , _func_ , uid , grp_id)
+        return
+    }
+
+    //grp_info
+    pgrp , ok := pchat_info.AllGroups[grp_id]
+    if !ok {
+        log.Err("%s user not enter group! uid:%d grp_id:%d" , _func_ , uid , grp_id)
+        return
+    }
+
+    //fill info
+    if preq.LatestMsgId == 0 {
+        preq.LatestMsgId = pgrp.LastReadId
+    }
+    preq.LatestMsgId -= FETCH_CHAT_COUNT    //fetch before 40items
+    preq.LatestMsgId -= 1
+    if preq.LatestMsgId < 0 {
+        preq.LatestMsgId = 0
+    }
+    preq.FetchCount = FETCH_CHAT_COUNT
+
+    //ss
+    var ss_msg ss.SSMsg
+    err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_FETCH_CHAT_REQ , preq)
+    if err != nil {
+        log.Err("%s gen ss failed! err:%v uid:%d grp_id:%d" , _func_ , err , uid , grp_id)
+        return
+    }
+
+    log.Debug("%s finish! uid:%d grp_id:%d now_id:%d" , _func_ , uid , grp_id , preq.LatestMsgId)
+    SendToDb(pconfig , &ss_msg)
+}
+
+
+
 //grp_id==0 fetch all group
+//only for normal fetch
 func SendFetchChatReq(pconfig *Config , uid int64 , spec_grp int64) {
     var _func_ = "<SendFetchChatReq>"
     log := pconfig.Comm.Log
@@ -708,6 +776,7 @@ func SendFetchChatReq(pconfig *Config , uid int64 , spec_grp int64) {
     preq := new(ss.MsgFetchChatReq)
     preq.Uid = uid
     preq.FetchCount = FETCH_CHAT_COUNT
+    preq.FetchType = ss.SS_COMMON_TYPE_COMM_TYPE_NORMAL
     if spec_grp == 0 { //all group
         for grp_id, grp_info = range (pchat_info.AllGroups) {
             preq.GrpId = grp_id
@@ -811,6 +880,7 @@ func RecvFetchChatRsp(pconfig *Config , prsp *ss.MsgFetchChatRsp) {
     psync := new(ss.MsgSyncChatList)
     psync.Uid = prsp.Uid
     psync.GrpId = prsp.GrpId
+    psync.SyncType = prsp.FetchType
     psync.ChatList = make([]*ss.ChatMsg , prsp.FetchCount)
     for i:=0; i<int(prsp.FetchCount); i++ {
         if prsp.ChatList[i] == nil {
@@ -843,6 +913,11 @@ func RecvFetchChatRsp(pconfig *Config , prsp *ss.MsgFetchChatRsp) {
         return
     }
 
+    //check type
+    //history not active fetch-chain
+    if prsp.FetchType == ss.SS_COMMON_TYPE_COMM_TYPE_HISTORY {
+        return
+    }
 
     grp_info.LastReadId = old_readed
     //step. ReFetch

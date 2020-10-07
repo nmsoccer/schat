@@ -29,6 +29,7 @@ const (
 	CMD_AUDIT_GROUP        = "audit"
 	CMD_CHAT               = "chat"
 	CMD_QUIT               = "quit"
+	CMD_HISTORY			   = "his"
 
 	BUFF_LEN = (10 * 1024)
 
@@ -62,14 +63,15 @@ func init() {
 	cmd_map = make(map[string]string)
 	//init cmd_map
 	cmd_map[CMD_PING] = "ping to server"
-	cmd_map[CMD_LOGIN] = "login <name> <pass>"
+	cmd_map[CMD_LOGIN] = "login <name> <pass> [version]"
 	cmd_map[CMD_LOGOUT] = "logout"
-	cmd_map[CMD_REG] = "register <name> <pass> <sex:1|2> <addr>"
+	cmd_map[CMD_REG] = "register <name> <pass> <role_name> <sex:1|2> <addr>"
 	cmd_map[CMD_CREATE_GROUP] = "create group <group_name> <group_pass>"
 	cmd_map[CMD_APPLY_GROUP] = "apply group <group_id> <group_pass> <apply_msg>"
 	cmd_map[CMD_AUDIT_GROUP] = "audit group apply <group_id><grp_name><apply_uid><audit 0|1>"
 	cmd_map[CMD_CHAT] = "chat <chat_type><group_id><msg>" //type:0:text 1:img
 	cmd_map[CMD_QUIT] = "quit group <group_id>"
+	cmd_map[CMD_HISTORY] = "chat history <group_id><now_msg_id>"
 }
 
 func v_print(format string, arg ...interface{}) {
@@ -404,7 +406,7 @@ func RecvPkg(conn *net.TCPConn) {
 		case cs.CS_PROTO_SYNC_CHAT_LIST:
 			prsp, ok := gmsg.SubMsg.(*cs.CSSyncChatList)
 			if ok {
-				v_print("sync_chat_list grp_id:%d count:%d\n" , prsp.GrpId , prsp.Count)
+				v_print("sync_chat_list grp_id:%d count:%d type:%d\n" , prsp.GrpId , prsp.Count , prsp.SyncType)
 				for i:=0; i<prsp.Count; i++ {
 					pchat := prsp.ChatList[i]
 					v_print("[%d]<%d>sender:%d name:%s content:%s time:%d type:%d grp_id:%d\n" , i , pchat.MsgId , pchat.SenderUid ,
@@ -420,6 +422,16 @@ func RecvPkg(conn *net.TCPConn) {
 			if ok {
 				v_print("exit_group_rsp grp_id:%d grp_name:%s result:%d del_group:%d\n", prsp.GrpId, prsp.GrpName , prsp.Result ,
 					prsp.DelGroup)
+				if *method == METHOD_COMMAND {
+					exit_ch <- true
+					return
+				}
+			}
+		case cs.CS_PROTO_COMMON_NOTIFY:
+			prsp , ok := gmsg.SubMsg.(*cs.CSCommonNotify)
+			if ok {
+				v_print("common_notify type:%d grp_id:%d intv:%d strv:%s strs:%v\n" , prsp.NotifyType , prsp.GrpId , prsp.IntV , prsp.StrV ,
+					prsp.StrS)
 				if *method == METHOD_COMMAND {
 					exit_ch <- true
 					return
@@ -465,8 +477,8 @@ func SendPkg(conn *net.TCPConn, cmd string) {
 		psub.TimeStamp = time.Now().UnixNano() / 1000
 		gmsg.SubMsg = psub
 
-	case CMD_LOGIN:
-		if len(args) != 3 {
+	case CMD_LOGIN: //login <name> <pass> [version]
+		if len(args) < 3 {
 			show_cmd()
 			return
 		}
@@ -475,6 +487,9 @@ func SendPkg(conn *net.TCPConn, cmd string) {
 		psub.Name = args[1]
 		psub.Device = "onepluse9"
 		psub.Pass = args[2]
+		if len(args) == 4 {
+			psub.Version = args[3]
+		}
 		gmsg.SubMsg = psub
 		v_print("login...name:%s pass:%s\n", psub.Name, psub.Pass)
 	case CMD_LOGOUT:
@@ -484,8 +499,8 @@ func SendPkg(conn *net.TCPConn, cmd string) {
 		psub := new(cs.CSLogoutReq)
 		psub.Uid = 0
 		gmsg.SubMsg = psub
-	case CMD_REG: // register <name> <pass> <sex:1|2> <addr>
-		if len(args) != 5 {
+	case CMD_REG: //register <name> <pass> <role_name> <sex:1|2> <addr>
+		if len(args) != 6 {
 			show_cmd()
 			return
 		}
@@ -493,9 +508,10 @@ func SendPkg(conn *net.TCPConn, cmd string) {
 		psub := new(cs.CSRegReq)
 		psub.Name = args[1]
 		psub.Pass = args[2]
-		sex_v, _ := strconv.Atoi(args[3])
+		psub.RoleName = args[3]
+		sex_v, _ := strconv.Atoi(args[4])
 		psub.Sex = uint8(sex_v)
-		psub.Addr = args[4]
+		psub.Addr = args[5]
 		v_print("reg... name:%s pass:%s sex:%d addr:%s\n", psub.Name, psub.Pass, psub.Sex, psub.Addr)
 
 		gmsg.SubMsg = psub
@@ -562,8 +578,20 @@ func SendPkg(conn *net.TCPConn, cmd string) {
 		psub.GrpId, _ = strconv.ParseInt(args[1], 10, 64)
 		v_print("exit group req:%v\n", *psub)
 		gmsg.SubMsg = psub
+	case CMD_HISTORY: // chat history <group_id><now_msg_id>
+		if len(args) != 3 {
+			show_cmd()
+			return
+		}
+		gmsg.ProtoId = cs.CS_PROTO_CHAT_HISTORY_REQ
+		psub := new(cs.CSChatHistoryReq)
+		psub.GrpId, _ = strconv.ParseInt(args[1], 10, 64)
+		psub.NowMsgId , _ = strconv.ParseInt(args[2] , 10 , 64)
+		v_print("chat history req:%v\n", *psub)
+		gmsg.SubMsg = psub
 	default:
 		fmt.Printf("illegal cmd:%s\n", cmd)
+		show_cmd()
 		return
 	}
 
@@ -683,6 +711,7 @@ func main() {
 	//read
 	go RecvPkg(conn)
 
+	show_cmd()
 	//check option
 	switch *method {
 	case METHOD_INTERFACE:

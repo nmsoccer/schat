@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"schat/proto/ss"
 	"time"
 )
 
@@ -33,7 +34,7 @@ func RecvLoginNotify(pconfig *Config , uid int64 , src_serv int) {
 	curr_ts := time.Now().Unix()
 	puser := GetUserInfo(pconfig , uid)
 	if puser == nil {
-		log.Debug("%s add online user. uid:%d" , _func_ , uid)
+		log.Info("%s add online user. uid:%d serv:%d" , _func_ , uid , src_serv)
 		puser = new(UserInfo)
 		puser.login_serv = src_serv
 		puser.last_heart = curr_ts
@@ -52,10 +53,28 @@ func RecvLogoutNotify(pconfig *Config , uid int64 , src_serv int) {
 	var _func_ = "<RecvLogoutNotify>"
 	log := pconfig.Comm.Log
 
-	log.Debug("%s uid:%d from %d" , _func_ , uid , src_serv)
+	log.Info("%s uid:%d from %d" , _func_ , uid , src_serv)
 	delete(pconfig.world_online.user_map , uid)
 	pconfig.world_online.world_online--
 	if pconfig.world_online.world_online < 0 {
 		pconfig.world_online.world_online = 0
 	}
+}
+
+func RecvBatchOnLineNotify(pconfig *Config , pnotify *ss.MsgCommonNotify , src_serv int) {
+	var _func_ = "<RecvBatchOnLineNotify>"
+	log := pconfig.Comm.Log
+
+	if pnotify.Members==nil || len(pnotify.Members)==0 {
+		log.Err("%s no member report!" , _func_)
+		return
+	}
+
+	//set
+	var uid int64
+	for uid , _ = range pnotify.Members {
+		RecvLoginNotify(pconfig , uid , src_serv)
+	}
+
+	//log.Debug("%s finish! count:%d src_serv:%d" , _func_ , len(pnotify.Members) , src_serv)
 }

@@ -159,8 +159,8 @@ func GenServerResponseStr(pconfig *Config , pall *AllServerInfo) string{
     curr_ts := time.Now().Unix()
 
 	var resp ServerResponse
-	//all file info
-	resp.FileServList = pall.FileServList
+	//all file info deleted<fill in query on user login>
+	//resp.FileServList = pall.FileServList
 
 	//rand connect
 	switch len(pall.ConnServList) {

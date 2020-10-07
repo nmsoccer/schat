@@ -18,9 +18,10 @@ func SendLoginReq(pconfig *Config, client_key int64, plogin_req *cs.CSLoginReq) 
 	pLoginReq.Name = plogin_req.Name
 	pLoginReq.Pass = plogin_req.Pass
 	pLoginReq.Device = plogin_req.Device
+	pLoginReq.Version = plogin_req.Version
 
 	//ss_msg
-	err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_LOGIN_REQ , pLoginReq)
+	err := comm.FillSSPkg(&ss_msg, ss.SS_PROTO_TYPE_LOGIN_REQ, pLoginReq)
 	if err != nil {
 		log.Err("%s gen ss_pkg failed! err:%v ckey:%v", _func_, err, client_key)
 		return
@@ -43,17 +44,16 @@ func RecvLoginRsp(pconfig *Config, prsp *ss.MsgLoginRsp) {
 
 	//response
 	var pmsg *cs.CSLoginRsp
-	pv , err := cs.Proto2Msg(cs.CS_PROTO_LOGIN_RSP);
+	pv, err := cs.Proto2Msg(cs.CS_PROTO_LOGIN_RSP)
 	if err != nil {
-		log.Err("%s proto2msg failed! proto:%d err:%v" , _func_ , cs.CS_PROTO_LOGIN_RSP , err);
-		return;
+		log.Err("%s proto2msg failed! proto:%d err:%v", _func_, cs.CS_PROTO_LOGIN_RSP, err)
+		return
 	}
-	pmsg , ok := pv.(*cs.CSLoginRsp);
+	pmsg, ok := pv.(*cs.CSLoginRsp)
 	if !ok {
-		log.Err("%s proto2msg type illegal!  proto:%d" , _func_ , cs.CS_PROTO_LOGIN_RSP);
-		return;
+		log.Err("%s proto2msg type illegal!  proto:%d", _func_, cs.CS_PROTO_LOGIN_RSP)
+		return
 	}
-
 
 	//msg
 	pmsg.Result = int(prsp.Result)
@@ -81,11 +81,11 @@ func RecvLoginRsp(pconfig *Config, prsp *ss.MsgLoginRsp) {
 			}
 
 			//blob
-			pblob := prsp.UserInfo.GetBlobInfo();
+			pblob := prsp.UserInfo.GetBlobInfo()
 
 			//detail
-			pmsg.Detail.Exp = prsp.UserInfo.BlobInfo.Exp;
-			pmsg.Detail.ChatInfo = new(cs.UserChatInfo);
+			pmsg.Detail.Exp = prsp.UserInfo.BlobInfo.Exp
+			pmsg.Detail.ChatInfo = new(cs.UserChatInfo)
 			if pblob.ChatInfo != nil && pblob.ChatInfo.AllGroup > 0 {
 				blob_chat_info := pblob.GetChatInfo()
 				cs_chat_info := pmsg.Detail.ChatInfo
@@ -118,7 +118,7 @@ func RecvLoginRsp(pconfig *Config, prsp *ss.MsgLoginRsp) {
 	}
 
 	//to client
-	SendToClient(pconfig, prsp.CKey, cs.CS_PROTO_LOGIN_RSP , pmsg)
+	SendToClient(pconfig, prsp.CKey, cs.CS_PROTO_LOGIN_RSP, pmsg)
 }
 
 func SendLogoutReq(pconfig *Config, uid int64, reason ss.USER_LOGOUT_REASON) {
@@ -132,7 +132,7 @@ func SendLogoutReq(pconfig *Config, uid int64, reason ss.USER_LOGOUT_REASON) {
 	pLogoutReq.Reason = reason
 
 	//pack
-	err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_LOGOUT_REQ , pLogoutReq)
+	err := comm.FillSSPkg(&ss_msg, ss.SS_PROTO_TYPE_LOGOUT_REQ, pLogoutReq)
 	if err != nil {
 		log.Err("%s gen ss_pkg failed! err:%v uid:%v reason:%v", _func_, err, uid, reason)
 		return
@@ -160,35 +160,33 @@ func RecvLogoutRsp(pconfig *Config, prsp *ss.MsgLogoutRsp) {
 
 	//response
 	var pmsg *cs.CSLogoutRsp
-	pv , err := cs.Proto2Msg(cs.CS_PROTO_LOGOUT_RSP);
+	pv, err := cs.Proto2Msg(cs.CS_PROTO_LOGOUT_RSP)
 	if err != nil {
-		log.Err("%s proto2msg failed! proto:%d err:%v" , _func_ , cs.CS_PROTO_LOGOUT_RSP , err);
-		return;
+		log.Err("%s proto2msg failed! proto:%d err:%v", _func_, cs.CS_PROTO_LOGOUT_RSP, err)
+		return
 	}
-	pmsg , ok = pv.(*cs.CSLogoutRsp);
+	pmsg, ok = pv.(*cs.CSLogoutRsp)
 	if !ok {
-		log.Err("%s proto2msg type illegal!  proto:%d" , _func_ , cs.CS_PROTO_LOGOUT_RSP);
-		return;
+		log.Err("%s proto2msg type illegal!  proto:%d", _func_, cs.CS_PROTO_LOGOUT_RSP)
+		return
 	}
-
 
 	//fill
 	pmsg.Msg = prsp.Msg
-	pmsg.Result = int(prsp.Reason);
+	pmsg.Result = int(prsp.Reason)
 	pmsg.Uid = prsp.Uid
 
 	//to client
-	SendToClient(pconfig, c_key, cs.CS_PROTO_LOGOUT_RSP , pmsg);
+	SendToClient(pconfig, c_key, cs.CS_PROTO_LOGOUT_RSP, pmsg)
 
 	//should check close connection positively
 	switch prsp.Reason {
-	case ss.USER_LOGOUT_REASON_LOGOUT_CLIENT_TIMEOUT , ss.USER_LOGOUT_REASON_LOGOUT_SERVER_KICK_BAN ,
-	     ss.USER_LOGOUT_REASON_LOGOUT_SERVER_KICK_RECONN:
-		CloseClient(pconfig , c_key);
+	case ss.USER_LOGOUT_REASON_LOGOUT_CLIENT_TIMEOUT, ss.USER_LOGOUT_REASON_LOGOUT_SERVER_KICK_BAN,
+		ss.USER_LOGOUT_REASON_LOGOUT_SERVER_KICK_RECONN,ss.USER_LOGOUT_REASON_LOGOUT_SERVER_SHUT:
+		CloseClient(pconfig, c_key)
 	default:
 		//nothing to do
 	}
-
 
 	//clear map
 	delete(pconfig.Uid2Ckey, prsp.Uid)
@@ -199,22 +197,23 @@ func SendRegReq(pconfig *Config, client_key int64, preq *cs.CSRegReq) {
 	var _func_ = "<SendRegReq>"
 	log := pconfig.Comm.Log
 
-	log.Debug("%s send reg pkg to logic! user:%s addr:%s sex:%v", _func_, preq.Name, preq.Addr , preq.Sex)
+	log.Debug("%s send reg pkg to logic! user:%s addr:%s sex:%v role_name:%s", _func_, preq.Name, preq.Addr, preq.Sex , preq.RoleName)
 	//create pkg
 	var ss_msg ss.SSMsg
 	pRegReq := new(ss.MsgRegReq)
-	pRegReq.Name = preq.Name;
-	pRegReq.Pass = preq.Pass;
-	pRegReq.Addr = preq.Addr;
-	pRegReq.CKey = client_key;
+	pRegReq.Name = preq.Name
+	pRegReq.Pass = preq.Pass
+	pRegReq.Addr = preq.Addr
+	pRegReq.CKey = client_key
+	pRegReq.RoleName = preq.RoleName
 	if preq.Sex == 1 {
-		pRegReq.Sex = true;
+		pRegReq.Sex = true
 	} else {
-		pRegReq.Sex = false;
+		pRegReq.Sex = false
 	}
 
 	//gen
-	err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_REG_REQ , pRegReq)
+	err := comm.FillSSPkg(&ss_msg, ss.SS_PROTO_TYPE_REG_REQ, pRegReq)
 	if err != nil {
 		log.Err("%s gen ss failed! err:%v ckey:%v", _func_, err, client_key)
 		return
@@ -233,35 +232,31 @@ func RecvRegRsp(pconfig *Config, prsp *ss.MsgRegRsp) {
 	log := pconfig.Comm.Log
 	log.Info("%s name:%s result:%v c_key:%d", _func_, prsp.Name, prsp.Result, prsp.CKey)
 
-
 	//response
 	/*
-	var gmsg cs.GeneralMsg
-	gmsg.ProtoId = cs.CS_PROTO_REG_RSP;
-	psub := new(cs.CSRegRsp)
-	gmsg.SubMsg = psub
-	 */
+		var gmsg cs.GeneralMsg
+		gmsg.ProtoId = cs.CS_PROTO_REG_RSP;
+		psub := new(cs.CSRegRsp)
+		gmsg.SubMsg = psub
+	*/
 	//response
 	var pmsg *cs.CSRegRsp
-	pv , err := cs.Proto2Msg(cs.CS_PROTO_REG_RSP);
+	pv, err := cs.Proto2Msg(cs.CS_PROTO_REG_RSP)
 	if err != nil {
-		log.Err("%s proto2msg failed! proto:%d err:%v" , _func_ , cs.CS_PROTO_REG_RSP , err);
-		return;
+		log.Err("%s proto2msg failed! proto:%d err:%v", _func_, cs.CS_PROTO_REG_RSP, err)
+		return
 	}
-	pmsg , ok := pv.(*cs.CSRegRsp);
+	pmsg, ok := pv.(*cs.CSRegRsp)
 	if !ok {
-		log.Err("%s proto2msg type illegal!  proto:%d" , _func_ , cs.CS_PROTO_REG_RSP);
-		return;
+		log.Err("%s proto2msg type illegal!  proto:%d", _func_, cs.CS_PROTO_REG_RSP)
+		return
 	}
-
-
 
 	//fill
-	pmsg.Result = int(prsp.Result);
-	pmsg.Name = prsp.Name;
-
+	pmsg.Result = int(prsp.Result)
+	pmsg.Name = prsp.Name
 
 	//to client
-	SendToClient(pconfig, prsp.CKey, cs.CS_PROTO_REG_RSP , pmsg);
-    return
+	SendToClient(pconfig, prsp.CKey, cs.CS_PROTO_REG_RSP, pmsg)
+	return
 }

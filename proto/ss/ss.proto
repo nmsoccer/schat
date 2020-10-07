@@ -54,11 +54,18 @@ enum SS_COMMON_RESULT {
   NOEXIST = 2;
 }
 
+
 enum SS_COMMON_REASON {
   REASON_TICK = 0;  //ticker save
   REASON_UPDATE = 1; //activate save
   REASON_EXIT = 2; //server exit
 }
+
+enum SS_COMMON_TYPE {
+  COMM_TYPE_NORMAL = 0;
+  COMM_TYPE_HISTORY = 1;
+}
+
 
 
 //main msg
@@ -128,7 +135,8 @@ message MsgLoginReq {
   int64 uid = 21; //0 use default role
   string name = 22; //acc name
   string pass=23;
-  string device=24;    
+  string device=24;
+  string version=25;  
 }
 
 enum USER_LOGIN_RET {
@@ -156,6 +164,7 @@ enum USER_LOGOUT_REASON {
   LOGOUT_SERVER_KICK_BAN = 3; //server kickout for ban
   LOGOUT_CLIENT_TIMEOUT = 4; //client timeout
   LOGOUT_OFFLINE_USER   = 5; //user off-line still logout update online-logic
+  LOGOUT_SERVER_SHUT    = 6; //server shut down
 }
 
 
@@ -174,10 +183,11 @@ message MsgLogoutRsp {
 //register
 message MsgRegReq {
   int64 c_key = 20;
-  string name = 21;
+  string name = 21; //account name
   string pass = 22;
-  bool sex=23;
-  string addr=24;
+  string role_name = 23; //role name
+  bool sex=24;
+  string addr=25;
 }
 
 enum REG_RESULT {
@@ -284,11 +294,15 @@ message MsgSaveGroupReq {
   int32 load_serv = 3;
   
   int64 msg_count = 20;
+  int32 mem_count = 21;
 }
 
 message MsgSaveGroupRsp {
   SS_COMMON_RESULT result = 1;
-  int64 grp_id = 2;  
+  int64 grp_id = 2;
+
+  int32 member_chged = 20;
+  map<int64 , int32> members = 21; //if member count not match will sync to server 
 }
 
 //Fetch Chat
@@ -297,6 +311,7 @@ message MsgFetchChatReq {
 	int64 grp_id = 2;
 	int64 latest_msg_id = 3; //readed msg id
     int32 fetch_count = 4;
+	SS_COMMON_TYPE   fetch_type  = 5;
 }
 
 message MsgFetchChatRsp {
@@ -306,6 +321,7 @@ message MsgFetchChatRsp {
   int32 complete = 4; //1:no more
   int32 fetch_count = 5;
   repeated ChatMsg chat_list = 6;
+  SS_COMMON_TYPE  fetch_type = 7;
    
 }
 
@@ -314,6 +330,7 @@ message MsgSyncChatList {
   int64 grp_id = 2;
   int32 count = 3;
   repeated ChatMsg chat_list = 4;
+  SS_COMMON_TYPE  sync_type = 7;
 }
 
 //Exit Group
@@ -331,6 +348,8 @@ message MsgExitGroupRsp {
   string grp_name = 4;
   int32  del_group = 5;  
 }
+
+
 
 
 

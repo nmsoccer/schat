@@ -7,7 +7,7 @@ import (
 )
 
 //Get Group Name
-//@return(result , name)  result:1 fail; 0 success; 1 not exist
+//@return(res , SS_COMMON_RESULT)
 func GetGroupInfo(pconfig *Config , phead *comm.SyncCmdHead , grp_id int64 , field string) (interface{} , ss.SS_COMMON_RESULT){
 	var _func_ = "<GetGroupName>"
 	log := pconfig.Comm.Log

@@ -200,16 +200,18 @@ func (fs *FileServer) index_handler(w http.ResponseWriter , r *http.Request) {
 }
 
 func (fs *FileServer) static_handler(w http.ResponseWriter , r *http.Request) {
-	//fmt.Fprintf(w , "PATH:%s \n" , r.URL.Path)
-	/*
-		path := strings.Trim(r.URL.Path , "/")
-		res := strings.Split(path , "/") //dir most 3levels
-		fmt.Printf("len res:%d res:%v\n" , len(res) , res)
-		if len(res) <= 3 {
-			fmt.Printf("dir not allowed!\n")
-			http.NotFound(w , r)
-			return
-		}*/
+	//this code will shield web files directory if in debug mode ,could comment it
+	path := strings.Trim(r.URL.Path , "/")
+	res := strings.Split(path , "/") //dir most 3levels
+	fmt.Printf("len res:%d res:%v\n" , len(res) , res)
+	if len(res) <= 3 {
+		fmt.Printf("dir not allowed!\n")
+		http.NotFound(w , r)
+		return
+	}
+	//end here
+
+	//real handle
 	http.StripPrefix("/static" , http_fs).ServeHTTP(w , r)
 }
 

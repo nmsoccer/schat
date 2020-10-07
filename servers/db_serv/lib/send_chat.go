@@ -125,6 +125,7 @@ func RecvFetchChatReq(pconfig *Config , preq *ss.MsgFetchChatReq , from int) {
 		prsp := new(ss.MsgFetchChatRsp)
 		prsp.GrpId = grp_id
 		prsp.Uid = uid
+		prsp.FetchType = preq.FetchType
 
 		for {
 			//Check Len

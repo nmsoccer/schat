@@ -85,7 +85,9 @@ func RecvSendChatRsp(pconfig *Config , prsp *ss.MsgSendChatRsp) {
     pnotify.NotifyType = ss.COMMON_NOTIFY_TYPE_NOTIFY_NEW_MSG
     pnotify.GrpId = grp_id
     pnotify.Uid = pgrp_info.db_group_info.MasterUid //master
-    pnotify.Members = pgrp_info.db_group_info.Members
+    if pgrp_info.db_group_info.MemCount > 0 && pgrp_info.db_group_info.Members!=nil {
+		pnotify.Members = pgrp_info.db_group_info.Members
+	}
     pnotify.ChatMsg = prsp.ChatMsg //carry latest
     pss_msg , err = comm.GenDispMsg(ss.DISP_MSG_TARGET_ONLINE_SERVER , ss.DISP_MSG_METHOD_RAND , ss.DISP_PROTO_TYPE_DISP_COMMON_NOTIFY ,
     	0 , pconfig.ProcId , 0 , pnotify)

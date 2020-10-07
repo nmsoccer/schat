@@ -263,6 +263,12 @@ func HandleClientPkg(pconfig *Config, pclient *comm.ClientPkg) {
 			SendExitGroupReq(pconfig , uid , pmsg)
 			conv_err = false
 		}
+	case cs.CS_PROTO_CHAT_HISTORY_REQ:
+		pmsg, ok := gmsg.SubMsg.(*cs.CSChatHistoryReq)
+		if ok {
+			SendFetchChatHistroyReq(pconfig , uid , pmsg)
+			conv_err = false
+		}
 	default:
 		log.Err("%s illegal proto:%d", _func_, proto_id)
 		return

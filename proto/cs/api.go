@@ -34,9 +34,11 @@ const (
 	CS_PROTO_SYNC_CHAT_LIST = 17
 	CS_PROTO_EXIT_GROUP_REQ = 18
 	CS_PROTO_EXIT_GROUP_RSP = 19
+	CS_PROTO_CHAT_HISTORY_REQ = 20
+	CS_PROTO_COMMON_NOTIFY    = 21
 	//PS:new proto added should modify 'Proto2Msg' function
 	//proto end = last + 1
-	CS_PROTO_END = 20
+	CS_PROTO_END = 22
 )
 
 /*
@@ -144,6 +146,10 @@ func Proto2Msg(proto_id int) (interface{}, error) {
 		pmsg = new(CSExitGroupReq)
 	case CS_PROTO_EXIT_GROUP_RSP:
 		pmsg = new(CSExitGroupRsp)
+	case CS_PROTO_CHAT_HISTORY_REQ:
+		pmsg = new(CSChatHistoryReq)
+	case CS_PROTO_COMMON_NOTIFY:
+		pmsg = new(CSCommonNotify)
 	default:
 		return nil, errors.New("proto illegal!")
 	}

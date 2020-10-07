@@ -73,6 +73,7 @@ type CSSendChatRsp struct {
 }
 
 type CSSyncChatList struct {
+	SyncType int8 `json:"sync_type"` //0:normal 1:history
 	GrpId  int64 `json:"grp_id"`
 	Count  int   `json:"count"`
 	ChatList []*ChatMsg `json:"chat_list"`
@@ -89,4 +90,8 @@ type CSExitGroupRsp  struct {
 	DelGroup int `json:"del_group"`
 }
 
-
+type CSChatHistoryReq struct {
+	GrpId  int64 `json:"grp_id"`
+	//fetch chat history before now_mst_id(not include now_msg_id) max 40. aka from [now_msg_id-40 , now_msg_id) if 0 fetch from latest_msg_id
+	NowMsgId int64 `json:"now_msg_id"`
+}

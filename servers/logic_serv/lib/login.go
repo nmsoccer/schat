@@ -11,6 +11,7 @@ type UserOnLine struct {
 	login_ts  int64
 	hearbeat  int64
 	fetch_apply_complete bool //if fetch apply group complete
+	last_notify_online int64
 	user_info *ss.UserInfo
 }
 
@@ -35,8 +36,8 @@ func RecvLoginReq(pconfig *Config, preq *ss.MsgLoginReq, msg []byte, from int) {
 	log := pconfig.Comm.Log
 
 	//log
-	log.Debug("%s login: user:%s pass:%s device:%s c_key:%v from:%d", _func_, preq.GetName(), preq.GetPass(), preq.GetDevice(),
-		preq.GetCKey(), from)
+	log.Debug("%s login: user:%s pass:%s device:%s c_key:%v from:%d version:%s", _func_, preq.GetName(), preq.GetPass(), preq.GetDevice(),
+		preq.GetCKey(), from , preq.Version)
 
 	//direct send
 	ok := SendToDb(pconfig, msg)
@@ -334,5 +335,6 @@ func AfterLoginSucess(pconfig *Config , uid int64) {
 	CheckEnteringGroup(pconfig , uid)
 	SendFetchChatReq(pconfig , uid , 0)
 	NotifyOnline(pconfig , uid , NOTIFY_ONLINE_FLAG_LOGIN)
+	QueryFileServAddr(pconfig , uid)
 }
 

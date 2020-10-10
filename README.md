@@ -27,4 +27,16 @@ A Simple Chat Serv
 ![架构](https://github.com/nmsoccer/schat/blob/master/pic/schat.jpg)
 
 
-
+### 进程
+对拓扑图里的进程功能及部署进行说明
+* **conn_serv** 
+  客户端接入进程，负责维护客户端的连接，客户端使用TCP长链接接入  
+* **logic_serv**  
+  在线用户的数据缓存，处理用户本身的主要逻辑服务  
+* **db_logic_serv**  
+  与logic_serv配对的db代理进程，负责与reddis的连接与数据交互
+* **说明1**  
+  conn_serv,logic_serv,db_logic_serv一般可以作为一组进程一一对应作为用户连接与一般逻辑的处理单元；可以平行扩展  
+* **disp_serv**    
+  作为星形拓扑的包分发中心，负责分派各业务进程之间的数据包转发，这样每个业务进程不需要维护其他多余的进程通信地址，只需要和disp进程组连接即可。一般与通信的业务进程组互相建立通信关系
+* **未完待续**  

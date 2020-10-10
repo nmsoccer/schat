@@ -40,7 +40,26 @@ func RecvCommonNotify(pconfig *Config , pnotify *ss.MsgCommonNotify) {
 		pmsg.StrS = pnotify.Strs
 		pmsg.IntV = pnotify.IntV
  		log.Debug("%s file_addr:%v uid:%d" , _func_ , pmsg.StrS , uid)
-
+	case ss.COMMON_NOTIFY_TYPE_NOTIFY_ADD_MEMBER:
+		if pnotify.GrpId==0 || pnotify.StrV=="" || pnotify.IntV==0{
+			log.Err("%s add member arg nil! uid:%d" , _func_ , uid)
+			return
+		}
+		pmsg.NotifyType = cs.COMMON_NOTIFY_T_ADD_MEM
+		pmsg.GrpId = pnotify.GrpId
+		pmsg.StrV = pnotify.StrV
+		pmsg.IntV = pnotify.IntV
+		log.Debug("%s add member id:%d grp_id:%d grp_name:%s" , _func_ , pmsg.IntV , pmsg.GrpId , pmsg.StrV)
+	case ss.COMMON_NOTIFY_TYPE_NOTIFY_DEL_MEMBER:
+		if pnotify.GrpId==0 || pnotify.StrV=="" || pnotify.IntV==0{
+			log.Err("%s del member arg nil! uid:%d" , _func_ , uid)
+			return
+		}
+		pmsg.NotifyType = cs.COMMON_NOTIFY_T_DEL_MEM
+		pmsg.GrpId = pnotify.GrpId
+		pmsg.StrV = pnotify.StrV
+		pmsg.IntV = pnotify.IntV
+		log.Debug("%s del member id:%d grp_id:%d grp_name:%s" , _func_ , pmsg.IntV , pmsg.GrpId , pmsg.StrV)
 	default:
 		log.Err("%s unknown proto:%d uid:%d" , _func_ , pnotify.NotifyType , uid)
 		return

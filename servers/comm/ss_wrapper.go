@@ -280,6 +280,38 @@ func FillSSPkg(ss_msg *ss.SSMsg , proto ss.SS_PROTO_TYPE , pmsg interface{}) err
 		}
 		body.ExitGroupRsp = pv
 		ss_msg.MsgBody = body
+	case ss.SS_PROTO_TYPE_KICK_GROUP_REQ:
+		body := new(ss.SSMsg_KickGroupReq)
+		pv , ok := pmsg.(*ss.MsgKickGroupReq)
+		if !ok {
+			return errors.New("not MsgKickGroupReq")
+		}
+		body.KickGroupReq = pv
+		ss_msg.MsgBody = body
+	case ss.SS_PROTO_TYPE_KICK_GROUP_RSP:
+		body := new(ss.SSMsg_KickGroupRsp)
+		pv , ok := pmsg.(*ss.MsgKickGroupRsp)
+		if !ok {
+			return errors.New("not MsgKickGroupRsp")
+		}
+		body.KickGroupRsp = pv
+		ss_msg.MsgBody = body
+	case ss.SS_PROTO_TYPE_FETCH_OFFLINE_INFO_REQ:
+		body := new(ss.SSMsg_FetchOfflineInfoReq)
+		pv , ok := pmsg.(*ss.MsgFetchOfflineInfoReq)
+		if !ok {
+			return errors.New("not MsgFetchOfflineInfoReq")
+		}
+		body.FetchOfflineInfoReq = pv
+		ss_msg.MsgBody = body
+	case ss.SS_PROTO_TYPE_FETCH_OFFLINE_INFO_RSP:
+		body := new(ss.SSMsg_FetchOfflineInfoRsp)
+		pv , ok := pmsg.(*ss.MsgFetchOfflineInfoRsp)
+		if !ok {
+			return errors.New("not MsgFetchOfflineInfoRsp")
+		}
+		body.FetchOfflineInfoRsp = pv
+		ss_msg.MsgBody = body
 	default:
 		return errors.New(fmt.Sprintf("disp proto:%d not handled" , proto))
 	}

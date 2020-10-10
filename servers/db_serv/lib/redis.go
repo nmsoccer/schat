@@ -8,7 +8,7 @@ import (
 * ##tables desc##
 * #global:uid +string+ ; global uid allocator
 * #users:global:[name]  +hash+ name | pass | uid | salt  ; short info by user_name
-* #user:[uid] +hash+  uid | name | age | sex  | addr | level | blob_info ; detail info of user by uid
+* #user:[uid] +hash+  uid | name | age | sex  | addr | level | blob_info | head_url ; detail info of user by uid
 * #user:login_lock:[uid] <string> valid_second
 * #global:grp_id +string+ ; global group id allocator
 * #group:[grp_id] +hash+ gid | name | master_uid | pass | salt | create_ts | msg_count | load_serv
@@ -17,6 +17,7 @@ import (
 * #user:group:applied:[uid] +set+ <grp_id|grp_name>
 * #user:group:audited:[uid] +list+ <grp_id|grp_name|result>
 * #chat_msg:[group]:[index] +list+ <chat_msg encoded>
+* #offline_info:[uid] +list+ <off_type|xxx...> //off_type:REFER SS_OFFLINE_INFO_TYPE_xx
  */
 
 /*--------------------INSTRUCTION--------------------
@@ -33,7 +34,7 @@ const (
 
 	FORMAT_TAB_GLOBAL_UID        = "global:uid"      // ++ string ++
 	FORMAT_TAB_USER_GLOBAL       = "users:global:%s" //users:global:[name]  ++ hash ++ name | pass | uid | salt
-	FORMAT_TAB_USER_INFO_REFIX   = "user:"           // user:[uid] ++ hash ++ uid | name | age | sex  | addr | level | online_logic | blob_info
+	FORMAT_TAB_USER_INFO_REFIX   = "user:"           // user:[uid] ++ hash ++ uid | name | age | sex  | addr | level | online_logic | blob_info | head_url
 	FORMAT_TAB_USER_LOGIN_LOCK_PREFIX="user:login_lock:" //user:login:[uid] +string+ valid_second
 	FORMAT_TAB_GLOBAL_GRPID      = "global:grp_id"   // +string+
 	FORMAT_TAB_GROUP_INFO_PREFIX = "group:"          // group:[grp_id] +hash+ gid | name | master_uid | pass | salt | create_ts | msg_count | load_serv
@@ -42,10 +43,14 @@ const (
 	FORMAT_TAB_USER_GROUP_APPLIED = "user:group:applied:" //user:group:applied:[uid] +set+ <grp_id|grp_name>
 	FORMAT_TAB_USER_GROUP_AUDITED = "user:group:audited:" //user:group:audited:[uid] +list+ <grp_id|grp_name|result>
     FORMAT_TAB_CHAT_MSG_LIST      = "chat_msg:%d:%d" //chat_msg:[group]:[index] +list+ <chat_msg encoded>
+    FORMAT_TAB_OFFLINE_INFO_PREFIX = "offline_info:" // offline_info:[uid] +list+ <off_type|xxx...> off_type:REFER SS_OFFLINE_INFO_TYPE_xx
+
 	//Useful FIELD
 	FIELD_USER_INFO_ONLINE_LOGIC  = "online_logic"
 	FIELD_GROUP_INFO_MSG_COUNT    = "msg_count"
 	FILED_GROUP_INFO_NAME         = "name"
+	FILED_USER_INFO_HEAD_URL      = "head_url"
+
 
 )
 

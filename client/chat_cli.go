@@ -30,6 +30,7 @@ const (
 	CMD_CHAT               = "chat"
 	CMD_QUIT               = "quit"
 	CMD_HISTORY			   = "his"
+	CMD_KICK               = "kick"
 
 	BUFF_LEN = (10 * 1024)
 
@@ -72,6 +73,7 @@ func init() {
 	cmd_map[CMD_CHAT] = "chat <chat_type><group_id><msg>" //type:0:text 1:img
 	cmd_map[CMD_QUIT] = "quit group <group_id>"
 	cmd_map[CMD_HISTORY] = "chat history <group_id><now_msg_id>"
+	cmd_map[CMD_KICK] = "kick group member <group_id><member_id>"
 }
 
 func v_print(format string, arg ...interface{}) {
@@ -320,12 +322,12 @@ func RecvPkg(conn *net.TCPConn) {
 			prsp, ok := gmsg.SubMsg.(*cs.CSLoginRsp)
 			if ok {
 				if prsp.Result == 0 {
-					v_print("login result:%d name:%s role_name:%s\n", prsp.Result, prsp.Name, prsp.Basic.Name)
+					v_print("login result:%d name:%s role_name:%s head_url:%s\n", prsp.Result, prsp.Name, prsp.Basic.Name , prsp.Basic.HeadUrl)
 					v_print("uid:%v sex:%d addr:%s level:%d Exp:%d AllGroup:%d MasterGroup:%d\n", prsp.Basic.Uid, prsp.Basic.Sex, prsp.Basic.Addr,
 						prsp.Basic.Level, prsp.Detail.Exp, prsp.Detail.ChatInfo.AllGroup, prsp.Detail.ChatInfo.MasterGroup)
 					if prsp.Detail.ChatInfo.AllGroup > 0 {
 						for grp_id, info := range prsp.Detail.ChatInfo.AllGroups {
-							v_print("[%d] grp_id:%d name:%s last_read:%d\n", grp_id, info.GroupId, info.GroupName, info.LastMsgId)
+							v_print("[%d] grp_id:%d name:%s last_read:%d enter:%d\n", grp_id, info.GroupId, info.GroupName, info.LastMsgId , info.EnterTs)
 						}
 
 						if prsp.Detail.ChatInfo.MasterGroup > 0 {
@@ -420,8 +422,8 @@ func RecvPkg(conn *net.TCPConn) {
 		case cs.CS_PROTO_EXIT_GROUP_RSP:
 			prsp, ok := gmsg.SubMsg.(*cs.CSExitGroupRsp)
 			if ok {
-				v_print("exit_group_rsp grp_id:%d grp_name:%s result:%d del_group:%d\n", prsp.GrpId, prsp.GrpName , prsp.Result ,
-					prsp.DelGroup)
+				v_print("exit_group_rsp grp_id:%d grp_name:%s result:%d del_group:%d is_kick:%d\n", prsp.GrpId, prsp.GrpName , prsp.Result ,
+					prsp.DelGroup , prsp.ByKick)
 				if *method == METHOD_COMMAND {
 					exit_ch <- true
 					return
@@ -588,6 +590,17 @@ func SendPkg(conn *net.TCPConn, cmd string) {
 		psub.GrpId, _ = strconv.ParseInt(args[1], 10, 64)
 		psub.NowMsgId , _ = strconv.ParseInt(args[2] , 10 , 64)
 		v_print("chat history req:%v\n", *psub)
+		gmsg.SubMsg = psub
+	case CMD_KICK: //"kick group member <group_id><member_id>"
+		if len(args) != 3 {
+			show_cmd()
+			return
+		}
+		gmsg.ProtoId = cs.CS_PROTO_KICK_GROUP_REQ
+		psub := new(cs.CSKickGroupReq)
+		psub.GrpId , _ = strconv.ParseInt(args[1] , 10 , 64)
+		psub.KickUid , _ = strconv.ParseInt(args[2] , 10 , 64)
+		v_print("kick group req:%v\n", *psub)
 		gmsg.SubMsg = psub
 	default:
 		fmt.Printf("illegal cmd:%s\n", cmd)

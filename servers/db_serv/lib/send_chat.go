@@ -97,7 +97,7 @@ func RecvSendChatReq(pconfig *Config , preq *ss.MsgSendChatReq , from int) {
 }
 
 func RecvFetchChatReq(pconfig *Config , preq *ss.MsgFetchChatReq , from int) {
-	var _func_ = "<RecvSendChatReq>"
+	var _func_ = "<RecvFetchChatReq>"
 	log := pconfig.Comm.Log
 
 	//Sync

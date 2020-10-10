@@ -44,6 +44,10 @@ func RecvCommNotify(pconfig *Config , pnotify *ss.MsgCommonNotify , src_serv int
 		RecvDelGroupNotify(pconfig , pnotify)
 	case ss.COMMON_NOTIFY_TYPE_NOTIFY_BATCH_USER_ONLINE:
 		RecvBatchOnLineNotify(pconfig , pnotify , src_serv)
+	case ss.COMMON_NOTIFY_TYPE_NOTIFY_KICK_GROUP:
+		RecvKickGroupNotify(pconfig , pnotify)
+	case ss.COMMON_NOTIFY_TYPE_NOTIFY_ADD_MEMBER , ss.COMMON_NOTIFY_TYPE_NOTIFY_DEL_MEMBER:
+		RecvChgMemberNotify(pconfig , pnotify)
 	default:
 		log.Err("%s unhandled notify:%d src:%d" , _func_ , pnotify.NotifyType , src_serv)
 	}

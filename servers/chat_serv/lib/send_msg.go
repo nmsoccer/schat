@@ -48,9 +48,6 @@ func SendToServ(pconfig *Config  , target_serv int , v interface{}) bool {
 		log.Err("%s to %d failed! ret:%d" , _func_ , target_serv , ret);
 		return false;
 	}
-	if pss_msg!=nil && pss_msg.ProtoType != ss.SS_PROTO_TYPE_HEART_BEAT_REQ {
-		log.Debug("%s send to %d success!", _func_, target_serv);
-	}
 	return true
 }
 

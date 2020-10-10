@@ -150,6 +150,9 @@ enum COMMON_NOTIFY_TYPE {
   NOTIFY_DEL_GROUP   = 7; //notify del group
   NOTIFY_FILE_ADDR   = 8; //notify file addr
   NOTIFY_BATCH_USER_ONLINE = 9; //notify batch user online serv
+  NOTIFY_KICK_GROUP  = 10; //notify kick group
+  NOTIFY_ADD_MEMBER  = 11; //group add member
+  NOTIFY_DEL_MEMBER  = 12; //group del member
 }
 
 message MsgCommonNotify {

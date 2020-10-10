@@ -4,12 +4,13 @@ package ss;
 import "chat.proto";
 
 message UserBasic { 
-  string name=20;
-  int64 uid=21;
-  string addr=22;
-  bool sex=23; //true:male false:female
-  int32 age=24;
-  int32 level=25;
+  string name = 20;
+  int64 uid = 21;
+  string addr = 22;
+  bool sex = 23; //true:male false:female
+  int32 age = 24;
+  int32 level = 25;
+  string head_url = 26;
 }
 
 //blob to db

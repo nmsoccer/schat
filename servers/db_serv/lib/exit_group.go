@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"schat/proto/ss"
 	"schat/servers/comm"
+	"time"
 )
 
 func RecvExitGroupReq(pconfig *Config , preq *ss.MsgExitGroupReq , from int) {
@@ -14,6 +15,72 @@ func RecvExitGroupReq(pconfig *Config , preq *ss.MsgExitGroupReq , from int) {
 	}
 }
 
+func RecvKickGroupReq(pconfig *Config , preq *ss.MsgKickGroupReq , from int) {
+	var _func_ = "<RecvKickGroupReq>"
+	log := pconfig.Comm.Log
+	uid := preq.Uid
+	grp_id := preq.GrpId
+
+	//sync
+	go func() {
+		//head
+		phead := pconfig.RedisClient.AllocSyncCmdHead()
+		if phead == nil {
+			log.Err("%s alloc head fail! uid:%d grp_id:%d" , _func_ , uid , grp_id)
+			return
+		}
+		defer pconfig.RedisClient.FreeSyncCmdHead(phead)
+
+		//rsp
+		prsp := new(ss.MsgKickGroupRsp)
+		prsp.GrpId = grp_id
+		prsp.Uid = uid
+		prsp.GrpName = preq.GrpName
+		prsp.KickUid = preq.KickUid
+		prsp.Result = ss.SS_COMMON_RESULT_FAILED
+
+		//handle
+		for {
+			//step1. check group exist
+			_, prsp.Result = GetGroupInfo(pconfig, phead, grp_id, FILED_GROUP_INFO_NAME)
+			if prsp.Result != ss.SS_COMMON_RESULT_SUCCESS {
+				break
+			}
+
+			//step2. del member
+			prsp.Result = RemGroupMember(pconfig , phead , preq.KickUid , grp_id)
+			if prsp.Result != ss.SS_COMMON_RESULT_SUCCESS {
+				log.Err("%s remove member failed! uid:%d grp_id:%d kick_uid:%d" , _func_ , uid , grp_id , preq.KickUid)
+				break
+			}
+
+			//step3. append to off_msg <type|grp_id|grp_name|kick_ts>
+			curr_ts := time.Now().Unix()
+			off_info := fmt.Sprintf( "%d|%d|%s|%d" , ss.SS_OFFLINE_INFO_TYPE_OFT_KICK_GROUP , grp_id , preq.GrpName , curr_ts)
+			_ , prsp.Result = AppendOfflineInfo(pconfig , phead , preq.KickUid , off_info)
+			if prsp.Result != ss.SS_COMMON_RESULT_SUCCESS {
+				log.Err("%s append off_msg:%s failed! uid:%d" , _func_ , off_info , preq.KickUid)
+			}
+			break
+		}
+
+		//ss
+		var ss_msg ss.SSMsg
+		err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_KICK_GROUP_RSP , prsp)
+		if err != nil {
+			log.Err("%s gen ss failed! uid:%d grp_id:%d kick_uid:%d err:%v" , _func_ , uid , grp_id , preq.KickUid ,
+				err)
+			return
+		}
+
+		//back
+		SendToServ(pconfig , from , &ss_msg)
+	}()
+}
+
+
+
+/*-------------------------STATIC FUNC---------------------------*/
 func do_exit_group(pconfig *Config , preq *ss.MsgExitGroupReq , from int) {
 	var _func_ = "<do_exit_group>"
 	log := pconfig.Comm.Log
@@ -42,15 +109,7 @@ func do_exit_group(pconfig *Config , preq *ss.MsgExitGroupReq , from int) {
 			}
 
 			//exit group
-			tab_name := fmt.Sprintf(FORMAT_TAB_GROUP_MEMBERS + "%d" , grp_id)
-			_ , err := pconfig.RedisClient.RedisExeCmdSync(phead , "SREM" , tab_name , uid)
-			if err != nil {
-				log.Err("%s remove member failed! err:%v uid:%d grp_id:%d" , _func_ , err ,grp_id , uid)
-				prsp.Result = ss.SS_COMMON_RESULT_FAILED
-				break
-			}
-			log.Debug("%s srem done! uid:%d grp_id:%d" , _func_ , uid , grp_id)
-			prsp.Result = ss.SS_COMMON_RESULT_SUCCESS
+			prsp.Result = RemGroupMember(pconfig , phead , uid , grp_id)
             break
 		}
 

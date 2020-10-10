@@ -61,6 +61,10 @@ func RecvCommonNotify(pconfig *Config , pnotify *ss.MsgCommonNotify , src_serv i
 		RecvDelGroupNotify(pconfig , pnotify)
 	case ss.COMMON_NOTIFY_TYPE_NOTIFY_FILE_ADDR:
 		RecvFileAddrNotify(pconfig , pnotify)
+	case ss.COMMON_NOTIFY_TYPE_NOTIFY_KICK_GROUP:
+		RecvKickGroupNotify(pconfig , pnotify)
+	case ss.COMMON_NOTIFY_TYPE_NOTIFY_ADD_MEMBER , ss.COMMON_NOTIFY_TYPE_NOTIFY_DEL_MEMBER:
+		RecvChgMemNotify(pconfig , pnotify)
 	default:
 		log.Err("%s unhandled notify:%d uid:%d" , _func_ , pnotify.NotifyType , pnotify.Uid)
 	}

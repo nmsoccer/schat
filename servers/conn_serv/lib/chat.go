@@ -358,7 +358,8 @@ func RecvExitGroupRsp(pconfig *Config , prsp *ss.MsgExitGroupRsp) {
 	pmsg.Result = int(prsp.Result)
 	pmsg.GrpId = prsp.GrpId
 	pmsg.GrpName = prsp.GrpName
-	pmsg.DelGroup = int(prsp.DelGroup)
+	pmsg.DelGroup = int8(prsp.DelGroup)
+	pmsg.ByKick = int8(prsp.ByKick)
 
 	//to client
     SendToClient(pconfig , c_key , cs.CS_PROTO_EXIT_GROUP_RSP , pmsg)
@@ -383,6 +384,28 @@ func SendFetchChatHistroyReq(pconfig *Config , uid int64 , pfetch *cs.CSChatHist
 	err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_FETCH_CHAT_REQ , preq)
 	if err != nil {
 		log.Err("%s gen ss failed! uid:%d err:%v" , _func_ , err , uid)
+		return
+	}
+
+	//to logic
+	SendToLogic(pconfig , &ss_msg)
+}
+
+func SendKickGroupReq(pconfig *Config , uid int64 , pkick *cs.CSKickGroupReq) {
+	var _func_ = "<SendKickGroupReq>"
+	log := pconfig.Comm.Log
+
+	log.Debug("%s try to kick:%d grp_id:%d uid:%d" , _func_ , pkick.KickUid , pkick.GrpId , uid)
+	//ss
+	preq := new(ss.MsgKickGroupReq)
+	preq.GrpId = pkick.GrpId
+	preq.Uid = uid
+	preq.KickUid = pkick.KickUid
+
+	var ss_msg ss.SSMsg
+	err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_KICK_GROUP_REQ , preq)
+	if err != nil {
+		log.Err("%s gen ss failed! uid:%d kick:%d" , _func_ , uid , preq.KickUid)
 		return
 	}
 

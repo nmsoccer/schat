@@ -95,6 +95,12 @@ func RecvMsg(pconfig *Config) int64 {
 			RecvExitGroupRsp(pconfig , ss_msg.GetExitGroupRsp())
 		case ss.SS_PROTO_TYPE_FETCH_CHAT_REQ:
 			RecvFetchChatReq(pconfig , ss_msg.GetFetchChatReq())
+		case ss.SS_PROTO_TYPE_KICK_GROUP_REQ:
+			RecvKickGroupReq(pconfig , ss_msg.GetKickGroupReq())
+		case ss.SS_PROTO_TYPE_KICK_GROUP_RSP:
+			RecvKickGroupRsp(pconfig , ss_msg.GetKickGroupRsp())
+		case ss.SS_PROTO_TYPE_FETCH_OFFLINE_INFO_RSP:
+			RecvFetchOfflineInfoRsp(pconfig , ss_msg.GetFetchOfflineInfoRsp())
 		default:
 			log.Err("%s fail! unknown proto type:%v", _func_, ss_msg.ProtoType)
 		}

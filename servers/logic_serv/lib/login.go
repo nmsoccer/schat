@@ -336,5 +336,6 @@ func AfterLoginSucess(pconfig *Config , uid int64) {
 	SendFetchChatReq(pconfig , uid , 0)
 	NotifyOnline(pconfig , uid , NOTIFY_ONLINE_FLAG_LOGIN)
 	QueryFileServAddr(pconfig , uid)
+	SendFetchOfflineInfoReq(pconfig , uid)
 }
 

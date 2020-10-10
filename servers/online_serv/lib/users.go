@@ -15,6 +15,8 @@ type WorldOnlineUsers struct {
 	user_map map[int64]*UserInfo
 }
 
+//get online user info
+//@return: nil offline; else *user_info
 func GetUserInfo(pconfig *Config , uid int64) *UserInfo {
 	if pconfig.world_online.user_map == nil {
 		return nil

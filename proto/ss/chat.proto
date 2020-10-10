@@ -23,6 +23,7 @@ message UserChatGroup {
   int64 group_id = 1;
   string group_name = 2;
   int64 last_read_id = 3; //latest msg id
+  int64 enter_ts = 4; //enter group time
 }
 
 message UserChatInfo {

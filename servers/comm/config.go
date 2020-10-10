@@ -8,7 +8,9 @@ import(
 	"math/rand"
 	"schat/lib/log"
     "schat/lib/proc"
-    "time"
+	"strconv"
+	"strings"
+	"time"
     "os"
     "os/signal"
     "syscall"	
@@ -37,6 +39,16 @@ const (
     SELECT_METHOD_HASH = 2 //select by hash
 
 	RAND_STR_POOL = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ012345678!@#$%^&*()-_=+?<>;:"
+
+	//FILE_URL_TYPE
+	FILE_URL_T_CHAT = 1
+	FILE_URL_T_HEAD = 2
+
+	//FILE_UPDATE_CHECK
+	FILE_UPT_CHECK_ONLINE = 1 //not online
+	FILE_UPT_CHECK_GROUP  = 2 //not in group
+	FILE_UPT_CHECK_DEL    = 3 //normal del
+
 )
 
 
@@ -322,4 +334,25 @@ func FileExist(file_path string) bool {
 		return true
 	}
 	return false
+}
+
+//get url type
+//@return: type , error . if success error==nil and type is valid
+func GetUrlType(url string) (int , error) {
+	var err_msg string
+
+	//parse url_type
+	strs := strings.Split(url , ":")
+	if len(strs) <= 0 {
+		err_msg = fmt.Sprintf("illegal url:%s " , url)
+		return 0 , errors.New(err_msg)
+	}
+
+	url_type , err := strconv.Atoi(strs[0])
+	if err != nil {
+		err_msg = fmt.Sprintf("convert type failed! url:%s err:%v" , url , err)
+		return 0 , errors.New(err_msg)
+	}
+
+	return url_type , nil
 }

@@ -7,12 +7,14 @@ type UserBasic struct {
 	Addr  string `json:"addr"`
 	Sex   uint8  `json:"sex"` //1:male 2:female
 	Level int32  `json:"level"`
+	HeadUrl string `json:"head_url"`
 }
 
 type UserChatGroup struct {
 	GroupId int64
 	GroupName string
 	LastMsgId int64 //last readed
+	EnterTs   int64 //enter ts
 }
 
 type UserChatInfo struct {

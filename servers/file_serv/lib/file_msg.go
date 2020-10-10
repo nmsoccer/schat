@@ -69,13 +69,16 @@ func ReadUploadMsg(pconfig *Config , pmsg *FileMsg) {
 func RecvUploadNotify(pconfig *Config , pnotify *ss.MsgCommonNotify) {
 	var _func_ = "<ReadUploadMsg>"
 	log := pconfig.Comm.Log
+	msg_type := FILE_MSG_UPLOAD_CHECK_FAIL
 
 	//handle
     switch pnotify.IntV {
-	case 1: //not online
+	case comm.FILE_UPT_CHECK_ONLINE: //not online
 	    log.Info("%s uid:%d not online! will del url:%s grp_id:%d" , _func_ , pnotify.Uid , pnotify.StrV , pnotify.GrpId)
-	case 2: //not in group
+	case comm.FILE_UPT_CHECK_GROUP: //not in group
 		log.Info("%s uid:%d not in group!! will del url:%s grp_id:%d" , _func_ , pnotify.Uid , pnotify.StrV , pnotify.GrpId)
+	case comm.FILE_UPT_CHECK_DEL: //normal del
+		log.Info("%s uid:%d normal del!! will del url:%s grp_id:%d" , _func_ , pnotify.Uid , pnotify.StrV , pnotify.GrpId)
 	default:
 		log.Err("%s unkown value! uid:%d result:%d grp_id:%d url:%s" , _func_ , pnotify.Uid , pnotify.IntV , pnotify.GrpId , pnotify.StrV)
 	    return
@@ -83,7 +86,7 @@ func RecvUploadNotify(pconfig *Config , pnotify *ss.MsgCommonNotify) {
 
     //msg
     pmsg := new(FileMsg)
-    pmsg.msg_type = FILE_MSG_UPLOAD_CHECK_FAIL
+    pmsg.msg_type = msg_type
     pmsg.int_v = pnotify.IntV
     pmsg.uid = pnotify.Uid
     pmsg.grp_id = pnotify.GrpId

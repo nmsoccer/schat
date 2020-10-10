@@ -1,6 +1,8 @@
 package lib
 
 import (
+	"errors"
+	"fmt"
 	"schat/proto/ss"
 	"schat/servers/comm"
 	"time"
@@ -36,6 +38,39 @@ func GetGroupInfo(pconfig *Config , gr_id int64) *OnLineGroup {
 	}
 	return pinfo
 }
+
+func DelGroupMember(pconfig *Config , grp_id int64 , uid int64) error {
+	var err_msg string
+
+	//group info
+	pgrp := GetGroupInfo(pconfig , grp_id)
+	if pgrp == nil {
+		err_msg = fmt.Sprintf("group offline! grp_id:%d" , grp_id)
+		return errors.New(err_msg)
+	}
+
+	if pgrp.db_group_info.MemCount==0 || pgrp.db_group_info.Members==nil {
+		err_msg = fmt.Sprintf("group no member! grp_id:%d" , grp_id)
+		return errors.New(err_msg)
+	}
+
+	//check exist
+	_ , ok := pgrp.db_group_info.Members[uid]
+	if !ok {
+		err_msg = fmt.Sprintf("group has no target member! grp_id:%d mem_id:%d" , grp_id , uid)
+		return errors.New(err_msg)
+	}
+
+	//del
+	delete(pgrp.db_group_info.Members , uid)
+	pgrp.db_group_info.MemCount--
+	if pgrp.db_group_info.MemCount < 0 {
+		pgrp.db_group_info.MemCount = 0
+	}
+
+	return nil
+}
+
 
 
 func RecvApplyGroupReq(pconfig *Config , preq *ss.MsgApplyGroupReq , pdisp *ss.MsgDisp) {
@@ -477,5 +512,55 @@ func RecvDelGroupNotify(pconfig *Config , pnotify *ss.MsgCommonNotify) {
 		return
 	}
 	//to online
+	SendToDisp(pconfig , 0 , pss_msg)
+}
+
+func RecvKickGroupNotify(pconfig *Config , pnotify *ss.MsgCommonNotify) {
+	var _func_ = "<RecvKickGroupNotify>"
+	log := pconfig.Comm.Log
+	uid := pnotify.Uid	//kicked uid
+	grp_id := pnotify.GrpId
+
+	log.Info("%s uid:%d grp_id:%d grp_name:%s " ,_func_ , uid , grp_id , pnotify.StrV)
+	//check grp
+	pgrp := GetGroupInfo(pconfig , grp_id)
+	if pgrp == nil {
+		log.Info("%s group offline! grp_id:%d" , _func_ , grp_id)
+		return
+	}
+
+	//del member
+	err := DelGroupMember(pconfig , grp_id , uid)
+	if err != nil {
+		log.Err("%s del group member failed! err:%v grp_id:%d mem_id:%d" ,_func_ , grp_id , uid)
+		return
+	}
+
+
+	//notify kicked uid
+	pnotify.NotifyType = ss.COMMON_NOTIFY_TYPE_NOTIFY_KICK_GROUP
+	pss_msg , err := comm.GenDispMsg(ss.DISP_MSG_TARGET_ONLINE_SERVER , ss.DISP_MSG_METHOD_RAND , ss.DISP_PROTO_TYPE_DISP_COMMON_NOTIFY ,
+		0 , pconfig.ProcId , 0 , pnotify)
+	if err != nil {
+		log.Err("%s gen kick notify ss failed! err:%v grp_id:%d uid:%d" , _func_ , err , grp_id , uid)
+	} else {
+		//to online
+		SendToDisp(pconfig , 0 , pss_msg)
+	}
+
+	//notify chg member
+	pnotify.NotifyType = ss.COMMON_NOTIFY_TYPE_NOTIFY_DEL_MEMBER
+	pnotify.Uid = pgrp.db_group_info.MasterUid
+	if pgrp.db_group_info.MemCount>0 && pgrp.db_group_info.Members != nil {
+		pnotify.Members = pgrp.db_group_info.Members
+	}
+	pnotify.IntV = uid
+	pss_msg , err = comm.GenDispMsg(ss.DISP_MSG_TARGET_ONLINE_SERVER , ss.DISP_MSG_METHOD_RAND , ss.DISP_PROTO_TYPE_DISP_COMMON_NOTIFY ,
+		0 , pconfig.ProcId , 0 , pnotify)
+
+	if err != nil {
+		log.Err("%s gen del member notify ss failed! err:%v grp_id:%d" , _func_ , err ,grp_id)
+		return
+	}
 	SendToDisp(pconfig , 0 , pss_msg)
 }

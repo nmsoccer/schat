@@ -74,6 +74,7 @@ func RecvLoginRsp(pconfig *Config, prsp *ss.MsgLoginRsp) {
 			pmsg.Basic.Name = prsp.GetUserInfo().BasicInfo.Name
 			pmsg.Basic.Addr = prsp.UserInfo.BasicInfo.Addr
 			pmsg.Basic.Level = prsp.UserInfo.BasicInfo.Level
+			pmsg.Basic.HeadUrl = prsp.UserInfo.BasicInfo.HeadUrl
 			if prsp.UserInfo.BasicInfo.Sex {
 				pmsg.Basic.Sex = 1
 			} else {
@@ -97,6 +98,7 @@ func RecvLoginRsp(pconfig *Config, prsp *ss.MsgLoginRsp) {
 					cs_chat_info.AllGroups[grp_id].GroupId = grp_info.GroupId
 					cs_chat_info.AllGroups[grp_id].GroupName = grp_info.GroupName
 					cs_chat_info.AllGroups[grp_id].LastMsgId = grp_info.LastReadId
+					cs_chat_info.AllGroups[grp_id].EnterTs = grp_info.EnterTs
 				}
 				cs_chat_info.AllGroup = blob_chat_info.AllGroup
 

@@ -87,11 +87,17 @@ type CSExitGroupRsp  struct {
 	Result int `json:"result"`
 	GrpId  int64 `json:"grp_id"`
 	GrpName string `json:"grp_name"`
-	DelGroup int `json:"del_group"`
+	DelGroup int8 `json:"del_group"`
+	ByKick   int8 `json:"by_kick"`
 }
 
 type CSChatHistoryReq struct {
 	GrpId  int64 `json:"grp_id"`
 	//fetch chat history before now_mst_id(not include now_msg_id) max 40. aka from [now_msg_id-40 , now_msg_id) if 0 fetch from latest_msg_id
 	NowMsgId int64 `json:"now_msg_id"`
+}
+
+type CSKickGroupReq struct {
+	GrpId  int64 `json:"grp_id"`
+	KickUid int64 `json:"kick_uid"`
 }

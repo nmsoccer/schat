@@ -115,7 +115,8 @@ func RecvUserLogoutReq(pconfig *Config , preq *ss.MsgLogoutReq , from int) {
 				return
 			}
 			res, err = pconfig.RedisClient.RedisExeCmdSync(phead, "HMSET", user_tab, "addr",
-				puser_info.BasicInfo.Addr, "level", puser_info.BasicInfo.Level, FIELD_USER_INFO_ONLINE_LOGIC, -1, "blob_info", string(user_blob))
+				puser_info.BasicInfo.Addr, "level", puser_info.BasicInfo.Level, FIELD_USER_INFO_ONLINE_LOGIC, -1, "blob_info", string(user_blob),
+				FILED_USER_INFO_HEAD_URL , puser_info.BasicInfo.HeadUrl)
 		} else { //only update online-logic
 			res, err = pconfig.RedisClient.RedisExeCmdSync(phead, "HSET", user_tab, FIELD_USER_INFO_ONLINE_LOGIC, -1)
 		}
@@ -806,6 +807,12 @@ func user_login_get_info(pconfig *Config, result interface{}, preq *ss.MsgLoginR
 			puser_blob.Exp = 100
 		}
 		prsp.UserInfo.BlobInfo = puser_blob
+
+		//head_url
+		if v , ok := sm[FILED_USER_INFO_HEAD_URL]; ok {
+			pbasic.HeadUrl = v
+		}
+
 
 		//Fullfill
 		prsp.Result = ss.USER_LOGIN_RET_LOGIN_SUCCESS

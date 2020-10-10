@@ -45,6 +45,10 @@ enum SS_PROTO_TYPE {
   SYNC_CHAT_LIST = 35;
   EXIT_GROUP_REQ = 36;
   EXIT_GROUP_RSP = 37;
+  KICK_GROUP_REQ = 38;
+  KICK_GROUP_RSP = 39;
+  FETCH_OFFLINE_INFO_REQ = 40;
+  FETCH_OFFLINE_INFO_RSP = 41;
   //new proto defined could add to servers/comm/ss_pack.go:GenSSPkg  
 }
 
@@ -66,6 +70,10 @@ enum SS_COMMON_TYPE {
   COMM_TYPE_HISTORY = 1;
 }
 
+
+enum SS_OFFLINE_INFO_TYPE {
+  OFT_KICK_GROUP = 0; //kick out group by master <type|grp_id|grp_name|kick_ts>
+}
 
 
 //main msg
@@ -106,6 +114,10 @@ message SSMsg {
 	MsgSyncChatList  sync_chat_list = 53;
 	MsgExitGroupReq  exit_group_req = 54;
 	MsgExitGroupRsp  exit_group_rsp = 55;
+	MsgKickGroupReq  kick_group_req = 56;
+	MsgKickGroupRsp  kick_group_rsp = 57;
+	MsgFetchOfflineInfoReq fetch_offline_info_req = 58;
+	MsgFetchOfflineInfoRsp fetch_offline_info_rsp = 59;
   }  
 }
 
@@ -339,6 +351,7 @@ message MsgExitGroupReq {
   int64 grp_id = 2;
   string grp_name = 3;
   int32  del_group = 4;
+    
 }
 
 message MsgExitGroupRsp {
@@ -346,10 +359,38 @@ message MsgExitGroupRsp {
   int64 uid = 2;
   int64 grp_id = 3;
   string grp_name = 4;
-  int32  del_group = 5;  
+  int32  del_group = 5;
+
+  int32  by_kick = 20;
+}
+
+//Kickout Group
+message MsgKickGroupReq {
+  int64 uid = 1;
+  int64 grp_id = 2;
+  string grp_name = 3;
+  int64 kick_uid = 4;
+}
+
+message MsgKickGroupRsp {
+  SS_COMMON_RESULT result = 1;
+  int64 uid = 2;
+  int64 grp_id = 3;
+  string grp_name = 4;
+  int64 kick_uid = 5;
 }
 
 
+//Fetch OFFLINE_INFO
+message MsgFetchOfflineInfoReq {
+  int64 uid = 1;
+  int32 fetch_count = 2;
+}
 
-
-
+message MsgFetchOfflineInfoRsp {
+  SS_COMMON_RESULT result = 1;
+  int64 uid = 2;
+  int32 complete = 3; //1:no more
+  int32 fetch_count = 4;
+  repeated string info_list = 5;
+}

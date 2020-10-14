@@ -70,5 +70,20 @@ func AppendOfflineInfo(pconfig *Config , phead *comm.SyncCmdHead , uid int64 , i
 	return int_v , ss.SS_COMMON_RESULT_SUCCESS
 }
 
+//save user profile
+func SaveUserProfile(pconfig *Config , phead *comm.SyncCmdHead , uid int64 , profile string) ss.SS_COMMON_RESULT {
+	var _func_ = "<SaveUserProfile>"
+	log := pconfig.Comm.Log
 
+	//save profile
+	tab_name := fmt.Sprintf(FORMAT_TAB_USER_PREOFILE_PREFIX + "%d" , uid)
+	_ , err := pconfig.RedisClient.RedisExeCmdSync(phead , "SET" , tab_name , profile)
+	if err != nil {
+		log.Err("%s set failed! err:%v uid:%d profile:%s" , _func_ , err , uid , profile)
+		return ss.SS_COMMON_RESULT_FAILED
+	}
+
+	//log.Debug("%s tab:%s set done! uid:%d profile:%s" , _func_ , tab_name , uid , profile)
+	return ss.SS_COMMON_RESULT_SUCCESS
+}
 

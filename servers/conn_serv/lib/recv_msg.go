@@ -84,6 +84,10 @@ func RecvMsg(pconfig *Config) int64 {
 			RecvExitGroupRsp(pconfig , ss_msg.GetExitGroupRsp())
 		case ss.SS_PROTO_TYPE_COMMON_NOTIFY:
 			RecvCommonNotify(pconfig , ss_msg.GetCommonNotify())
+		case ss.SS_PROTO_TYPE_SYNC_GROUP_INFO:
+			RecvSyncGroupInfo(pconfig , ss_msg.GetSyncGroupInfo())
+		case ss.SS_PROTO_TYPE_FETCH_USER_PROFILE_RSP:
+			RecvFetchUserProfileRsp(pconfig , ss_msg.GetFetchUserProfileRsp())
 		default:
 			log.Err("%s fail! unknown proto type:%v", _func_, ss_msg.ProtoType)
 		}

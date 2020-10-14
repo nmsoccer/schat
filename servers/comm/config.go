@@ -38,7 +38,8 @@ const (
     SELECT_METHOD_RAND = 1 //select id by rand
     SELECT_METHOD_HASH = 2 //select by hash
 
-	RAND_STR_POOL = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ012345678!@#$%^&*()-_=+?<>;:"
+	RAND_STR_POOL = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+?<>;:"
+	RAND_NUM_POOL = "0123456789"
 
 	//FILE_URL_TYPE
 	FILE_URL_T_CHAT = 1
@@ -49,6 +50,9 @@ const (
 	FILE_UPT_CHECK_GROUP  = 2 //not in group
 	FILE_UPT_CHECK_DEL    = 3 //normal del
 
+	//SEX
+	SEX_INT_MALE = 1
+	SEX_INT_FEMALE = 2
 )
 
 
@@ -119,6 +123,8 @@ func InitCommConfig(log_file string , name_space string , proc_id int) *CommConf
 		return nil;
 	}
 
+	//rand seed
+	rand.Seed(pconfig.StartTs + int64(proc_id))
 	return pconfig;
 }
 
@@ -283,6 +289,24 @@ func GenRandStr(str_len int) (string, error) {
 
 	return string(b), nil
 }
+
+//generate rand str only contains number lenth==str_len
+func GenRandNumStr(str_len int) (string, error) {
+	if str_len > 1000 {
+		return "", errors.New("length too long!")
+	}
+
+	b := make([]byte, str_len)
+	pool_len := len(RAND_NUM_POOL)
+	pos := 0
+	for i := 0; i < str_len; i++ {
+		pos = rand.Intn(pool_len)
+		b[i] = RAND_NUM_POOL[pos]
+	}
+
+	return string(b), nil
+}
+
 
 //enc password
 func EncPassString(pass string, salt string) string {

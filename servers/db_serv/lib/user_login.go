@@ -127,6 +127,32 @@ func RecvUserLogoutReq(pconfig *Config , preq *ss.MsgLogoutReq , from int) {
 		} else {
 			log.Info("%s done! res:%v uid:%d reason:%d", _func_, res, preq.Uid, preq.Reason)
 		}
+
+		//save profile
+		if preq.UserInfo!=nil && preq.Reason!=ss.USER_LOGOUT_REASON_LOGOUT_OFFLINE_USER {
+			//gen profile
+			profile := new(ss.UserProfile)
+			profile.Uid = preq.Uid
+			profile.HeadUrl = preq.UserInfo.BasicInfo.HeadUrl
+			profile.Name = preq.UserInfo.BasicInfo.Name
+			profile.Level = preq.UserInfo.BasicInfo.Level
+			if preq.UserInfo.BasicInfo.Sex {
+				profile.Sex = comm.SEX_INT_MALE
+			} else {
+				profile.Sex = comm.SEX_INT_FEMALE
+			}
+			profile.Addr = preq.UserInfo.BasicInfo.Addr
+
+			//pack
+			enc_data , err := ss.Pack(profile)
+			if err != nil {
+				log.Err("%s pack profile failed! err:%v uid:%d" , _func_ , err , preq.Uid)
+			} else {
+				SaveUserProfile(pconfig , phead , preq.Uid , string(enc_data))
+			}
+		}
+
+
 		return
 	}()
 

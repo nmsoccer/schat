@@ -23,9 +23,16 @@ message UserBlob {
 }
 
 
-
-
 message UserInfo {
   UserBasic basic_info=20;
   UserBlob blob_info=21;
+}
+
+message UserProfile {
+  int64 uid = 1;
+  string name = 2; 
+  string addr = 3;
+  int32 sex = 4; //1:male 2:female
+  int32 level = 5;
+  string head_url = 6;
 }

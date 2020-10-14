@@ -3,36 +3,43 @@ package lib
 import (
 	"schat/proto/ss"
 	"schat/servers/comm"
+	"time"
 )
 
 func RecvSendChatReq(pconfig *Config , preq *ss.MsgSendChatReq , from_logic int) {
 	var _func_ = "<RecvSendChatReq>"
 	log := pconfig.Comm.Log
+	uid := preq.Uid
+	grp_id := preq.ChatMsg.GroupId
 
-	log.Debug("%s uid:%d grp_id:%d content:%s" , _func_ , preq.Uid , preq.ChatMsg.GroupId , preq.ChatMsg.Content)
+	log.Debug("%s uid:%d grp_id:%d content:%s" , _func_ , uid , grp_id , preq.ChatMsg.Content)
 	if preq.ChatMsg.GroupId <=0 {
-		log.Err("%s group_id illegal! uid:%d group_id:%d" , _func_ , preq.Uid , preq.ChatMsg.GroupId)
+		log.Err("%s group_id illegal! uid:%d group_id:%d" , _func_ , uid , grp_id)
 		return
 	}
 
-	var ss_msg ss.SSMsg
+
     //Check Group
-    pgroup := GetGroupInfo(pconfig , preq.ChatMsg.GroupId)
+    pgroup := GetGroupInfo(pconfig , grp_id)
     if pgroup != nil {
 		//Online Send to Db Direct
+		var ss_msg ss.SSMsg
 		preq.Occupy = int64(from_logic)
 		preq.ChatMsg.MsgId = pgroup.db_group_info.LatestMsgId + 1 //this may not be precise
 		err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_SEND_CHAT_REQ , preq)
 		if err != nil {
-			log.Err("%s gen send ss failed! err:%v uid:%d" , _func_ , err , preq.Uid)
+			log.Err("%s gen send ss failed! err:%v uid:%d grp_id" , _func_ , err , uid , grp_id)
 			return
 		}
 		SendToDb(pconfig , &ss_msg)
     	return
 	}
 
-	//Load Group First
-	log.Debug("%s will load group first! uid:%d group_id:%d" , _func_ , preq.Uid , preq.ChatMsg.GroupId)
+	//Offline Load Group First
+	log.Debug("%s will load group first! uid:%d group_id:%d" , _func_ , uid , grp_id)
+    LoadGroup(pconfig , uid , grp_id , ss.LOAD_GROUP_REASON_LOAD_GRP_SEND_CHAT , int64(from_logic) ,
+    	preq)
+    /*
     pload := new(ss.MsgLoadGroupReq)
     pload.Uid = preq.Uid
     pload.TempId = preq.TempId
@@ -46,7 +53,7 @@ func RecvSendChatReq(pconfig *Config , preq *ss.MsgSendChatReq , from_logic int)
     	log.Err("%s gen load ss failed! err:%v uid:%d" , _func_ , err , preq.Uid)
     	return
 	}
-	SendToDb(pconfig , &ss_msg)
+	SendToDb(pconfig , &ss_msg)*/
 }
 
 func RecvSendChatRsp(pconfig *Config , prsp *ss.MsgSendChatRsp) {
@@ -79,6 +86,7 @@ func RecvSendChatRsp(pconfig *Config , prsp *ss.MsgSendChatRsp) {
 	if pgrp_info.db_group_info.LatestMsgId < prsp.ChatMsg.MsgId {
 		pgrp_info.db_group_info.LatestMsgId = prsp.ChatMsg.MsgId
 	}
+	pgrp_info.last_active = time.Now().Unix()
 
 	//Broadcast
     pnotify := new(ss.MsgCommonNotify)

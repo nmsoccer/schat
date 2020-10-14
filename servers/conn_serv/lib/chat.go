@@ -412,3 +412,83 @@ func SendKickGroupReq(pconfig *Config , uid int64 , pkick *cs.CSKickGroupReq) {
 	//to logic
 	SendToLogic(pconfig , &ss_msg)
 }
+
+func SendQueryGroupReq(pconfig *Config , uid int64 , pquery *cs.CSQueryGroupReq) {
+	var _func_ = "<SendQueryGroupReq>"
+	log := pconfig.Comm.Log
+
+	log.Debug("%s uid:%d grp_id:%d" , _func_ , uid , pquery.GrpId)
+	//ss
+	preq := new(ss.MsgQueryGroupReq)
+	preq.GrpId = pquery.GrpId
+	preq.Uid = uid
+
+	var ss_msg ss.SSMsg
+	err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_QUERY_GROUP_REQ , preq)
+	if err != nil {
+		log.Err("%s gen ss failed! uid:%d grp_id:%d err:%v" , _func_ , uid , preq.GrpId , err)
+		return
+	}
+
+	//to logic
+	SendToLogic(pconfig , &ss_msg)
+}
+
+func RecvSyncGroupInfo(pconfig *Config , pinfo *ss.MsgSyncGroupInfo) {
+	var _func_ = "<RecvSyncGroupInfo>"
+	log := pconfig.Comm.Log
+	uid := pinfo.Uid
+	grp_id := pinfo.GrpId
+
+	//c_key
+	c_key := GetClientKey(pconfig , uid)
+	if c_key <= 0 {
+		log.Err("%s user offline! uid:%d" , _func_ , uid)
+		return
+	}
+
+	//cs
+	pv , err := cs.Proto2Msg(cs.CS_PROTO_SYNC_GROUP_INFO)
+	if err != nil {
+		log.Err("%s get msg fail! uid:%d err:%v" , _func_ , uid , err)
+		return
+	}
+	pmsg , ok := pv.(*cs.CSSyncGroupInfo)
+	if !ok {
+		log.Err("%s not CSSyncGroupInfo! uid:%d" , _func_ , uid)
+		return
+	}
+
+	log.Debug("%s uid:%d grp_id:%d field:%d" , _func_ , uid , grp_id , pinfo.Field)
+	//fill msg
+	switch pinfo.Field {
+	case ss.SS_GROUP_INFO_FIELD_GRP_FIELD_ALL:
+		pmsg.Field = cs.SYNC_GROUP_FIELD_ALL
+		pmsg.GrpId = grp_id
+		if pinfo.GrpInfo == nil {
+			log.Err("%s field all but group_info nil! uid:%d grp_id:%d" , _func_ , uid , grp_id)
+			return
+		}
+
+		//fill group
+		pmsg.GrpInfo = new(cs.ChatGroup)
+		pmsg.GrpInfo.GrpId = grp_id
+		pmsg.GrpInfo.GrpName = pinfo.GrpInfo.GroupName
+		pmsg.GrpInfo.MasterUid = pinfo.GrpInfo.MasterUid
+		pmsg.GrpInfo.MsgCount = pinfo.GrpInfo.LatestMsgId
+		pmsg.GrpInfo.CreateTs = pinfo.GrpInfo.CreatedTs
+		pmsg.GrpInfo.MemCount = pinfo.GrpInfo.MemCount
+		if pinfo.GrpInfo.MemCount>0 || pinfo.GrpInfo.Members!= nil {
+			pmsg.GrpInfo.Members = make(map[int64]int32)
+			pmsg.GrpInfo.Members = pinfo.GrpInfo.Members
+		}
+	default:
+		log.Err("%s unknwon field:%d uid:%d grp_id:%d" , _func_ , pinfo.Field , uid , grp_id)
+		return
+	}
+
+	//to client
+	SendToClient(pconfig , c_key , cs.CS_PROTO_SYNC_GROUP_INFO , pmsg)
+}
+
+

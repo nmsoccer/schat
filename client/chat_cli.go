@@ -31,6 +31,8 @@ const (
 	CMD_QUIT               = "quit"
 	CMD_HISTORY			   = "his"
 	CMD_KICK               = "kick"
+	CMD_QUERY_GROUP        = "grp_info"
+	CMD_USER_PROFILE	   = "u_prof"
 
 	BUFF_LEN = (10 * 1024)
 
@@ -74,6 +76,8 @@ func init() {
 	cmd_map[CMD_QUIT] = "quit group <group_id>"
 	cmd_map[CMD_HISTORY] = "chat history <group_id><now_msg_id>"
 	cmd_map[CMD_KICK] = "kick group member <group_id><member_id>"
+	cmd_map[CMD_QUERY_GROUP] = "query group info <group_id>"
+	cmd_map[CMD_USER_PROFILE] = "user profile [uid1] [uid2] ..."
 }
 
 func v_print(format string, arg ...interface{}) {
@@ -439,6 +443,36 @@ func RecvPkg(conn *net.TCPConn) {
 					return
 				}
 			}
+		case cs.CS_PROTO_SYNC_GROUP_INFO:
+			prsp , ok := gmsg.SubMsg.(*cs.CSSyncGroupInfo)
+			if ok {
+				v_print("sync group info field:%d grp_id:%d\n" , prsp.Field , prsp.GrpId)
+				if prsp.GrpInfo != nil {
+					v_print("group_info:%v\n" , *prsp.GrpInfo)
+				}
+				if *method == METHOD_COMMAND {
+					exit_ch <- true
+					return
+				}
+			}
+		case cs.CS_PROTO_FETCH_USER_PROFILE_RSP:
+			prsp , ok := gmsg.SubMsg.(*cs.CSFetchUserProfileRsp)
+			if ok {
+				v_print("fetch user profiles count:%d\n" , len(prsp.Profiles))
+				if prsp.Profiles != nil {
+					for uid , pinfo := range prsp.Profiles {
+						if pinfo != nil {
+							v_print("<%d> %v\n", uid , *pinfo)
+						} else {
+							v_print("<%d> nil\n", uid)
+						}
+					}
+				}
+				if *method == METHOD_COMMAND {
+					exit_ch <- true
+					return
+				}
+			}
 		default:
 			fmt.Printf("illegal proto:%d\n", gmsg.ProtoId)
 		}
@@ -601,6 +635,31 @@ func SendPkg(conn *net.TCPConn, cmd string) {
 		psub.GrpId , _ = strconv.ParseInt(args[1] , 10 , 64)
 		psub.KickUid , _ = strconv.ParseInt(args[2] , 10 , 64)
 		v_print("kick group req:%v\n", *psub)
+		gmsg.SubMsg = psub
+	case CMD_QUERY_GROUP: //"query group info <group_id>"
+		if len(args) != 2 {
+			show_cmd()
+			return
+		}
+		gmsg.ProtoId = cs.CS_PROTO_QUERY_GROUP_REQ
+		psub := new(cs.CSQueryGroupReq)
+		psub.GrpId , _ = strconv.ParseInt(args[1] , 10 , 64)
+		v_print("query group req:%v\n", *psub)
+		gmsg.SubMsg = psub
+	case CMD_USER_PROFILE: //"user profile [uid1] [uid2] ..."
+		if len(args) < 2 {
+			show_cmd()
+			return
+		}
+		gmsg.ProtoId = cs.CS_PROTO_FETCH_USER_PROFILE_REQ
+		psub := new(cs.CSFetchUserProfileReq)
+		psub.TargetList = make([]int64 , len(args)-1)
+		idx := 0
+		for i:=1; i<len(args); i++ {
+			psub.TargetList[idx] , _ = strconv.ParseInt(args[i] , 10 , 64)
+			idx++
+		}
+		v_print("fetch user profile req:%v\n" , *psub)
 		gmsg.SubMsg = psub
 	default:
 		fmt.Printf("illegal cmd:%s\n", cmd)

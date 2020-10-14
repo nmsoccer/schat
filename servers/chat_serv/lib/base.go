@@ -11,6 +11,7 @@ type FileConfig struct {
 	DispServList []int    `json:"disp_serv_list"`
 	LogFile       string   `json:"log_file"`
 	DbServe      int      `json:"db_serv"`
+	MaxGroupCnt  int      `json:"max_group_count"` //reach grp will use simple lru to eliminate
 	ManageAddr    []string `json:"manage_addr"`
 	MonitorInv    int      `json:"monitor_inv"` //monitor interval seconds
 }

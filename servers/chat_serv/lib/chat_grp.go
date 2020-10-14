@@ -11,11 +11,13 @@ import (
 const (
 	PERIOD_CHECK_SAVE_CHAT_GROUP = 10000 //10 sec
 	SAVE_GROUP_TIME_SPAN = 40 //40sec expire
+	ELIMINATE_MAX_COUNT = 100 //most count when choosing eliminate target
 )
 
 type OnLineGroup struct {
 	load_ts int64
 	last_save int64 //last save ts
+	last_active int64 //last active ts
 	db_group_info *ss.GroupInfo
 }
 
@@ -194,7 +196,26 @@ func RecvEnterGroupRsp(pconfig *Config  , prsp *ss.MsgEnterGroupRsp) {
 	}
 	pgroup.db_group_info.Members[uid] = 1
     pgroup.db_group_info.MemCount++
+    pgroup.last_active = time.Now().Unix()
 	log.Debug("%s append uid:%d grp_id:%d mem_count:%d" , _func_ , uid , grp_id , pgroup.db_group_info.MemCount)
+
+    //notify
+    pnotify := new(ss.MsgCommonNotify)
+    pnotify.NotifyType = ss.COMMON_NOTIFY_TYPE_NOTIFY_ADD_MEMBER
+    pnotify.GrpId = grp_id
+    pnotify.Uid = pgroup.db_group_info.MasterUid
+    pnotify.StrV = pgroup.db_group_info.GroupName
+    pnotify.IntV = uid
+    pnotify.Members = pgroup.db_group_info.Members
+
+    pss_msg , err := comm.GenDispMsg(ss.DISP_MSG_TARGET_ONLINE_SERVER , ss.DISP_MSG_METHOD_RAND , ss.DISP_PROTO_TYPE_DISP_COMMON_NOTIFY ,
+    	0 , pconfig.ProcId , 0 , pnotify)
+    if err != nil {
+    	log.Err("%s notify add member:%d ss failed! err:%v grp_id:%d" , _func_ , uid , err , grp_id)
+    	return
+	}
+
+	SendToDisp(pconfig , 0 , pss_msg)
 }
 
 
@@ -242,14 +263,17 @@ func RecvLoadGroupRsp(pconfig *Config , prsp *ss.MsgLoadGroupRsp) {
 	//Check Exist
 	pgroup_info := GetGroupInfo(pconfig , prsp.GrpId)
 	if pgroup_info == nil { //Now Load
+		CheckEliminateGroup(pconfig)
 		pgroup_list := pconfig.GroupList
 		if pgroup_list.group_map == nil {
 			pgroup_list.group_map = make(map[int64]*OnLineGroup)
 			pgroup_list.online_count = 0
 		}
 
+		curr_ts := time.Now().Unix()
 		pgroup_info = new(OnLineGroup)
-		pgroup_info.load_ts = time.Now().Unix()
+		pgroup_info.load_ts = curr_ts
+		pgroup_info.last_active = curr_ts
 		pgroup_info.db_group_info = prsp.GrpInfo
 		pgroup_list.group_map[prsp.GrpId] = pgroup_info
 		pgroup_list.online_count++
@@ -269,18 +293,21 @@ func RecvLoadGroupRsp(pconfig *Config , prsp *ss.MsgLoadGroupRsp) {
 func AfterLoadGroupSuccess(pconfig *Config , prsp *ss.MsgLoadGroupRsp , pgrp_info *ss.GroupInfo) {
 	var _func_ = "<RecvLoadGroupRsp>"
 	log := pconfig.Comm.Log
+	uid := prsp.Uid
+	grp_id := prsp.GrpId
+
 
 	//check reason
 	switch prsp.Reason {
 	case ss.LOAD_GROUP_REASON_LOAD_GRP_SEND_CHAT:
-		log.Debug("%s will send chat! uid:%d grp_id:%d" , _func_ , prsp.Uid , prsp.GrpId)
+		log.Debug("%s will send chat! uid:%d grp_id:%d" , _func_ , uid , grp_id)
 		if prsp.ChatMsg == nil {
-			log.Err("%s fail! Reason:%d but no chat_msg found! uid:%d" , _func_ , prsp.Reason , prsp.Uid)
+			log.Err("%s fail! Reason:%d but no chat_msg found! uid:%d" , _func_ , prsp.Reason , grp_id)
 			break
 		}
 		var ss_msg ss.SSMsg
 		preq := new(ss.MsgSendChatReq)
-		preq.Uid = prsp.Uid
+		preq.Uid = uid
 		preq.TempId = prsp.TempId
 		preq.ChatMsg = prsp.ChatMsg
 		preq.Occupy = prsp.Occoupy
@@ -288,10 +315,27 @@ func AfterLoadGroupSuccess(pconfig *Config , prsp *ss.MsgLoadGroupRsp , pgrp_inf
 
 		err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_SEND_CHAT_REQ , preq)
 		if err != nil {
-			log.Err("%s gen send_chat_ss fail! uid:%d grp_id:%d err:%v" , _func_ , preq.Uid , prsp.GrpId , err)
+			log.Err("%s gen send_chat_ss fail! uid:%d grp_id:%d err:%v" , _func_ , uid , grp_id , err)
 			return
 		}
 		SendToDb(pconfig , &ss_msg)
+	case ss.LOAD_GROUP_REASON_LOAD_GRP_QUERY_INFO:
+		log.Debug("%s query grp back to %d! uid:%d grp_id:%d" , _func_ , prsp.Occoupy , uid , grp_id)
+		//notify
+		pinfo := new(ss.MsgSyncGroupInfo)
+		pinfo.GrpId = grp_id
+		pinfo.Uid = uid
+		pinfo.Field = ss.SS_GROUP_INFO_FIELD_GRP_FIELD_ALL
+		pinfo.GrpInfo = pgrp_info
+
+		//ss
+		pss_msg , err := comm.GenDispMsg(ss.DISP_MSG_TARGET_LOGIC_SERVER , ss.DISP_MSG_METHOD_SPEC , ss.DISP_PROTO_TYPE_DISP_SYNC_GROUP_INFO ,
+			int(prsp.Occoupy) , pconfig.ProcId , 0 , pinfo)
+		if err != nil {
+			log.Err("%s gen query group info ss failed! err:%v uid:%d grp_id:%d" , _func_ , err , uid , grp_id)
+			return
+		}
+		SendToDisp(pconfig , 0 , pss_msg)
 	default:
 		//nothing to do
 	}
@@ -563,4 +607,132 @@ func RecvKickGroupNotify(pconfig *Config , pnotify *ss.MsgCommonNotify) {
 		return
 	}
 	SendToDisp(pconfig , 0 , pss_msg)
+}
+
+
+func RecvQueryGroupReq(pconfig *Config , preq *ss.MsgQueryGroupReq , src_server int) {
+	var _func_ = "<RecvQueryGroupReq>"
+	log := pconfig.Comm.Log
+	uid := preq.Uid
+	grp_id := preq.GrpId
+
+	//group online
+	pgrp := GetGroupInfo(pconfig , grp_id)
+	if pgrp != nil {
+		log.Debug("%s online! send back direct! uid:%d grp_id:%d" , _func_ , uid , grp_id)
+		pgrp.last_active = time.Now().Unix()
+
+		//notify
+		pinfo := new(ss.MsgSyncGroupInfo)
+		pinfo.GrpId = grp_id
+		pinfo.Uid = uid
+		pinfo.Field = ss.SS_GROUP_INFO_FIELD_GRP_FIELD_ALL
+		pinfo.GrpInfo = pgrp.db_group_info
+
+		//ss
+		pss_msg , err := comm.GenDispMsg(ss.DISP_MSG_TARGET_LOGIC_SERVER , ss.DISP_MSG_METHOD_SPEC , ss.DISP_PROTO_TYPE_DISP_SYNC_GROUP_INFO ,
+			src_server , pconfig.ProcId , 0 , pinfo)
+		if err != nil {
+			log.Err("%s gen ss failed! err:%v uid:%d grp_id:%d" , _func_ , err , uid , grp_id)
+			return
+		}
+
+		SendToDisp(pconfig , 0 , pss_msg)
+		return
+	}
+
+	//load from db
+	LoadGroup(pconfig , uid , grp_id , ss.LOAD_GROUP_REASON_LOAD_GRP_QUERY_INFO , int64(src_server) , nil)
+}
+
+
+func LoadGroup(pconfig *Config , uid int64 , grp_id int64 , reason ss.LOAD_GROUP_REASON , occuply int64 , v interface{}) {
+	var _func_ = "<LoadGroup>"
+	log := pconfig.Comm.Log
+
+	//pmsg
+	pload := new(ss.MsgLoadGroupReq)
+
+	//switch
+	switch reason {
+	case ss.LOAD_GROUP_REASON_LOAD_GRP_SEND_CHAT:
+		preq , ok := v.(*ss.MsgSendChatReq)
+		if !ok {
+			log.Err("%s v type not *MsgSendChatReq! uid:%d grp_id:%d" , _func_ , uid , grp_id)
+			return
+		}
+		pload.Uid = uid
+		pload.TempId = preq.TempId
+		pload.Reason = reason
+		pload.GrpId = grp_id
+		pload.ChatMsg = preq.ChatMsg
+		pload.Occoupy = occuply
+	case ss.LOAD_GROUP_REASON_LOAD_GRP_QUERY_INFO:
+		pload.Reason = reason
+		pload.Uid = uid
+		pload.GrpId = grp_id
+		pload.Occoupy = occuply
+	default:
+		log.Err("%s unkown reason:%d uid:%d grp_id:%d" , _func_ , reason , uid , grp_id)
+		return
+	}
+
+	//ss
+	var ss_msg ss.SSMsg
+	err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_LOAD_GROUP_REQ , pload)
+	if err != nil {
+		log.Err("%s gen load ss failed! err:%v uid:%d grp_id:%d" , _func_ , err , uid , grp_id)
+		return
+	}
+	SendToDb(pconfig , &ss_msg)
+}
+
+//check and eliminate old group by rand
+func CheckEliminateGroup(pconfig *Config) {
+	var _func_ = "<CheckEliminateGroup>"
+	log := pconfig.Comm.Log
+
+	//check count
+	if pconfig.GroupList.online_count<pconfig.FileConfig.MaxGroupCnt || pconfig.GroupList.group_map==nil {
+		return
+	}
+
+
+	//rand count
+	rand_count := ELIMINATE_MAX_COUNT
+	if rand_count > len(pconfig.GroupList.group_map) {
+		rand_count = len(pconfig.GroupList.group_map)
+	}
+
+	//select
+	var select_grp int64 = 0
+	var select_ts  int64 = 0x7fffffffff
+	var grp_id int64 = 0
+	var pinfo *OnLineGroup
+	var i = 0
+	for grp_id , pinfo = range pconfig.GroupList.group_map { //range self by randing
+		if i>= rand_count {
+			break
+		}
+
+		if pinfo.last_active < select_ts {
+			select_grp = grp_id
+			select_ts = pinfo.last_active
+		}
+		i++
+	}
+
+	//bingo
+	if select_grp <= 0 {
+		log.Err("%s not select candidate! rand_count:%d group_count:%d" , _func_ , rand_count , len(pconfig.GroupList.group_map))
+		return
+	}
+	log.Debug("%s select %d:%d rand_count:%d" , _func_ , select_grp , select_ts , rand_count)
+
+	//del
+	delete(pconfig.GroupList.group_map , select_grp)
+	pconfig.GroupList.online_count--
+	if pconfig.GroupList.online_count < 0 {
+		pconfig.GroupList.online_count = 0
+	}
 }

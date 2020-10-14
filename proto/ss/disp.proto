@@ -1,6 +1,7 @@
 syntax="proto3";
 package ss;
 
+import "basic.proto";
 import "chat.proto";
 /*
 Target Server Type
@@ -40,7 +41,9 @@ enum DISP_PROTO_TYPE {
   DISP_ENTER_GROUP_REQ = 7;
   DISP_ENTER_GROUP_RSP = 8;
   DISP_SEND_CHAT_REQ = 9;
-  DISP_SEND_CHAT_RSP = 10;  
+  DISP_SEND_CHAT_RSP = 10;
+  DISP_QUERY_GROUP_REQ = 11;
+  DISP_SYNC_GROUP_INFO = 12;  
   //Add Proto Should Also Modify servers/comm/disp.go:GenDispMsg  
 }
 
@@ -67,7 +70,9 @@ message MsgDisp {
     MsgEnterGroupReq enter_group_req = 27;
     MsgEnterGroupRsp enter_group_rsp = 28;
     MsgSendChatReq   send_chat_req  = 29;
-	MsgSendChatRsp   send_chat_rsp  = 30;    
+	MsgSendChatRsp   send_chat_rsp  = 30;
+    MsgQueryGroupReq query_group_req = 31;
+    MsgSyncGroupInfo sync_group_info = 32;    
   }  
 }
 
@@ -153,6 +158,7 @@ enum COMMON_NOTIFY_TYPE {
   NOTIFY_KICK_GROUP  = 10; //notify kick group
   NOTIFY_ADD_MEMBER  = 11; //group add member
   NOTIFY_DEL_MEMBER  = 12; //group del member
+  NOTIFY_FILE_TOKEN  = 13; //file_server token to dir
 }
 
 message MsgCommonNotify {
@@ -209,4 +215,20 @@ message MsgSendChatRsp {
   int64 occupy = 20;
 }
 
+//Group Info
+message MsgQueryGroupReq {
+  int64 uid = 1;
+  int64 grp_id = 2;
+  
+  int64 occupy = 20;  
+}
 
+
+message MsgSyncGroupInfo {
+  SS_GROUP_INFO_FIELD field = 1;
+  int64 uid = 2;
+  int64 grp_id = 3;
+  GroupInfo grp_info = 4;
+  
+  int64 occupy = 20;  
+}

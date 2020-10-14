@@ -33,6 +33,8 @@ func RecvCommNotify(pconfig *Config , pnotify *ss.MsgCommonNotify , src_serv int
     switch pnotify.NotifyType {
 	case ss.COMMON_NOTIFY_TYPE_NOTIFY_UPLOAD_FILE:
 		RecvUploadNotify(pconfig , pnotify)
+	case ss.COMMON_NOTIFY_TYPE_NOTIFY_FILE_TOKEN:
+		RecvFileTokenNotify(pconfig , pnotify , src_serv)
 	default:
 		log.Err("%s unhandled notify:%d src:%d" , _func_ , pnotify.NotifyType , src_serv)
 	}

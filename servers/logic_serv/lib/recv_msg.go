@@ -101,6 +101,12 @@ func RecvMsg(pconfig *Config) int64 {
 			RecvKickGroupRsp(pconfig , ss_msg.GetKickGroupRsp())
 		case ss.SS_PROTO_TYPE_FETCH_OFFLINE_INFO_RSP:
 			RecvFetchOfflineInfoRsp(pconfig , ss_msg.GetFetchOfflineInfoRsp())
+		case ss.SS_PROTO_TYPE_QUERY_GROUP_REQ:
+			RecvQueryGroupReq(pconfig , ss_msg.GetQueryGroupReq())
+		case ss.SS_PROTO_TYPE_FETCH_USER_PROFILE_REQ:
+			RecvFetchUserProfileReq(pconfig , ss_msg.GetFetchUserProfileReq())
+		case ss.SS_PROTO_TYPE_FETCH_USER_PROFILE_RSP:
+			RecvFetchUserProfileRsp(pconfig , ss_msg.GetFetchUserProfileRsp())
 		default:
 			log.Err("%s fail! unknown proto type:%v", _func_, ss_msg.ProtoType)
 		}

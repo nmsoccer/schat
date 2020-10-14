@@ -275,6 +275,18 @@ func HandleClientPkg(pconfig *Config, pclient *comm.ClientPkg) {
 			SendKickGroupReq(pconfig , uid , pmsg)
 			conv_err = false
 		}
+	case cs.CS_PROTO_QUERY_GROUP_REQ:
+		pmsg , ok := gmsg.SubMsg.(*cs.CSQueryGroupReq)
+		if ok {
+			SendQueryGroupReq(pconfig , uid , pmsg)
+			conv_err = false
+		}
+	case cs.CS_PROTO_FETCH_USER_PROFILE_REQ:
+		pmsg , ok := gmsg.SubMsg.(*cs.CSFetchUserProfileReq)
+		if ok {
+			SendFetchUserProfileReq(pconfig , uid , pmsg)
+			conv_err = false
+		}
 	default:
 		log.Err("%s illegal proto:%d", _func_, proto_id)
 		return

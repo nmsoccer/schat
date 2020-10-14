@@ -31,7 +31,8 @@ type Config struct {
 	ReportCmdToken int64
 	ReportServ     *comm.ReportServ //report to manger
 	//local
-    FileServer     *FileServer //file server
+	NowToken	   string
+	FileServer     *FileServer //file server
 }
 
 //Comm Config Setting
@@ -74,7 +75,17 @@ func CommSet(pconfig *Config) bool {
 //Local Proc Setting
 func LocalSet(pconfig *Config) bool {
 	var _func_ = "<LocalSet>"
+	var err error
 	log := pconfig.Comm.Log
+
+	//generate token
+	pconfig.NowToken , err  = comm.GenRandNumStr(FILE_SERV_TOKEN_LEN)
+	if err != nil {
+		log.Err("%s generate token failed! err:%v" , _func_ , err)
+		return false
+	}
+	log.Info("%s started token:%s" , _func_ , pconfig.NowToken)
+
 	//start file serv
 	pconfig.FileServer = StartFileServer(pconfig)
 	if pconfig.FileServer == nil {
@@ -95,6 +106,8 @@ func LocalSet(pconfig *Config) bool {
 	pconfig.Comm.TickPool.AddTicker("heart_beat", comm.TICKER_TYPE_CIRCLE, 0, comm.PERIOD_HEART_BEAT_DEFAULT, SendHeartBeatMsg, pconfig)
 	pconfig.Comm.TickPool.AddTicker("report_sync", comm.TICKER_TYPE_CIRCLE, 0, comm.PERIOD_REPORT_SYNC_DEFAULT, ReportSyncServer, pconfig)
 	pconfig.Comm.TickPool.AddTicker("recv_cmd", comm.TICKER_TYPE_CIRCLE, 0, comm.PERIOD_RECV_REPORT_CMD_DEFAULT, RecvReportCmd, pconfig)
+	pconfig.Comm.TickPool.AddTicker("update_token" , comm.TICKER_TYPE_CIRCLE , 0 , PERIOD_UPDATE_TOKEN , UpdateServToken , pconfig)
+	pconfig.Comm.TickPool.AddTicker("sync_token" , comm.TICKER_TYPE_CIRCLE , 10000 , PERIOD_SYNC_TOKEN , SyncServToken , pconfig)
 	return true
 }
 

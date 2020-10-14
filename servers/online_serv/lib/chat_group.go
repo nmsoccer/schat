@@ -48,9 +48,13 @@ func RecvKickGroupNotify(pconfig *Config , pnotify *ss.MsgCommonNotify) {
 }
 
 func RecvChgMemberNotify(pconfig *Config , preq *ss.MsgCommonNotify) {
+	var _func_ = "<RecvChgMemberNotify>"
+	log := pconfig.Comm.Log
 	master_uid := preq.Uid
 	var uid int64 = 0
 
+	log.Debug("%s master:%d grp_id:%d type:%d refer_uid:%d grp_name:%s" , _func_ , master_uid , preq.GrpId , preq.NotifyType ,
+		preq.IntV , preq.StrV)
 	//notify
 	pnotify := new(ss.MsgCommonNotify)
 	pnotify.GrpId = preq.GrpId

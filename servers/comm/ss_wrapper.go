@@ -312,6 +312,46 @@ func FillSSPkg(ss_msg *ss.SSMsg , proto ss.SS_PROTO_TYPE , pmsg interface{}) err
 		}
 		body.FetchOfflineInfoRsp = pv
 		ss_msg.MsgBody = body
+	case ss.SS_PROTO_TYPE_QUERY_GROUP_REQ:
+		body := new(ss.SSMsg_QueryGroupReq)
+		pv , ok := pmsg.(*ss.MsgQueryGroupReq)
+		if !ok {
+			return errors.New("not MsgQueryGroupReq")
+		}
+		body.QueryGroupReq = pv
+		ss_msg.MsgBody = body
+	case ss.SS_PROTO_TYPE_SYNC_GROUP_INFO:
+		body := new(ss.SSMsg_SyncGroupInfo)
+		pv , ok := pmsg.(*ss.MsgSyncGroupInfo)
+		if !ok {
+			return errors.New("not MsgSyncGroupInfo")
+		}
+		body.SyncGroupInfo = pv
+		ss_msg.MsgBody = body
+	case ss.SS_PROTO_TYPE_FETCH_USER_PROFILE_REQ:
+		body := new(ss.SSMsg_FetchUserProfileReq)
+		pv , ok := pmsg.(*ss.MsgFetchUserProfileReq)
+		if !ok {
+			return errors.New("not MsgFetchUserProfileReq")
+		}
+		body.FetchUserProfileReq = pv
+		ss_msg.MsgBody = body
+	case ss.SS_PROTO_TYPE_FETCH_USER_PROFILE_RSP:
+		body := new(ss.SSMsg_FetchUserProfileRsp)
+		pv , ok := pmsg.(*ss.MsgFetchUserProfileRsp)
+		if !ok {
+			return errors.New("not MsgFetchUserProfileRsp")
+		}
+		body.FetchUserProfileRsp = pv
+		ss_msg.MsgBody = body
+	case ss.SS_PROTO_TYPE_SAVE_USER_PROFILE_REQ:
+		body := new(ss.SSMsg_SaveUserProfileReq)
+		pv , ok := pmsg.(*ss.MsgSaveUserProfileReq)
+		if !ok {
+			return errors.New("not MsgSaveUserProfileReq")
+		}
+		body.SaveUserProfileReq = pv
+		ss_msg.MsgBody = body
 	default:
 		return errors.New(fmt.Sprintf("disp proto:%d not handled" , proto))
 	}

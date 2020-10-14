@@ -1,6 +1,7 @@
 syntax="proto3";
 package ss;
 
+import "basic.proto";
 import "chat.proto";
 import "disp.proto";
 import "user_info.proto";
@@ -49,30 +50,12 @@ enum SS_PROTO_TYPE {
   KICK_GROUP_RSP = 39;
   FETCH_OFFLINE_INFO_REQ = 40;
   FETCH_OFFLINE_INFO_RSP = 41;
+  QUERY_GROUP_REQ = 42;
+  SYNC_GROUP_INFO = 43;
+  FETCH_USER_PROFILE_REQ = 44;
+  FETCH_USER_PROFILE_RSP = 45;
+  SAVE_USER_PROFILE_REQ = 46;
   //new proto defined could add to servers/comm/ss_pack.go:GenSSPkg  
-}
-
-enum SS_COMMON_RESULT {
-  SUCCESS = 0;
-  FAILED = 1;
-  NOEXIST = 2;
-}
-
-
-enum SS_COMMON_REASON {
-  REASON_TICK = 0;  //ticker save
-  REASON_UPDATE = 1; //activate save
-  REASON_EXIT = 2; //server exit
-}
-
-enum SS_COMMON_TYPE {
-  COMM_TYPE_NORMAL = 0;
-  COMM_TYPE_HISTORY = 1;
-}
-
-
-enum SS_OFFLINE_INFO_TYPE {
-  OFT_KICK_GROUP = 0; //kick out group by master <type|grp_id|grp_name|kick_ts>
 }
 
 
@@ -118,6 +101,11 @@ message SSMsg {
 	MsgKickGroupRsp  kick_group_rsp = 57;
 	MsgFetchOfflineInfoReq fetch_offline_info_req = 58;
 	MsgFetchOfflineInfoRsp fetch_offline_info_rsp = 59;
+	MsgQueryGroupReq query_group_req = 60;
+    MsgSyncGroupInfo sync_group_info = 61;
+    MsgFetchUserProfileReq fetch_user_profile_req = 62;
+    MsgFetchUserProfileRsp fetch_user_profile_rsp = 63;
+    MsgSaveUserProfileReq  save_user_profile_req  = 64;	
   }  
 }
 
@@ -268,6 +256,7 @@ message MsgFetchAuditGrpRsp {
 //Load Group
 enum LOAD_GROUP_REASON {  
   LOAD_GRP_SEND_CHAT = 0;  //send chat
+  LOAD_GRP_QUERY_INFO = 1; //query group
 }
 
 message MsgLoadGroupReq {
@@ -394,3 +383,21 @@ message MsgFetchOfflineInfoRsp {
   int32 fetch_count = 4;
   repeated string info_list = 5;
 }
+
+//Profile
+message MsgFetchUserProfileReq {
+  int64 uid = 1;
+  repeated int64 target_list = 2;
+}
+
+message MsgFetchUserProfileRsp {
+  SS_COMMON_RESULT result = 1;
+  int64 uid = 2;
+  map<int64 , UserProfile> profiles = 3;  
+}
+
+message MsgSaveUserProfileReq {
+  int64 uid = 1;
+  UserProfile profile = 2;
+}
+

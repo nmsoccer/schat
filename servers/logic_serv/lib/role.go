@@ -14,6 +14,58 @@ const (
 	NOTIFY_ONLINE_TIME_SPAN = 22 //22 second
 )
 
+func GenUserProfile(pconfig *Config , uid int64) *ss.UserProfile {
+	//user info
+	puser_info := GetUserInfo(pconfig , uid)
+	if puser_info == nil {
+		return nil
+	}
+
+	//profile
+	profile := new(ss.UserProfile)
+	profile.Uid = uid
+	profile.Name = puser_info.user_info.BasicInfo.Name
+	profile.Level = puser_info.user_info.BasicInfo.Level
+	if puser_info.user_info.BasicInfo.Sex {
+		profile.Sex = comm.SEX_INT_MALE
+	} else {
+		profile.Sex = comm.SEX_INT_FEMALE
+	}
+	profile.Addr = puser_info.user_info.BasicInfo.Addr
+	profile.HeadUrl = puser_info.user_info.BasicInfo.HeadUrl
+	return profile
+}
+
+func SaveUserProfile(pconfig *Config , uid int64) {
+	var _func_ = "<SaveUserProfile>"
+	log := pconfig.Comm.Log
+
+	//get profile
+	profile := GenUserProfile(pconfig , uid)
+	if profile == nil {
+		log.Err("%s fail! profile nil! uid:%d" , _func_ , uid)
+		return
+	}
+
+	//ss
+	log.Debug("%s uid:%d" , _func_ , uid)
+	preq := new(ss.MsgSaveUserProfileReq)
+	preq.Uid = uid
+	preq.Profile = profile
+
+	var ss_msg ss.SSMsg
+	err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_SAVE_USER_PROFILE_REQ , preq)
+	if err != nil {
+		log.Err("%s gen ss failed! err:%v uid:%d" , _func_ , err , uid)
+	}
+
+	//to db
+	SendToDb(pconfig , &ss_msg)
+}
+
+
+
+
 //Notify To OnlineServ(ALL)
 //flag:refer NOTIFY_ONLINE_FLAG_xx
 func NotifyOnline(pconfig *Config , uid int64 , flag int) {
@@ -159,4 +211,90 @@ func SaveRolesOnExit(pconfig *Config) {
 		//send to client
 		SendLogoutRsp(pconfig , uid , ss.USER_LOGOUT_REASON_LOGOUT_SERVER_SHUT , "server down");
 	}
+}
+
+func RecvFetchUserProfileReq(pconfig *Config , preq *ss.MsgFetchUserProfileReq) {
+	var _func_ = "<RecvFetchUserProfileReq>"
+	log := pconfig.Comm.Log
+	uid := preq.Uid
+
+	//check online
+	puser_info := GetUserInfo(pconfig , uid)
+	if puser_info == nil {
+		log.Err("%s offline! uid:%d" , _func_ , uid)
+		return
+	}
+
+	//length
+	if len(preq.TargetList) <= 0 {
+		log.Err("%s target empty! uid:%d" , _func_ , uid)
+		return
+	}
+
+	//self
+	if len(preq.TargetList)==1 && preq.TargetList[0]==uid {
+		log.Debug("%s get self haha! uid:%d" , _func_ , uid)
+		profile := GenUserProfile(pconfig , uid)
+		if profile == nil {
+			log.Err("%s gen profile failed! uid:%d" , _func_ , uid)
+			return
+		}
+
+		//resp
+		prsp := new(ss.MsgFetchUserProfileRsp)
+		prsp.Result = ss.SS_COMMON_RESULT_SUCCESS
+		prsp.Uid = uid
+		prsp.Profiles = make(map[int64]*ss.UserProfile)
+		prsp.Profiles[uid] = profile
+		RecvFetchUserProfileRsp(pconfig , prsp)
+		return
+	}
+
+	//ss
+	var ss_msg ss.SSMsg
+	err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_FETCH_USER_PROFILE_REQ , preq)
+	if err != nil {
+		log.Err("%s gen ss failed! err:%v uid:%d" , _func_ , err , uid)
+		return
+	}
+
+	//to db
+	SendToDb(pconfig , &ss_msg)
+}
+
+func RecvFetchUserProfileRsp(pconfig *Config , prsp *ss.MsgFetchUserProfileRsp) {
+	var _func_ = "<RecvFetchUserProfileRsp>"
+	log := pconfig.Comm.Log
+	uid := prsp.Uid
+
+	//check online
+	puser_info := GetUserInfo(pconfig , uid)
+	if puser_info == nil {
+		log.Err("%s offline! uid:%d" , _func_ , uid)
+		return
+	}
+
+	//result
+	if prsp.Result != ss.SS_COMMON_RESULT_SUCCESS {
+		log.Err("%s failed for %d! uid:%d" , _func_ , prsp.Result , uid)
+		return
+	}
+
+	//profiles
+	if prsp.Profiles==nil || len(prsp.Profiles)==0 {
+		log.Err("%s empty profiles! uid:%d" , _func_ , uid)
+		return
+	}
+
+
+	//ss
+	var ss_msg ss.SSMsg
+	err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_FETCH_USER_PROFILE_RSP , prsp)
+	if err != nil {
+		log.Err("%s gen ss failed! err:%v uid:%d" , _func_ , err , uid)
+		return
+	}
+
+	//to db
+	SendToConnect(pconfig , &ss_msg)
 }

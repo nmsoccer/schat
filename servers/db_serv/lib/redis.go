@@ -10,6 +10,7 @@ import (
 * #users:global:[name]  +hash+ name | pass | uid | salt  ; short info by user_name
 * #user:[uid] +hash+  uid | name | age | sex  | addr | level | blob_info | head_url ; detail info of user by uid
 * #user:login_lock:[uid] <string> valid_second
+* #user:profile:[uid] +string+ <user_basic>
 * #global:grp_id +string+ ; global group id allocator
 * #group:[grp_id] +hash+ gid | name | master_uid | pass | salt | create_ts | msg_count | load_serv
 * #group:mem:[grp_id] +set+ <uid>
@@ -36,6 +37,7 @@ const (
 	FORMAT_TAB_USER_GLOBAL       = "users:global:%s" //users:global:[name]  ++ hash ++ name | pass | uid | salt
 	FORMAT_TAB_USER_INFO_REFIX   = "user:"           // user:[uid] ++ hash ++ uid | name | age | sex  | addr | level | online_logic | blob_info | head_url
 	FORMAT_TAB_USER_LOGIN_LOCK_PREFIX="user:login_lock:" //user:login:[uid] +string+ valid_second
+	FORMAT_TAB_USER_PREOFILE_PREFIX = "user:profile:" //user:profile:[uid] +string+ <user_basic>
 	FORMAT_TAB_GLOBAL_GRPID      = "global:grp_id"   // +string+
 	FORMAT_TAB_GROUP_INFO_PREFIX = "group:"          // group:[grp_id] +hash+ gid | name | master_uid | pass | salt | create_ts | msg_count | load_serv
 	FORMAT_TAB_GROUP_MEMBERS     = "group:mem:"       //group:mem:[grp_id] +set+ <uid>

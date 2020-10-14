@@ -16,6 +16,8 @@ const (
 type FileServInfo struct {
 	ServIndex int
 	ServAddr  string
+	ServProc  int
+	Token     string
 }
 
 type ConnServInfo struct {
@@ -29,13 +31,16 @@ type ConnServInfo struct {
 
 type AllServerInfo struct {
 	sync.RWMutex
-    FileServList []*FileServInfo
+    //FileServList []*FileServInfo
+    //file serv
+    FileServMap map[int]*FileServInfo
+
+	//conn serv
     ConnServList []int
     ConnServMap  map[int]*ConnServInfo
 }
 
 type ServerResponse struct {
-	FileServList []*FileServInfo `json:"file_serv"`
 	ConnServ     string          `json:"conn_serv"`
 }
 
@@ -51,13 +56,14 @@ func InitAllServerInfo(pconfig *Config , pall *AllServerInfo) bool {
         return false
 	}
 	file_count := len(pconfig.FileConfig.FileServIndex)
-	pall.FileServList = make([]*FileServInfo , file_count)
+	pall.FileServMap = make(map[int]*FileServInfo)
 	for i:=0; i<file_count; i++ {
-		pall.FileServList[i] = new(FileServInfo)
-		pall.FileServList[i].ServIndex = pconfig.FileConfig.FileServIndex[i]
-		pall.FileServList[i].ServAddr  = pconfig.FileConfig.FileServAddr[i]
+		pinfo := new(FileServInfo)
+		pinfo.ServIndex = pconfig.FileConfig.FileServIndex[i]
+		pinfo.ServAddr  = pconfig.FileConfig.FileServAddr[i]
+		pall.FileServMap[pinfo.ServIndex] = pinfo
 	}
-	log.Info("%s init file_serv finish! count:%d info:%v" , _func_ , file_count , pall.FileServList)
+	log.Info("%s init file_serv finish! count:%d info:%v" , _func_ , file_count , pall.FileServMap)
 
     //conn serv
 	if len(pconfig.FileConfig.ConnServProc) != len(pconfig.FileConfig.ConnServAddr) || len(pconfig.FileConfig.ConnServProc) != len(pconfig.FileConfig.ConnServWeigth) {

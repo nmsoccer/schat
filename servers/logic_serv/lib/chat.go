@@ -34,6 +34,34 @@ func InitUserChatInfo(pconfig *Config , pinfo *ss.UserChatInfo , uid int64) {
     log.Info("%s finish! uid:%d" , _func_ , uid)
 }
 
+//check user in group
+//@return (bool , error)
+func UserInGroup(pconfig *Config , uid int64 , grp_id int64) (bool , error) {
+    var err_msg string
+
+    //user info
+    puser_info := GetUserInfo(pconfig , uid)
+    if puser_info == nil {
+        err_msg = fmt.Sprintf("user offline! uid:%d grp_id:%d" , uid , grp_id)
+        return false , errors.New(err_msg)
+    }
+
+    //chat info
+    pchat_info := puser_info.user_info.BlobInfo.ChatInfo
+    if pchat_info.AllGroup<=0 || pchat_info.AllGroups==nil {
+        return false , nil
+    }
+
+    //check
+    _ , ok := pchat_info.AllGroups[grp_id]
+    if !ok {
+        return false , nil
+    }
+
+    return true , nil
+}
+
+
 func DelUserGroup(pconfig *Config , uid int64 , grp_id int64 , kick_ts int64) error {
     var err_msg string
     //user info
@@ -1415,4 +1443,53 @@ func RecvFetchOfflineInfoRsp(pconfig *Config , prsp *ss.MsgFetchOfflineInfoRsp) 
     }
 
     SendFetchApplyGroupReq(pconfig , uid)
+}
+
+func RecvQueryGroupReq(pconfig *Config , preq *ss.MsgQueryGroupReq) {
+    var _func_ = "<RecvQueryGroupReq>"
+    log := pconfig.Comm.Log
+    uid := preq.Uid
+    grp_id := preq.GrpId
+
+    //check in group
+    ok , _ := UserInGroup(pconfig , uid , grp_id)
+    if !ok {
+        log.Err("%s not in group! uid:%d grp_id:%d" , _func_ , uid , grp_id)
+        return
+    }
+
+    //to chat serv
+    pss_msg , err := comm.GenDispMsg(ss.DISP_MSG_TARGET_CHAT_SERVER , ss.DISP_MSG_METHOD_HASH , ss.DISP_PROTO_TYPE_DISP_QUERY_GROUP_REQ ,
+        0 , pconfig.ProcId , grp_id , preq)
+    if err != nil {
+        log.Err("%s gen ss failed! uid:%d grp_id:%d err:%v" , _func_ , uid , grp_id , err)
+        return
+    }
+
+    SendToDisp(pconfig , 0 , pss_msg)
+}
+
+func RecvSyncGroupInfo(pconfig *Config , pinfo *ss.MsgSyncGroupInfo) {
+    var _func_ = "<RecvQueryGroupReq>"
+    log := pconfig.Comm.Log
+    uid := pinfo.Uid
+    grp_id := pinfo.GrpId
+
+    //check online
+    puser_info := GetUserInfo(pconfig , uid)
+    if puser_info == nil {
+        log.Err("%s user offline! uid:%d grp_id:%d" , _func_ , uid , grp_id)
+        return
+    }
+
+    //ss
+    var ss_msg ss.SSMsg
+    err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_SYNC_GROUP_INFO , pinfo)
+    if err != nil {
+        log.Err("%s gen ss failed! err:%v uid:%d grp_id:%d" , _func_ , err , uid , grp_id)
+        return
+    }
+
+    //to conn
+    SendToConnect(pconfig , &ss_msg)
 }

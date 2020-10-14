@@ -34,6 +34,9 @@ func RecvDispMsg(pconfig *Config, pdisp *ss.MsgDisp) {
 	case ss.DISP_PROTO_TYPE_DISP_SEND_CHAT_RSP:
 		pmsg := pdisp.GetSendChatRsp()
 		RecvSendChatRsp(pconfig , pmsg)
+	case ss.DISP_PROTO_TYPE_DISP_SYNC_GROUP_INFO:
+		pmsg := pdisp.GetSyncGroupInfo()
+		RecvSyncGroupInfo(pconfig , pmsg)
 	default:
 		log.Err("%s convert disp-msg failed! unkown disp_proto:%d", _func_, pdisp.ProtoType)
 		return

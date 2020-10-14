@@ -3,6 +3,8 @@ package cs
 const (
   CHAT_MSG_TYPE_TEXT = 0
   CHAT_MSG_TYPE_IMG  = 1
+
+  SYNC_GROUP_FIELD_ALL = 1
 )
 
 //create group
@@ -49,16 +51,6 @@ type CSApplyGroupAudit struct {
 }
 
 //Send Chat
-type ChatMsg struct {
-	ChatType  int   `json:"chat_type"` //CHAT_MSG_TYPE_XX
-	MsgId     int64 `json:"msg_id"`
-	GrpId     int64 `json:"grp_id"`
-	SenderUid int64 `json:"sender_uid"`
-	SenderName string `json:"sender"`
-	SendTs    int64 `json:"send_ts"`
-	Content   string `json:"content"`
-}
-
 type CSSendChatReq struct {
     TempMsgId int64   `json:"temp_id"`
 	ChatType  int   `json:"chat_type"` //CHAT_MSG_TYPE_XX
@@ -101,3 +93,24 @@ type CSKickGroupReq struct {
 	GrpId  int64 `json:"grp_id"`
 	KickUid int64 `json:"kick_uid"`
 }
+
+type CSQueryGroupReq struct {
+	GrpId  int64 `json:"grp_id"`
+}
+
+
+type CSSyncGroupInfo struct {
+	Field  int32 `json:"field"` //refer SYNC_GROUP_FIELD_xx
+	GrpId  int64 `json:"grp_id"`
+	GrpInfo *ChatGroup `json:"grp_info"`
+}
+
+type CSFetchUserProfileReq struct {
+	TargetList []int64  `json:"target_list"`
+}
+
+type CSFetchUserProfileRsp struct {
+	Profiles map[int64]*UserProfile  `json:"profiles"`
+}
+
+

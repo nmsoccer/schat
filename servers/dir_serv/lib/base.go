@@ -107,6 +107,8 @@ func LocalSet(pconfig *Config) bool {
 	pconfig.Comm.TickPool.AddTicker("heart_beat", comm.TICKER_TYPE_CIRCLE, 0, comm.PERIOD_HEART_BEAT_DEFAULT, SendHeartBeatMsg, pconfig)
 	pconfig.Comm.TickPool.AddTicker("report_sync", comm.TICKER_TYPE_CIRCLE, 0, comm.PERIOD_REPORT_SYNC_DEFAULT, ReportSyncServer, pconfig)
 	pconfig.Comm.TickPool.AddTicker("recv_cmd", comm.TICKER_TYPE_CIRCLE, 0, comm.PERIOD_RECV_REPORT_CMD_DEFAULT, RecvReportCmd, pconfig)
+	pconfig.Comm.TickPool.AddTicker("query_token" , comm.TICKER_TYPE_SINGLE , 5000 , 0 , QueryFileServToken , pconfig)
+
 	return true
 }
 

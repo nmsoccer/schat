@@ -27,6 +27,9 @@ func RecvDispMsg(pconfig *Config, pdisp *ss.MsgDisp) {
 	case ss.DISP_PROTO_TYPE_DISP_COMMON_NOTIFY:
 		pmsg := pdisp.GetCommonNotify()
 		RecvCommNotify(pconfig , pmsg , int(pdisp.FromServer))
+	case ss.DISP_PROTO_TYPE_DISP_QUERY_GROUP_REQ:
+		pmsg := pdisp.GetQueryGroupReq()
+		RecvQueryGroupReq(pconfig , pmsg , int(pdisp.FromServer))
 	default:
 		log.Err("%s convert disp-msg fail! unkown disp_proto:%d", _func_, pdisp.ProtoType)
 	}

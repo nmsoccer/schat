@@ -123,6 +123,9 @@ func UploadHeadFileNotify(pconfig *Config , pnotify *ss.MsgCommonNotify , file_s
 		return
 	}
 
+	//save profile
+	SaveUserProfile(pconfig , uid)
+
 	//back to file serv
 	pnotify.IntV = int64(check_err)
 	pss_msg , err := comm.GenDispMsg(ss.DISP_MSG_TARGET_FILE_SERVER , ss.DISP_MSG_METHOD_SPEC , ss.DISP_PROTO_TYPE_DISP_COMMON_NOTIFY ,

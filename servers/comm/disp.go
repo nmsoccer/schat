@@ -121,6 +121,22 @@ func GenDispMsg(target ss.DISP_MSG_TARGET, method ss.DISP_MSG_METHOD, proto ss.D
 		}
 		disp_body.SendChatRsp = pv
 		body.MsgDisp.DispBody = disp_body
+	case ss.DISP_PROTO_TYPE_DISP_QUERY_GROUP_REQ:
+		disp_body := new(ss.MsgDisp_QueryGroupReq)
+		pv , ok := disp_msg.(*ss.MsgQueryGroupReq)
+		if !ok {
+			return nil , errors.New("not MsgQueryGroupReq")
+		}
+		disp_body.QueryGroupReq = pv
+		body.MsgDisp.DispBody = disp_body
+	case ss.DISP_PROTO_TYPE_DISP_SYNC_GROUP_INFO:
+		disp_body := new(ss.MsgDisp_SyncGroupInfo)
+		pv , ok := disp_msg.(*ss.MsgSyncGroupInfo)
+		if !ok {
+			return nil , errors.New("not MsgSyncGroupInfo")
+		}
+		disp_body.SyncGroupInfo = pv
+		body.MsgDisp.DispBody = disp_body
 	default:
 		return nil , errors.New(fmt.Sprintf("disp proto:%d not handled" , proto))
 	}

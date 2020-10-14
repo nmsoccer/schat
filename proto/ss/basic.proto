@@ -1,0 +1,30 @@
+syntax="proto3";
+package ss;
+
+enum SS_COMMON_RESULT {
+  SUCCESS = 0;
+  FAILED = 1;
+  NOEXIST = 2;
+}
+
+
+enum SS_COMMON_REASON {
+  REASON_TICK = 0;  //ticker save
+  REASON_UPDATE = 1; //activate save
+  REASON_EXIT = 2; //server exit
+}
+
+enum SS_COMMON_TYPE {
+  COMM_TYPE_NORMAL = 0;
+  COMM_TYPE_HISTORY = 1;
+}
+
+
+
+enum SS_OFFLINE_INFO_TYPE {
+  OFT_KICK_GROUP = 0; //kick out group by master <type|grp_id|grp_name|kick_ts>
+}
+
+enum SS_GROUP_INFO_FIELD {
+  GRP_FIELD_ALL = 0;
+}

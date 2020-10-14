@@ -25,7 +25,6 @@ HEAD_FILE URL> 2:index:sub_dir:file_name | FILE_DIR> HEAD_PARENT_PATH/SUB_DIR/UI
 
 
 const (
-
 	UPLOAD_TMPL = "./html_tmpl/upload.html"
 
 	FORM_LABEL_URL_TYPE = "url_type"
@@ -33,6 +32,7 @@ const (
 	FORM_LABEL_GRP_ID = "grp_id"
 	FORM_LABEL_TMP_ID = "tmp_id"
 	FORM_LABEL_UPLOAD = "upload_file"
+	FORM_LABEL_TOKEN = "token"
 
 
 	UPLOAD_RESULT_SUCCESS = 0
@@ -51,7 +51,7 @@ const (
 	FILE_MSG_EXIT   = 0     //exit
 	FILE_MSG_UPLOAD = 1     //server-->main upload one file
 	FILE_MSG_UPLOAD_CHECK_FAIL = 2 //main-->server upload check err
-	//FILE_MSG_NORMAL_DEL = 3 //normal del file
+	FILE_MSG_UPDATE_TOKEN = 3	//update token
 
 	//MAX_SUB_DIR
 	MAX_HEAD_SUB_DIRS = 64 //uid % dirs
@@ -69,7 +69,8 @@ type FileMsg struct {
 
 
 type FileServer struct {
-	sync.Mutex
+	//sync.Mutex
+	sync.RWMutex
 	pconfig *Config
 	//config
 	serv_index     int
@@ -81,6 +82,9 @@ type FileServer struct {
 	//channel
     snd_chan  chan *FileMsg
     recv_chan  chan *FileMsg
+	//token
+	last_token string
+	curr_token string
 }
 
 type UploadResult struct {
@@ -107,6 +111,8 @@ func StartFileServer(pconfig *Config) *FileServer {
     fs.head_parent_path = fmt.Sprintf("%s/%s" , fs.parent_path , FILE_PARENT_DIR_HEADS)
     fs.recv_chan = make(chan *FileMsg , FILE_MSG_CHAN_SIZE)
 	fs.snd_chan = make(chan *FileMsg , FILE_MSG_CHAN_SIZE)
+	fs.last_token = pconfig.NowToken
+	fs.curr_token = pconfig.NowToken
 
     //new http_fs
     chat_fs = http.FileServer(http.Dir(fs.chat_parent_path))
@@ -217,13 +223,41 @@ func (fs *FileServer) recv_msg() bool {
 		case FILE_MSG_UPLOAD_CHECK_FAIL: //check fail
 			log.Info("%s check result:%d! uid:%d grp_id:%d url:%s" , _func_ , pmsg.int_v , pmsg.uid , pmsg.grp_id , pmsg.url)
 			fs.remove_file(pmsg.uid , pmsg.grp_id , pmsg.url)
+		case FILE_MSG_UPDATE_TOKEN:
+			fs.update_token(pmsg.str_v)
 		default:
 		    //nothing
+		    log.Err("%s unkown file_msg type:%d" , _func_ , pmsg.msg_type)
 		}
 
 	}
 
 	return false
+}
+
+func (fs *FileServer) update_token(new_token string) {
+	fs.Lock()
+	fs.pconfig.Comm.Log.Info("update token %s --> %s" , fs.curr_token , new_token)
+	fs.last_token = fs.curr_token
+	fs.curr_token = new_token
+	fs.Unlock()
+}
+
+/*------------------------HTTP HANDLE--------------------------------*/
+func (fs *FileServer) check_token(w http.ResponseWriter , r *http.Request) bool {
+	var _func_ = "<check_token>"
+	log := fs.pconfig.Comm.Log
+
+	//get token
+	token := r.FormValue(FORM_LABEL_TOKEN)
+	fs.RLock()
+	defer fs.RUnlock()
+	if token != fs.curr_token && token != fs.last_token {
+		log.Err("%s token not match! token:%s now:%s last:%s" , _func_ , token , fs.curr_token , fs.last_token)
+		return false
+	}
+
+	return true
 }
 
 
@@ -232,15 +266,21 @@ func (fs *FileServer) index_handler(w http.ResponseWriter , r *http.Request) {
 }
 
 func (fs *FileServer) static_handler(w http.ResponseWriter , r *http.Request) {
-	//this code will shield web files directory if in debug mode ,could comment it
-	path := strings.Trim(r.URL.Path , "/")
+	if !fs.check_token(w , r) {
+		http.NotFound(w , r)
+		return
+	}
+	//this code will shield web files directory. if in product mode should open it
+	/*
+	path := path.Clean(r.URL.Path)
+	path = strings.Trim(path , "/")
 	res := strings.Split(path , "/") //dir most 3levels
 	fmt.Printf("len res:%d res:%v\n" , len(res) , res)
 	if len(res) <= 3 {
 		fmt.Printf("dir not allowed!\n")
 		http.NotFound(w , r)
 		return
-	}
+	}*/
 	//end here
 
 	//real handle
@@ -249,15 +289,21 @@ func (fs *FileServer) static_handler(w http.ResponseWriter , r *http.Request) {
 
 
 func (fs *FileServer) head_handler(w http.ResponseWriter , r *http.Request) {
-	//this code will shield web files directory if in debug mode ,could comment it
-	path := strings.Trim(r.URL.Path , "/")
+	if !fs.check_token(w , r) {
+		http.NotFound(w , r)
+		return
+	}
+	//this code will shield web files directory. if in product mode should open it
+	/*
+	path := path.Clean(r.URL.Path)
+	path = strings.Trim(r.URL.Path , "/")
 	res := strings.Split(path , "/") //dir most 3levels
 	fmt.Printf("len res:%d res:%v\n" , len(res) , res)
 	if len(res) <= 3 {
 		fmt.Printf("dir not allowed!\n")
 		http.NotFound(w , r)
 		return
-	}
+	}*/
 	//end here
 
 	//real handle
@@ -266,6 +312,10 @@ func (fs *FileServer) head_handler(w http.ResponseWriter , r *http.Request) {
 
 
 func (fs *FileServer) upload_handler(w http.ResponseWriter , r *http.Request) {
+	if !fs.check_token(w , r) {
+		http.NotFound(w , r)
+		return
+	}
 	fmt.Printf("upload handler\n")
 	if r.Method == "GET" {
 		fs.upload_handle_get(w , r)

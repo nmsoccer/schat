@@ -48,7 +48,7 @@ A Simple Chat Serv
   聊天管理进程，这里会缓存所有活跃(主要是聊天等)的群组数据，群组数据按群ID hash分布到chat_serv上。同时用于同步转发聊天信息.
 * **db_chat_serv**  
   服务于chat_serv的db代理，一般与chat_serv 1:1配置作为一个逻辑处理单元，平行扩展时最好按处理单元扩展  
-* **dir_serv**
+* **dir_serv**  
   用于connect_serv前端的负载均衡，同时作为file_serv的相关地址信息管理  
   
   

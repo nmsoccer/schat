@@ -8,14 +8,14 @@ import (
 )
 
 type FileConfig struct {
-	LogicServList []int    `json:"logic_serv_list"`
-	ChatServList  []int    `json:"chat_serv_list"`
-	OnlineServList []int   `json:"online_serv_list"`
-	FileServList  []int    `json:"file_serv_list"`
-	DirServList   []int    `json:"dir_serv_list"`
-	LogFile       string   `json:"log_file"`
-	ManageAddr    []string `json:"manage_addr"`
-	MonitorInv    int      `json:"monitor_inv"` //monitor interval seconds
+	LogicServList  []int    `json:"logic_serv_list"`
+	ChatServList   []int    `json:"chat_serv_list"`
+	OnlineServList []int    `json:"online_serv_list"`
+	FileServList   []int    `json:"file_serv_list"`
+	DirServList    []int    `json:"dir_serv_list"`
+	LogFile        string   `json:"log_file"`
+	ManageAddr     []string `json:"manage_addr"`
+	MonitorInv     int      `json:"monitor_inv"` //monitor interval seconds
 }
 
 type Config struct {

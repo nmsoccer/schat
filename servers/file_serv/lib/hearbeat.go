@@ -36,6 +36,7 @@ func SendHeartBeatMsg(arg interface{}) {
 
 	//report
 	pconfig.ReportServ.Report(comm.REPORT_PROTO_SERVER_HEART, curr_ts, "", nil)
+	pconfig.ReportServ.Report(comm.REPORT_PROTO_CONN_NUM, int64(pconfig.FileServer.Suspect()), "suspect", nil)
 	return
 }
 

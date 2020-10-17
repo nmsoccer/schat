@@ -28,9 +28,9 @@ import (
 
 const (
 	HARD_MAX_CONN_LIMIT = 1000
-	REDIS_CONN_NONE = 0
-	REDIS_CONN_ING = 1
-	REDIS_CONN_DONE = 2
+	REDIS_CONN_NONE     = 0
+	REDIS_CONN_ING      = 1
+	REDIS_CONN_DONE     = 2
 )
 
 var last_check int64
@@ -41,16 +41,15 @@ const (
 )
 
 type reset_attr struct {
-	addr string
-	auth string
-	max_count int
+	addr         string
+	auth         string
+	max_count    int
 	normal_count int
 }
 
-
 type RedisClient struct {
 	sync.Mutex
-	comm_config *CommConfig
+	comm_config  *CommConfig
 	addr         string
 	auth         string
 	max_count    int
@@ -63,16 +62,15 @@ type RedisClient struct {
 	err_queue    chan int     //err connection done-->err
 	block_queue  chan int8    //block request. cap is unlimited. init:1M
 	reset_queue  chan bool    //reset flag
-	reset_attr   reset_attr  //reset attr if new setting
+	reset_attr   reset_attr   //reset attr if new setting
 }
 
 //redis exe cmd using synchronized
 type SyncCmdHead struct {
 	conn redis.Conn
 	idx  int
+	freed bool
 }
-
-
 
 //redis exe cmd using synchronized call back
 type RedisCallBack func(pconfig *CommConfig, result interface{}, cb_arg []interface{})
@@ -126,7 +124,7 @@ func NewRedisClient(pconfig *CommConfig, redis_addr string, auth string, max_con
 
 	//check max
 	if max_conn > HARD_MAX_CONN_LIMIT {
-		log.Err("%s Failed! max_conn:%d must <= %d(HARD_MAX_CONN_LIMIT)!" , _func_ , max_conn , HARD_MAX_CONN_LIMIT)
+		log.Err("%s Failed! max_conn:%d must <= %d(HARD_MAX_CONN_LIMIT)!", _func_, max_conn, HARD_MAX_CONN_LIMIT)
 		return nil
 	}
 
@@ -140,14 +138,13 @@ func NewRedisClient(pconfig *CommConfig, redis_addr string, auth string, max_con
 	return pclient
 }
 
-
 /*Reset Addr
 * @redis_addr:new redis addr; "" means no use
 * @auth:new redis auth. "" means no use
 * @max_conn:new max conn. <=0 means no use;(ATTENTION: max_conn only support expand,and <=HARD_MAX_CONN_LIMIT)
 * @normal_conn: new normal conn. <=0 means no use
-*/
-func (pclient *RedisClient) Reset(redis_addr string , auth string , max_conn int , normal_conn int) {
+ */
+func (pclient *RedisClient) Reset(redis_addr string, auth string, max_conn int, normal_conn int) {
 	pclient.reset_attr.addr = redis_addr
 	pclient.reset_attr.auth = auth
 	pclient.reset_attr.max_count = max_conn
@@ -155,8 +152,6 @@ func (pclient *RedisClient) Reset(redis_addr string , auth string , max_conn int
 	pclient.reset_queue <- true
 	return
 }
-
-
 
 //redis exe cmd Asynchronously
 //warning:if cb_arg includes pointer , you may not change it's member unlese new memory.
@@ -184,10 +179,9 @@ func (pclient *RedisClient) RedisExeCmd(pconfig *CommConfig, cb_func RedisCallBa
 		pclient.block_queue <- 1
 		//log.Debug("%s block:%d" , _func_ , len(pclient.block_queue));
 
-
 		//occupy connection
 		var idx int = -1
-		for i:=0; i<5; i++ { //try best to occupy a valid connection
+		for i := 0; i < 5; i++ { //try best to occupy a valid connection
 			idx = <-pclient.idle_queue
 			//log.Debug("%s get idle idx:%d remain:%d " , _func_ , idx , len(pclient.idle_queue));
 
@@ -200,7 +194,7 @@ func (pclient *RedisClient) RedisExeCmd(pconfig *CommConfig, cb_func RedisCallBa
 			//valid
 			break
 		}
-		if idx < 0 || pclient.conn_stats[idx]!=REDIS_CONN_DONE || pclient.conns[idx]==nil{
+		if idx < 0 || pclient.conn_stats[idx] != REDIS_CONN_DONE || pclient.conns[idx] == nil {
 			log.Err("%s valid connection still not found! will drop request!", _func_)
 			<-pclient.block_queue
 			return
@@ -250,12 +244,11 @@ func (pclient *RedisClient) AllocSyncCmdHead() *SyncCmdHead {
 	//throw block
 	pclient.block_queue <- 1
 
-
 	//occupy connection
 	var idx int = -1
-	for i:=0; i<5; i++ { //try best to occupy a valid connection
+	for i := 0; i < 5; i++ { //try best to occupy a valid connection
 		idx = <-pclient.idle_queue
-		log.Debug("%s get idle idx:%d remain:%d " , _func_ , idx , len(pclient.idle_queue));
+		//log.Debug("%s get idle idx:%d remain:%d ", _func_, idx, len(pclient.idle_queue))
 
 		//check idx valid(if reset may let it invalid!)
 		if pclient.conn_stats[idx] != REDIS_CONN_DONE || pclient.conns[idx] == nil {
@@ -266,7 +259,7 @@ func (pclient *RedisClient) AllocSyncCmdHead() *SyncCmdHead {
 		//valid
 		break
 	}
-	if idx < 0 || pclient.conn_stats[idx]!=REDIS_CONN_DONE || pclient.conns[idx]==nil{
+	if idx < 0 || pclient.conn_stats[idx] != REDIS_CONN_DONE || pclient.conns[idx] == nil {
 		log.Err("%s valid connection still not found! will drop request!", _func_)
 		<-pclient.block_queue
 		return nil
@@ -276,22 +269,27 @@ func (pclient *RedisClient) AllocSyncCmdHead() *SyncCmdHead {
 	phead := new(SyncCmdHead)
 	phead.idx = idx
 	phead.conn = pclient.conns[idx]
-    return phead
+	phead.freed = false
+	return phead
 }
 
 //redis exe cmd synchronised
 //warning:synchronize cmd should be in an independent go-routine
-func (pclient *RedisClient) RedisExeCmdSync(phead *SyncCmdHead , cmd string, arg ...interface{}) (interface{} , error){
+func (pclient *RedisClient) RedisExeCmdSync(phead *SyncCmdHead, cmd string, arg ...interface{}) (interface{}, error) {
 	reply, err := phead.conn.Do(cmd, arg...)
 	if err != nil {
-		return nil , err
+		return nil, err
 	}
-	return reply , nil
+	return reply, nil
 }
-
 
 //Release Synchronise Cmd Head
 func (pclient *RedisClient) FreeSyncCmdHead(phead *SyncCmdHead) {
+	if phead.freed {
+		return
+	}
+
+	phead.freed = true
 	//free connection
 	if phead.idx < pclient.max_count { //valid idx will put again
 		pclient.idle_queue <- phead.idx
@@ -326,11 +324,11 @@ func init_redis_client(pclient *RedisClient, pconfig *CommConfig, addr string, a
 	//pre alloc uplimit
 	pclient.conn_stats = make([]int8, HARD_MAX_CONN_LIMIT)
 	pclient.conns = make([]redis.Conn, HARD_MAX_CONN_LIMIT)
-	pclient.exit_queue = make(chan bool , 1)                      //exit
+	pclient.exit_queue = make(chan bool, 1)                  //exit
 	pclient.idle_queue = make(chan int, HARD_MAX_CONN_LIMIT) //non-block
 	pclient.err_queue = make(chan int, HARD_MAX_CONN_LIMIT)
 	pclient.block_queue = make(chan int8, block_queue_len)
-	pclient.reset_queue = make(chan bool , 10) //avoid block
+	pclient.reset_queue = make(chan bool, 10) //avoid block
 
 	log.Info("%s success! addr:%s", _func_, addr)
 	return
@@ -405,7 +403,7 @@ func close_redis_conn(pclient *RedisClient, spec_conn []int) {
 	if spec_conn == nil {
 		//try empty all idle info
 		idle_num := len(pclient.idle_queue)
-		for i:=0; i<idle_num; i++ {
+		for i := 0; i < idle_num; i++ {
 			select {
 			case <-pclient.idle_queue:
 				//nothing
@@ -417,7 +415,7 @@ func close_redis_conn(pclient *RedisClient, spec_conn []int) {
 		pclient.Lock()
 		//close all
 		for i := 0; i < pclient.max_count; i++ {
-			if pclient.conn_stats[i]!=REDIS_CONN_NONE && pclient.conns[i]!=nil {
+			if pclient.conn_stats[i] != REDIS_CONN_NONE && pclient.conns[i] != nil {
 				err := pclient.conns[i].Close()
 				if err != nil {
 					log.Err("%s close spec conn:%d failed! addr:%s err:%v", _func_, i, pclient.addr, err)
@@ -440,7 +438,7 @@ func close_redis_conn(pclient *RedisClient, spec_conn []int) {
 	for i := 0; i < len(spec_conn); i++ {
 		idx := spec_conn[i]
 		log.Info("%s try-close spec conn:%d", _func_, idx)
-		if pclient.conn_stats[idx]!=REDIS_CONN_NONE && pclient.conns[idx]!=nil {
+		if pclient.conn_stats[idx] != REDIS_CONN_NONE && pclient.conns[idx] != nil {
 			err := pclient.conns[idx].Close()
 			if err != nil {
 				log.Err("%s close spec conn:%d failed! addr:%s err:%v", _func_, idx, pclient.addr, err)
@@ -475,7 +473,7 @@ func (pclient *RedisClient) redis_client_manage(pconfig *CommConfig, start bool)
 		case _ = <-pclient.exit_queue:
 			log.Info("%s detect exit flg!", _func_)
 			//close all connection
-			close_redis_conn(pclient , nil)
+			close_redis_conn(pclient, nil)
 			return
 		default: //nothing
 			//nothing
@@ -486,8 +484,8 @@ func (pclient *RedisClient) redis_client_manage(pconfig *CommConfig, start bool)
 			err_count := len(pclient.err_queue)
 			spec_conn := make([]int, err_count)
 			var idx int = -1
-			for i:=0; i<err_count; i++ {
-				idx = <- pclient.err_queue
+			for i := 0; i < err_count; i++ {
+				idx = <-pclient.err_queue
 				spec_conn[i] = idx
 			}
 			log.Info("%s try to close err connection! err_conn:%v", _func_, spec_conn)
@@ -496,9 +494,9 @@ func (pclient *RedisClient) redis_client_manage(pconfig *CommConfig, start bool)
 
 		//check reset
 		if len(pclient.reset_queue) > 0 {
-			for i:=0; i<len(pclient.reset_queue); i++{
+			for i := 0; i < len(pclient.reset_queue); i++ {
 				select {
-				case <- pclient.reset_queue: //empty queue
+				case <-pclient.reset_queue: //empty queue
 					//nothing
 				default:
 					//nothing
@@ -506,7 +504,6 @@ func (pclient *RedisClient) redis_client_manage(pconfig *CommConfig, start bool)
 			}
 			pclient.reset_redis_attr()
 		}
-
 
 		//connect to normal
 		curr_conn := pclient.conn_count
@@ -560,12 +557,12 @@ func (pclient *RedisClient) reset_redis_attr() {
 	log := pclient.comm_config.Log
 
 	//check reset attr
-	if (pclient.reset_attr.addr!="" && pclient.reset_attr.addr!=pclient.addr) || (pclient.reset_attr.auth!="" && pclient.reset_attr.auth!=pclient.auth) {
-		log.Info("%s addr or pass chged! addr:%s-->%s pass:%s-->%s" , _func_ , pclient.addr , pclient.reset_attr.addr ,
-			pclient.auth , pclient.reset_attr.auth)
+	if (pclient.reset_attr.addr != "" && pclient.reset_attr.addr != pclient.addr) || (pclient.reset_attr.auth != "" && pclient.reset_attr.auth != pclient.auth) {
+		log.Info("%s addr or pass chged! addr:%s-->%s pass:%s-->%s", _func_, pclient.addr, pclient.reset_attr.addr,
+			pclient.auth, pclient.reset_attr.auth)
 
 		//close all conn
-		close_redis_conn(pclient , nil)
+		close_redis_conn(pclient, nil)
 
 		//reset addr & pass
 		if pclient.reset_attr.addr != "" {
@@ -580,7 +577,7 @@ func (pclient *RedisClient) reset_redis_attr() {
 
 	//check max-conn
 	for {
-		if pclient.reset_attr.max_count<=0 || pclient.max_count==pclient.reset_attr.max_count {
+		if pclient.reset_attr.max_count <= 0 || pclient.max_count == pclient.reset_attr.max_count {
 			//nothing
 			break
 		}
@@ -591,27 +588,27 @@ func (pclient *RedisClient) reset_redis_attr() {
 		}
 
 		if pclient.reset_attr.max_count < pclient.max_count {
-			log.Info("%s warning! new max_count:%d < curr max_count:%d! it may result some request fail!" , _func_ ,
-				pclient.reset_attr.max_count , pclient.max_count)
+			log.Info("%s warning! new max_count:%d < curr max_count:%d! it may result some request fail!", _func_,
+				pclient.reset_attr.max_count, pclient.max_count)
 		}
 
-		log.Info("%s max_count %d --> %d" , _func_ , pclient.max_count , pclient.reset_attr.max_count)
+		log.Info("%s max_count %d --> %d", _func_, pclient.max_count, pclient.reset_attr.max_count)
 		pclient.max_count = pclient.reset_attr.max_count
 		break
 	}
 
 	//check normal-conn
-	if pclient.reset_attr.normal_count>0  && pclient.reset_attr.normal_count!=pclient.normal_count{
+	if pclient.reset_attr.normal_count > 0 && pclient.reset_attr.normal_count != pclient.normal_count {
 		if pclient.reset_attr.normal_count > pclient.max_count {
-			log.Err("%s normal_count:%d > max_count:%d. set fail!" , _func_ , pclient.reset_attr.normal_count ,
+			log.Err("%s normal_count:%d > max_count:%d. set fail!", _func_, pclient.reset_attr.normal_count,
 				pclient.max_count)
 		} else {
-			log.Info("%s normal_count %d --> %d" , _func_ , pclient.normal_count , pclient.reset_attr.normal_count)
+			log.Info("%s normal_count %d --> %d", _func_, pclient.normal_count, pclient.reset_attr.normal_count)
 			pclient.normal_count = pclient.reset_attr.normal_count
 		}
 	}
 
-    log.Info("%s finish! reset attr:%v" , _func_ , pclient.reset_attr)
+	log.Info("%s finish! reset attr:%v", _func_, pclient.reset_attr)
 	pclient.reset_attr.normal_count = 0
 	pclient.reset_attr.max_count = 0
 	pclient.reset_attr.addr = ""

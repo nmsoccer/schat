@@ -21,13 +21,13 @@ func SendHeartBeatMsg(arg interface{}) {
 	var ss_msg ss.SSMsg
 	pheart := new(ss.MsgHeartBeatReq)
 	pheart.Ts = curr_ts
-	err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_HEART_BEAT_REQ , pheart)
+	err := comm.FillSSPkg(&ss_msg, ss.SS_PROTO_TYPE_HEART_BEAT_REQ, pheart)
 	if err != nil {
-		log.Err("%s gen ss_msg failed! err:%v" , _func_ , err)
+		log.Err("%s gen ss_msg failed! err:%v", _func_, err)
 	} else {
 		//send msg
 		for _, target_id := range pconfig.FileConfig.TargetServs {
-			SendToServ(pconfig , target_id , &ss_msg)
+			SendToServ(pconfig, target_id, &ss_msg)
 		}
 	}
 

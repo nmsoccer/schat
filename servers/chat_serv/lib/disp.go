@@ -16,20 +16,23 @@ func RecvDispMsg(pconfig *Config, pdisp *ss.MsgDisp) {
 		pmsg := pdisp.GetHello()
 		log.Debug("%s hello! content:%s", _func_, pmsg.Content)
 	case ss.DISP_PROTO_TYPE_DISP_APPLY_GROUP_REQ:
-        pmsg := pdisp.GetApplyGroupReq()
-        RecvApplyGroupReq(pconfig , pmsg , pdisp)
+		pmsg := pdisp.GetApplyGroupReq()
+		RecvApplyGroupReq(pconfig, pmsg, pdisp)
 	case ss.DISP_PROTO_TYPE_DISP_ENTER_GROUP_REQ:
 		pmsg := pdisp.GetEnterGroupReq()
-		RecvEnterGroupReq(pconfig , pmsg , pdisp.FromServer)
+		RecvEnterGroupReq(pconfig, pmsg, pdisp.FromServer)
 	case ss.DISP_PROTO_TYPE_DISP_SEND_CHAT_REQ:
 		pmsg := pdisp.GetSendChatReq()
-		RecvSendChatReq(pconfig , pmsg , int(pdisp.FromServer))
+		RecvSendChatReq(pconfig, pmsg, int(pdisp.FromServer))
 	case ss.DISP_PROTO_TYPE_DISP_COMMON_NOTIFY:
 		pmsg := pdisp.GetCommonNotify()
-		RecvCommNotify(pconfig , pmsg , int(pdisp.FromServer))
+		RecvCommNotify(pconfig, pmsg, int(pdisp.FromServer))
 	case ss.DISP_PROTO_TYPE_DISP_QUERY_GROUP_REQ:
 		pmsg := pdisp.GetQueryGroupReq()
-		RecvQueryGroupReq(pconfig , pmsg , int(pdisp.FromServer))
+		RecvQueryGroupReq(pconfig, pmsg, int(pdisp.FromServer))
+	case ss.DISP_PROTO_TYPE_DISP_CHG_GROUP_ATTR_REQ:
+		pmsg := pdisp.GetChgGroupAttrReq()
+		RecvChgGroupAttrReq(pconfig, pmsg, int(pdisp.FromServer))
 	default:
 		log.Err("%s convert disp-msg fail! unkown disp_proto:%d", _func_, pdisp.ProtoType)
 	}
@@ -37,20 +40,19 @@ func RecvDispMsg(pconfig *Config, pdisp *ss.MsgDisp) {
 	return
 }
 
-
-func RecvCommNotify(pconfig *Config , pnotify *ss.MsgCommonNotify , src_serv int) {
+func RecvCommNotify(pconfig *Config, pnotify *ss.MsgCommonNotify, src_serv int) {
 	var _func_ = "<RecvCommNotify>"
 	log := pconfig.Comm.Log
 
 	//log.Debug("%s notify:%d src_serv:%d" , _func_ , pnotify.NotifyType , src_serv)
 	switch pnotify.NotifyType {
 	case ss.COMMON_NOTIFY_TYPE_NOTIFY_EXIT_GROUP:
-		RecvExitGroupNotify(pconfig , pnotify)
+		RecvExitGroupNotify(pconfig, pnotify)
 	case ss.COMMON_NOTIFY_TYPE_NOTIFY_DEL_GROUP:
-		RecvDelGroupNotify(pconfig , pnotify)
+		RecvDelGroupNotify(pconfig, pnotify)
 	case ss.COMMON_NOTIFY_TYPE_NOTIFY_KICK_GROUP:
-		RecvKickGroupNotify(pconfig , pnotify)
+		RecvKickGroupNotify(pconfig, pnotify)
 	default:
-		log.Err("%s unhandled notify:%d src:%d" , _func_ , pnotify.NotifyType , src_serv)
+		log.Err("%s unhandled notify:%d src:%d", _func_, pnotify.NotifyType, src_serv)
 	}
 }

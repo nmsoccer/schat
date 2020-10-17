@@ -41,9 +41,13 @@ const (
 	CS_PROTO_SYNC_GROUP_INFO = 24
 	CS_PROTO_FETCH_USER_PROFILE_REQ = 25
 	CS_PROTO_FETCH_USER_PROFILE_RSP = 26
+	CS_PROTO_CHG_GROUP_ATTR_REQ = 27
+	CS_PROTO_CHG_GROUP_ATTR_RSP = 28
+	CS_PROTO_GROUP_GROUND_REQ = 29
+	CS_PROTO_GROUP_GROUND_RSP = 30
 	//PS:new proto added should modify 'Proto2Msg' function
 	//proto end = last + 1
-	CS_PROTO_END = 27
+	CS_PROTO_END = 31
 )
 
 /*
@@ -165,6 +169,14 @@ func Proto2Msg(proto_id int) (interface{}, error) {
 		pmsg = new(CSFetchUserProfileReq)
 	case CS_PROTO_FETCH_USER_PROFILE_RSP:
 		pmsg = new(CSFetchUserProfileRsp)
+	case CS_PROTO_CHG_GROUP_ATTR_REQ:
+		pmsg = new(CSChgGroupAttrReq)
+	case CS_PROTO_CHG_GROUP_ATTR_RSP:
+		pmsg = new(CSChgGroupAttrRsp)
+	case CS_PROTO_GROUP_GROUND_REQ:
+		pmsg = new(CSGroupGroundReq)
+	case CS_PROTO_GROUP_GROUND_RSP:
+		pmsg = new(CSGroupGroundRsp)
 	default:
 		return nil, errors.New("proto illegal!")
 	}

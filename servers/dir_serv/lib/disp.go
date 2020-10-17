@@ -17,7 +17,7 @@ func RecvDispMsg(pconfig *Config, pdisp *ss.MsgDisp) {
 		log.Debug("%s hello! content:%s", _func_, pmsg.Content)
 	case ss.DISP_PROTO_TYPE_DISP_COMMON_NOTIFY:
 		pmsg := pdisp.GetCommonNotify()
-		RecvCommNotify(pconfig , pmsg , int(pdisp.FromServer))
+		RecvCommNotify(pconfig, pmsg, int(pdisp.FromServer))
 	default:
 		log.Err("%s  unkown disp_proto:%d", _func_, pdisp.ProtoType)
 	}
@@ -25,19 +25,21 @@ func RecvDispMsg(pconfig *Config, pdisp *ss.MsgDisp) {
 	return
 }
 
-func RecvCommNotify(pconfig *Config , pnotify *ss.MsgCommonNotify , src_serv int) {
-    var _func_ = "<RecvCommNotify>"
-    log := pconfig.Comm.Log
+func RecvCommNotify(pconfig *Config, pnotify *ss.MsgCommonNotify, src_serv int) {
+	var _func_ = "<RecvCommNotify>"
+	log := pconfig.Comm.Log
 
-    //log.Debug("%s notify:%d src_serv:%d" , _func_ , pnotify.NotifyType , src_serv)
-    switch pnotify.NotifyType {
+	//log.Debug("%s notify:%d src_serv:%d" , _func_ , pnotify.NotifyType , src_serv)
+	switch pnotify.NotifyType {
 	case ss.COMMON_NOTIFY_TYPE_NOTIFY_SERV_LOAD:
-		RecvLoadNotify(pconfig , pnotify)
+		RecvLoadNotify(pconfig, pnotify)
 	case ss.COMMON_NOTIFY_TYPE_NOTIFY_FILE_ADDR:
-		RecvFileAddrNotify(pconfig , pnotify , src_serv)
+		RecvFileAddrNotify(pconfig, pnotify, src_serv)
 	case ss.COMMON_NOTIFY_TYPE_NOTIFY_FILE_TOKEN:
-		RecvFileTokenNotify(pconfig , pnotify , src_serv)
+		RecvFileTokenNotify(pconfig, pnotify, src_serv)
+	case ss.COMMON_NOTIFY_TYPE_NOTIFY_UPLOAD_FILE:
+		RecvUploadFileNotify(pconfig, pnotify)
 	default:
-		log.Err("%s unhandled notify:%d src:%d" , _func_ , pnotify.NotifyType , src_serv)
+		log.Err("%s unhandled notify:%d src:%d", _func_, pnotify.NotifyType, src_serv)
 	}
 }

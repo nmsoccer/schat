@@ -9,11 +9,11 @@ import (
 
 type FileConfig struct {
 	DispServList []int    `json:"disp_serv_list"`
-	LogFile       string   `json:"log_file"`
+	LogFile      string   `json:"log_file"`
 	DbServe      int      `json:"db_serv"`
 	MaxGroupCnt  int      `json:"max_group_count"` //reach grp will use simple lru to eliminate
-	ManageAddr    []string `json:"manage_addr"`
-	MonitorInv    int      `json:"monitor_inv"` //monitor interval seconds
+	ManageAddr   []string `json:"manage_addr"`
+	MonitorInv   int      `json:"monitor_inv"` //monitor interval seconds
 }
 
 type Config struct {
@@ -29,7 +29,7 @@ type Config struct {
 	ReportCmdToken int64
 	ReportServ     *comm.ReportServ //report to manger
 	//local
-	GroupList      *OnLineGroupList
+	GroupList *OnLineGroupList
 }
 
 //Comm Config Setting
@@ -79,7 +79,6 @@ func LocalSet(pconfig *Config) bool {
 	pconfig.GroupList.group_map = make(map[int64]*OnLineGroup)
 	pconfig.GroupList.online_count = 0
 
-
 	//start report serv
 	pconfig.ReportServ = comm.StartReport(pconfig.Comm, pconfig.ProcId, pconfig.ProcName, pconfig.FileConfig.ManageAddr, comm.REPORT_METHOD_ALL,
 		pconfig.FileConfig.MonitorInv)
@@ -93,7 +92,7 @@ func LocalSet(pconfig *Config) bool {
 	pconfig.Comm.TickPool.AddTicker("heart_beat", comm.TICKER_TYPE_CIRCLE, 0, comm.PERIOD_HEART_BEAT_DEFAULT, SendHeartBeatMsg, pconfig)
 	pconfig.Comm.TickPool.AddTicker("report_sync", comm.TICKER_TYPE_CIRCLE, 0, comm.PERIOD_REPORT_SYNC_DEFAULT, ReportSyncServer, pconfig)
 	pconfig.Comm.TickPool.AddTicker("recv_cmd", comm.TICKER_TYPE_CIRCLE, 0, comm.PERIOD_RECV_REPORT_CMD_DEFAULT, RecvReportCmd, pconfig)
-	pconfig.Comm.TickPool.AddTicker("save_group" , comm.TICKER_TYPE_CIRCLE , 10000 , PERIOD_CHECK_SAVE_CHAT_GROUP , SaveGroupOnTick , pconfig)
+	pconfig.Comm.TickPool.AddTicker("save_group", comm.TICKER_TYPE_CIRCLE, 10000, PERIOD_CHECK_SAVE_CHAT_GROUP, SaveGroupOnTick, pconfig)
 	return true
 }
 

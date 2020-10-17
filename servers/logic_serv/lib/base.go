@@ -15,7 +15,7 @@ type FileConfig struct {
 	DbServ        int      `json:"db_serv"`
 	LogFile       string   `json:"log_file"`
 	ManageAddr    []string `json:"manage_addr"`
-	NetLogAddr    []string `json:"net_log_addr"` //net log recver addr list
+	NetLogAddr    []string `json:"net_log_addr"`   //net log recver addr list
 	NetLogMethod  int      `json:"net_log_method"` //refer NETLOG_METHOD_XX
 	MaxOnline     int      `json:"max_online"`
 	ClientTimeout int      `json:"client_timeout"`
@@ -86,17 +86,16 @@ func LocalSet(pconfig *Config) bool {
 
 	//NetLog
 	var bad_addr []string
-	pconfig.NetLog , bad_addr = llog.OpenNetLog(pconfig.ProcId , pconfig.FileConfig.NetLogAddr , pconfig.FileConfig.NetLogMethod , llog.NETLOG_DEFAULT_DEGREE)
+	pconfig.NetLog, bad_addr = llog.OpenNetLog(pconfig.ProcId, pconfig.FileConfig.NetLogAddr, pconfig.FileConfig.NetLogMethod, llog.NETLOG_DEFAULT_DEGREE)
 	if pconfig.NetLog == nil {
-		log.Err("%s OpenNetLog:%v Failed!" , _func_ , pconfig.FileConfig.NetLogAddr)
+		log.Err("%s OpenNetLog:%v Failed!", _func_, pconfig.FileConfig.NetLogAddr)
 		return false
 	}
 	if len(bad_addr) > 0 {
-		log.Err("%s OpenNetLog:%v some addr fail! failed_addr:%v" , _func_ , pconfig.FileConfig.NetLogAddr , bad_addr)
+		log.Err("%s OpenNetLog:%v some addr fail! failed_addr:%v", _func_, pconfig.FileConfig.NetLogAddr, bad_addr)
 		return false
 	}
-	log.Info("%s OpenNetLog:%v Method:%d Degree:%d success!" , _func_ , pconfig.FileConfig.NetLogAddr , pconfig.FileConfig.NetLogMethod , llog.NETLOG_DEFAULT_DEGREE)
-
+	log.Info("%s OpenNetLog:%v Method:%d Degree:%d success!", _func_, pconfig.FileConfig.NetLogAddr, pconfig.FileConfig.NetLogMethod, llog.NETLOG_DEFAULT_DEGREE)
 
 	//users
 	pconfig.Users = new(OnLineList)
@@ -133,8 +132,8 @@ func LocalSet(pconfig *Config) bool {
 	pconfig.Comm.TickPool.AddTicker("check_client_heart", comm.TICKER_TYPE_CIRCLE, 0, int64(pconfig.FileConfig.ClientTimeout*1000),
 		CheckClientTimeout, pconfig)
 	pconfig.Comm.TickPool.AddTicker("recv_cmd", comm.TICKER_TYPE_CIRCLE, 0, comm.PERIOD_RECV_REPORT_CMD_DEFAULT, RecvReportCmd, pconfig)
-	pconfig.Comm.TickPool.AddTicker("tick_fetch" , comm.TICKER_TYPE_CIRCLE , 0 , PERIOD_FETCH_APPLY_GROUP_INTV , TickFetchApplyGroup , pconfig)
-	pconfig.Comm.TickPool.AddTicker("tick_online" , comm.TICKER_TYPE_CIRCLE , 0 , PERIOD_NOTIFY_USERS_ONLINE , TickNotifyOnline , pconfig)
+	pconfig.Comm.TickPool.AddTicker("tick_fetch", comm.TICKER_TYPE_CIRCLE, 0, PERIOD_FETCH_APPLY_GROUP_INTV, TickFetchApplyGroup, pconfig)
+	pconfig.Comm.TickPool.AddTicker("tick_online", comm.TICKER_TYPE_CIRCLE, 0, PERIOD_NOTIFY_USERS_ONLINE, TickNotifyOnline, pconfig)
 	return true
 }
 
@@ -142,7 +141,6 @@ func ServerExit(pconfig *Config) {
 	//Save Roles
 	SaveRolesOnExit(pconfig)
 	time.Sleep(1 * time.Second)
-
 
 	//close proc
 	if pconfig.Comm.Proc != nil {
@@ -153,7 +151,6 @@ func ServerExit(pconfig *Config) {
 	if pconfig.NetLog != nil {
 		pconfig.NetLog.Close()
 	}
-
 
 	//close report_serv
 	if pconfig.ReportServ != nil {

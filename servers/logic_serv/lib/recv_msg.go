@@ -66,47 +66,55 @@ func RecvMsg(pconfig *Config) int64 {
 		case ss.SS_PROTO_TYPE_LOGOUT_REQ:
 			RecvLogoutReq(pconfig, ss_msg.GetLogoutReq())
 		case ss.SS_PROTO_TYPE_REG_REQ:
-			DirecToDb(pconfig , ss_msg.ProtoType , pmsg.sender , msg);
+			//DirecToDb(pconfig , ss_msg.ProtoType , pmsg.sender , msg);
+			SendToDb(pconfig, msg)
 		case ss.SS_PROTO_TYPE_REG_RSP:
-			DirecToConnect(pconfig , ss_msg.ProtoType , pmsg.sender , msg);
+			//DirecToConnect(pconfig , ss_msg.ProtoType , pmsg.sender , msg);
+			SendToConnect(pconfig, msg)
 		case ss.SS_PROTO_TYPE_CREATE_GROUP_REQ:
-			RecvCreateGroupReq(pconfig , ss_msg.GetCreateGroupReq() , msg)
+			RecvCreateGroupReq(pconfig, ss_msg.GetCreateGroupReq(), msg)
 		case ss.SS_PROTO_TYPE_CREATE_GROUP_RSP:
-			RecvCreateGroupRsp(pconfig , ss_msg.GetCreateGroupRsp() , msg)
+			RecvCreateGroupRsp(pconfig, ss_msg.GetCreateGroupRsp(), msg)
 		case ss.SS_PROTO_TYPE_USE_DISP_PROTO:
-			RecvDispMsg(pconfig , ss_msg.GetMsgDisp())
+			RecvDispMsg(pconfig, ss_msg.GetMsgDisp())
 		case ss.SS_PROTO_TYPE_APPLY_GROUP_REQ:
-			RecvApplyGroupReq(pconfig , ss_msg.GetApplyGroupReq())
+			RecvApplyGroupReq(pconfig, ss_msg.GetApplyGroupReq())
 		case ss.SS_PROTO_TYPE_FETCH_APPLY_GROUP_RSP:
-			RecvFetchApplyGroupRsp(pconfig , ss_msg.GetFetchApplyRsp())
+			RecvFetchApplyGroupRsp(pconfig, ss_msg.GetFetchApplyRsp())
 		case ss.SS_PROTO_TYPE_APPLY_GROUP_AUDIT:
-			RecvApplyGroupAudit(pconfig , ss_msg.GetApplyGroupAudit() , msg)
+			RecvApplyGroupAudit(pconfig, ss_msg.GetApplyGroupAudit(), msg)
 		case ss.SS_PROTO_TYPE_COMMON_NOTIFY:
-			RecvCommonNotify(pconfig , ss_msg.GetCommonNotify() , pmsg.sender)
+			RecvCommonNotify(pconfig, ss_msg.GetCommonNotify(), pmsg.sender)
 		case ss.SS_PROTO_TYPE_FETCH_AUDIT_GROUP_RSP:
-			RecvFetchAuditGroupRsp(pconfig , ss_msg.GetFetchAuditRsp())
+			RecvFetchAuditGroupRsp(pconfig, ss_msg.GetFetchAuditRsp())
 		case ss.SS_PROTO_TYPE_SEND_CHAT_REQ:
-			RecvSendChatReq(pconfig , ss_msg.GetSendChatReq())
+			RecvSendChatReq(pconfig, ss_msg.GetSendChatReq())
 		case ss.SS_PROTO_TYPE_FETCH_CHAT_RSP:
-			RecvFetchChatRsp(pconfig , ss_msg.GetFetchChatRsp())
+			RecvFetchChatRsp(pconfig, ss_msg.GetFetchChatRsp())
 		case ss.SS_PROTO_TYPE_EXIT_GROUP_REQ:
-			RecvExitGroupReq(pconfig , ss_msg.GetExitGroupReq())
+			RecvExitGroupReq(pconfig, ss_msg.GetExitGroupReq())
 		case ss.SS_PROTO_TYPE_EXIT_GROUP_RSP:
-			RecvExitGroupRsp(pconfig , ss_msg.GetExitGroupRsp())
+			RecvExitGroupRsp(pconfig, ss_msg.GetExitGroupRsp())
 		case ss.SS_PROTO_TYPE_FETCH_CHAT_REQ:
-			RecvFetchChatReq(pconfig , ss_msg.GetFetchChatReq())
+			RecvFetchChatReq(pconfig, ss_msg.GetFetchChatReq())
 		case ss.SS_PROTO_TYPE_KICK_GROUP_REQ:
-			RecvKickGroupReq(pconfig , ss_msg.GetKickGroupReq())
+			RecvKickGroupReq(pconfig, ss_msg.GetKickGroupReq())
 		case ss.SS_PROTO_TYPE_KICK_GROUP_RSP:
-			RecvKickGroupRsp(pconfig , ss_msg.GetKickGroupRsp())
+			RecvKickGroupRsp(pconfig, ss_msg.GetKickGroupRsp())
 		case ss.SS_PROTO_TYPE_FETCH_OFFLINE_INFO_RSP:
-			RecvFetchOfflineInfoRsp(pconfig , ss_msg.GetFetchOfflineInfoRsp())
+			RecvFetchOfflineInfoRsp(pconfig, ss_msg.GetFetchOfflineInfoRsp())
 		case ss.SS_PROTO_TYPE_QUERY_GROUP_REQ:
-			RecvQueryGroupReq(pconfig , ss_msg.GetQueryGroupReq())
+			RecvQueryGroupReq(pconfig, ss_msg.GetQueryGroupReq())
 		case ss.SS_PROTO_TYPE_FETCH_USER_PROFILE_REQ:
-			RecvFetchUserProfileReq(pconfig , ss_msg.GetFetchUserProfileReq())
+			RecvFetchUserProfileReq(pconfig, ss_msg.GetFetchUserProfileReq())
 		case ss.SS_PROTO_TYPE_FETCH_USER_PROFILE_RSP:
-			RecvFetchUserProfileRsp(pconfig , ss_msg.GetFetchUserProfileRsp())
+			RecvFetchUserProfileRsp(pconfig, ss_msg.GetFetchUserProfileRsp())
+		case ss.SS_PROTO_TYPE_CHG_GROUP_ATTR_REQ:
+			RecvChgGroupAttrReq(pconfig, ss_msg.GetChgGroupAttrReq())
+		case ss.SS_PROTO_TYPE_GROUP_GROUND_REQ:
+			RecvGroupGroundReq(pconfig, ss_msg.GetGroupGroundReq())
+		case ss.SS_PROTO_TYPE_GROUP_GROUND_RSP:
+			RecvGroupGroundRsp(pconfig, ss_msg.GetGroupGroundRsp(), msg)
 		default:
 			log.Err("%s fail! unknown proto type:%v", _func_, ss_msg.ProtoType)
 		}
@@ -120,27 +128,27 @@ func RecvMsg(pconfig *Config) int64 {
 	}
 }
 
-func DirecToDb(pconfig *Config , proto_id ss.SS_PROTO_TYPE , from int , msg []byte) {
-	var _func_ = "<DirecToDb>";
-	log := pconfig.Comm.Log;
+func DirecToDb(pconfig *Config, proto_id ss.SS_PROTO_TYPE, from int, msg []byte) {
+	var _func_ = "<DirecToDb>"
+	log := pconfig.Comm.Log
 
-	log.Debug("%s proto:%v from:%d" , _func_ , proto_id , from);
+	log.Debug("%s proto:%v from:%d", _func_, proto_id, from)
 	//to db
 	ok := SendToDb(pconfig, msg)
 	if !ok {
-		log.Err("%s send failed! proto:%v from:%d", _func_ , proto_id , from);
+		log.Err("%s send failed! proto:%v from:%d", _func_, proto_id, from)
 		return
 	}
 }
 
-func DirecToConnect(pconfig *Config , proto_id ss.SS_PROTO_TYPE , from int , msg []byte) {
-	var _func_ = "<DirecToConnect>";
-	log := pconfig.Comm.Log;
+func DirecToConnect(pconfig *Config, proto_id ss.SS_PROTO_TYPE, from int, msg []byte) {
+	var _func_ = "<DirecToConnect>"
+	log := pconfig.Comm.Log
 
-	log.Debug("%s proto:%v from:%d" , _func_ , proto_id , from);
+	log.Debug("%s proto:%v from:%d", _func_, proto_id, from)
 	ok := SendToConnect(pconfig, msg)
 	if !ok {
-		log.Err("%s send to connect failed! proto:%v from:%d", _func_, proto_id , from);
+		log.Err("%s send to connect failed! proto:%v from:%d", _func_, proto_id, from)
 		return
 	}
 }

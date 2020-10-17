@@ -8,11 +8,12 @@ import (
 )
 
 type UserOnLine struct {
-	login_ts  int64
-	hearbeat  int64
+	login_ts             int64
+	hearbeat             int64
 	fetch_apply_complete bool //if fetch apply group complete
-	last_notify_online int64
-	user_info *ss.UserInfo
+	last_notify_online   int64
+	grp_ground_start     int32 //start index of query visible group
+	user_info            *ss.UserInfo
 }
 
 type OnLineList struct {
@@ -37,7 +38,7 @@ func RecvLoginReq(pconfig *Config, preq *ss.MsgLoginReq, msg []byte, from int) {
 
 	//log
 	log.Debug("%s login: user:%s pass:%s device:%s c_key:%v from:%d version:%s", _func_, preq.GetName(), preq.GetPass(), preq.GetDevice(),
-		preq.GetCKey(), from , preq.Version)
+		preq.GetCKey(), from, preq.Version)
 
 	//direct send
 	ok := SendToDb(pconfig, msg)
@@ -100,16 +101,16 @@ func RecvLoginRsp(pconfig *Config, prsp *ss.MsgLoginRsp, msg []byte) {
 		var ss_msg ss.SSMsg
 
 		//fill
-		err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_LOGIN_RSP , prsp)
+		err := comm.FillSSPkg(&ss_msg, ss.SS_PROTO_TYPE_LOGIN_RSP, prsp)
 		if err != nil {
-			log.Err("%s gen ss_msg failed! err:%v" , _func_ , err)
+			log.Err("%s gen ss_msg failed! err:%v", _func_, err)
 			return
 		}
 
-		SendToConnect(pconfig , &ss_msg)
+		SendToConnect(pconfig, &ss_msg)
 
 		//after login success
-		AfterLoginSucess(pconfig , uid)
+		AfterLoginSucess(pconfig, uid)
 		return
 	default:
 		//nothing to do
@@ -132,7 +133,7 @@ func SendDupUserKick(pconfig *Config, prsp *ss.MsgLoginRsp) {
 	pkick := new(ss.MsgDispKickDupUser)
 	pkick.TargetUid = prsp.Uid
 	pss_msg, err := comm.GenDispMsg(ss.DISP_MSG_TARGET_NON_SERVER, ss.DISP_MSG_METHOD_SPEC, ss.DISP_PROTO_TYPE_DISP_KICK_DUPLICATE_USER, int(prsp.OnlineLogic),
-		pconfig.ProcId, 0 , pkick)
+		pconfig.ProcId, 0, pkick)
 	if err != nil {
 		log.Err("%s generate disp msg failed! uid:%d err:%v", _func_, err)
 		return
@@ -170,7 +171,6 @@ func RecvDupUserKick(pconfig *Config, pmsg *ss.MsgDispKickDupUser, from int) {
 	logout.Reason = ss.USER_LOGOUT_REASON_LOGOUT_SERVER_KICK_RECONN
 	RecvLogoutReq(pconfig, &logout)
 }
-
 
 func RecvLogoutReq(pconfig *Config, plogout *ss.MsgLogoutReq) {
 	var _func_ = "<RecvLogoutReq>"
@@ -210,12 +210,12 @@ func UserLogout(pconfig *Config, uid int64, reason ss.USER_LOGOUT_REASON) {
 		pLogoutReq := new(ss.MsgLogoutReq)
 		pLogoutReq.Uid = uid
 		pLogoutReq.Reason = ss.USER_LOGOUT_REASON_LOGOUT_OFFLINE_USER
-		err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_LOGOUT_REQ , pLogoutReq)
+		err := comm.FillSSPkg(&ss_msg, ss.SS_PROTO_TYPE_LOGOUT_REQ, pLogoutReq)
 		if err != nil {
 			log.Err("%s pack failed! uid:%d reason:%d err:%v", _func_, uid, reason, err)
 		}
 		SendToDb(pconfig, &ss_msg)
-		NotifyOnline(pconfig , uid , NOTIFY_ONLINE_FLAG_LOGOUT)
+		NotifyOnline(pconfig, uid, NOTIFY_ONLINE_FLAG_LOGOUT)
 		return
 	}
 
@@ -232,7 +232,7 @@ func UserLogout(pconfig *Config, uid int64, reason ss.USER_LOGOUT_REASON) {
 	pLogoutReq.UserInfo = ponline.user_info
 
 	//fill and send
-	err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_LOGOUT_REQ , pLogoutReq)
+	err := comm.FillSSPkg(&ss_msg, ss.SS_PROTO_TYPE_LOGOUT_REQ, pLogoutReq)
 	if err != nil {
 		log.Err("%s pack failed! uid:%d reason:%d err:%v", _func_, uid, reason, err)
 	} else {
@@ -253,7 +253,7 @@ func UserLogout(pconfig *Config, uid int64, reason ss.USER_LOGOUT_REASON) {
 	}
 	delete(pconfig.Users.user_map, uid)
 	log.Info("%s done! uid:%v reason:%v curr_count:%d", _func_, uid, reason, pconfig.Users.curr_online)
-	NotifyOnline(pconfig , uid , NOTIFY_ONLINE_FLAG_LOGOUT)
+	NotifyOnline(pconfig, uid, NOTIFY_ONLINE_FLAG_LOGOUT)
 	return
 }
 
@@ -269,9 +269,8 @@ func SendLogoutRsp(pconfig *Config, uid int64, reason ss.USER_LOGOUT_REASON, msg
 	pLogoutRsp.Reason = reason
 	pLogoutRsp.Msg = msg
 
-
 	//fill
-	err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_LOGOUT_RSP , pLogoutRsp)
+	err := comm.FillSSPkg(&ss_msg, ss.SS_PROTO_TYPE_LOGOUT_RSP, pLogoutRsp)
 	if err != nil {
 		log.Err("%s gen ss failed! err:%v uid:%v reason:%v", _func_, err, uid, reason)
 		return
@@ -318,24 +317,23 @@ func InitUserInfo(pconfig *Config, pinfo *ss.UserInfo, uid int64) {
 }
 
 //after login success
-func AfterLoginSucess(pconfig *Config , uid int64) {
+func AfterLoginSucess(pconfig *Config, uid int64) {
 	var _func_ = "<AfterLoginSucess>"
 	log := pconfig.Comm.Log
 
 	//check online
-	puser := GetUserInfo(pconfig , uid)
+	puser := GetUserInfo(pconfig, uid)
 	if puser == nil {
-		log.Err("%s uid:%d offline!" , _func_ , uid)
+		log.Err("%s uid:%d offline!", _func_, uid)
 		return
 	}
 
 	//Handles
-	SendFetchApplyGroupReq(pconfig , uid)
-	SendFetchAuditGroupReq(pconfig , uid)
-	CheckEnteringGroup(pconfig , uid)
-	SendFetchChatReq(pconfig , uid , 0)
-	NotifyOnline(pconfig , uid , NOTIFY_ONLINE_FLAG_LOGIN)
-	QueryFileServAddr(pconfig , uid)
-	SendFetchOfflineInfoReq(pconfig , uid)
+	SendFetchApplyGroupReq(pconfig, uid)
+	SendFetchAuditGroupReq(pconfig, uid)
+	CheckEnteringGroup(pconfig, uid)
+	SendFetchChatReq(pconfig, uid, 0)
+	NotifyOnline(pconfig, uid, NOTIFY_ONLINE_FLAG_LOGIN)
+	QueryFileServAddr(pconfig, uid)
+	SendFetchOfflineInfoReq(pconfig, uid)
 }
-

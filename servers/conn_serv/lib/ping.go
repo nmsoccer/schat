@@ -17,7 +17,7 @@ func SendPingReq(pconfig *Config, client_key int64, pmsg *cs.CSPingReq) {
 	pPingReq.Ts = pmsg.TimeStamp
 
 	//FILL
-	err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_PING_REQ , pPingReq)
+	err := comm.FillSSPkg(&ss_msg, ss.SS_PROTO_TYPE_PING_REQ, pPingReq)
 	if err != nil {
 		log.Err("%s fill ss failed! client:%v err:%v", _func_, client_key, err)
 		return
@@ -52,5 +52,3 @@ func RecvPingRsp(pconfig *Config, prsp *ss.MsgPingRsp) {
 	//send
 	SendToClient(pconfig, prsp.ClientKey, cs.CS_PROTO_PING_RSP, pmsg)
 }
-
-

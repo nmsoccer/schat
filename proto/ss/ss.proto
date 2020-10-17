@@ -55,6 +55,10 @@ enum SS_PROTO_TYPE {
   FETCH_USER_PROFILE_REQ = 44;
   FETCH_USER_PROFILE_RSP = 45;
   SAVE_USER_PROFILE_REQ = 46;
+  CHG_GROUP_ATTR_REQ = 47;
+  CHG_GROUP_ATTR_RSP = 48;
+  GROUP_GROUND_REQ = 49;
+  GROUP_GROUND_RSP = 50;
   //new proto defined could add to servers/comm/ss_pack.go:GenSSPkg  
 }
 
@@ -105,7 +109,11 @@ message SSMsg {
     MsgSyncGroupInfo sync_group_info = 61;
     MsgFetchUserProfileReq fetch_user_profile_req = 62;
     MsgFetchUserProfileRsp fetch_user_profile_rsp = 63;
-    MsgSaveUserProfileReq  save_user_profile_req  = 64;	
+    MsgSaveUserProfileReq  save_user_profile_req  = 64;
+    MsgChgGroupAttrReq chg_group_attr_req = 65;
+    MsgChgGroupAttrRsp chg_group_attr_rsp = 66;
+    MsgGroupGroudReq group_ground_req = 67;
+    MsgGroupGroudRsp group_ground_rsp = 68;	
   }  
 }
 
@@ -257,6 +265,7 @@ message MsgFetchAuditGrpRsp {
 enum LOAD_GROUP_REASON {  
   LOAD_GRP_SEND_CHAT = 0;  //send chat
   LOAD_GRP_QUERY_INFO = 1; //query group
+  LOAD_GRP_CHG_GROUP_ATTR = 2; //chg attr
 }
 
 message MsgLoadGroupReq {
@@ -293,6 +302,7 @@ message MsgSaveGroupReq {
   int64 grp_id = 1;
   SS_COMMON_REASON reason = 2;
   int32 load_serv = 3;
+  GroupBlobData blob_info = 4; 
   
   int64 msg_count = 20;
   int32 mem_count = 21;
@@ -400,4 +410,21 @@ message MsgSaveUserProfileReq {
   int64 uid = 1;
   UserProfile profile = 2;
 }
+
+//Group List Req only for visible group
+message MsgGroupGroudReq {
+  int64 uid = 1;
+  int32 start_index = 2;
+  int32 count = 3;
+}
+
+message MsgGroupGroudRsp {
+  int64 uid = 1;
+  int32 count = 2;
+  repeated GroupGroudItem item_list = 3;
+}
+
+
+
+
 

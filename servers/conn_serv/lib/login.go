@@ -184,7 +184,7 @@ func RecvLogoutRsp(pconfig *Config, prsp *ss.MsgLogoutRsp) {
 	//should check close connection positively
 	switch prsp.Reason {
 	case ss.USER_LOGOUT_REASON_LOGOUT_CLIENT_TIMEOUT, ss.USER_LOGOUT_REASON_LOGOUT_SERVER_KICK_BAN,
-		ss.USER_LOGOUT_REASON_LOGOUT_SERVER_KICK_RECONN,ss.USER_LOGOUT_REASON_LOGOUT_SERVER_SHUT:
+		ss.USER_LOGOUT_REASON_LOGOUT_SERVER_KICK_RECONN, ss.USER_LOGOUT_REASON_LOGOUT_SERVER_SHUT:
 		CloseClient(pconfig, c_key)
 	default:
 		//nothing to do
@@ -199,7 +199,7 @@ func SendRegReq(pconfig *Config, client_key int64, preq *cs.CSRegReq) {
 	var _func_ = "<SendRegReq>"
 	log := pconfig.Comm.Log
 
-	log.Debug("%s send reg pkg to logic! user:%s addr:%s sex:%v role_name:%s", _func_, preq.Name, preq.Addr, preq.Sex , preq.RoleName)
+	log.Debug("%s send reg pkg to logic! user:%s addr:%s sex:%v role_name:%s", _func_, preq.Name, preq.Addr, preq.Sex, preq.RoleName)
 	//create pkg
 	var ss_msg ss.SSMsg
 	pRegReq := new(ss.MsgRegReq)

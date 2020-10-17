@@ -12,48 +12,51 @@ import (
 * #user:login_lock:[uid] <string> valid_second
 * #user:profile:[uid] +string+ <user_basic>
 * #global:grp_id +string+ ; global group id allocator
-* #group:[grp_id] +hash+ gid | name | master_uid | pass | salt | create_ts | msg_count | load_serv
+* #group:[grp_id] +hash+ gid | name | master_uid | pass | salt | create_ts | msg_count | load_serv | blob_info
 * #group:mem:[grp_id] +set+ <uid>
 * #group:apply:[grp_id] +list+ <apply_uid|apply_name|apply_msg>
 * #user:group:applied:[uid] +set+ <grp_id|grp_name>
 * #user:group:audited:[uid] +list+ <grp_id|grp_name|result>
 * #chat_msg:[group]:[index] +list+ <chat_msg encoded>
 * #offline_info:[uid] +list+ <off_type|xxx...> //off_type:REFER SS_OFFLINE_INFO_TYPE_xx
+* #visible_group_set +zset+  <grp_id|grp_name>
  */
 
 /*--------------------INSTRUCTION--------------------
-        *********GROUP TABLE*********
-                 group:grp_id
-    group:mem:grp_id group:apply:grp_id chat_msg:group:index
+      *********GROUP TABLE*********
+               group:grp_id
+  group:mem:grp_id group:apply:grp_id chat_msg:group:index
 */
 
 const (
-	PASSWD_SALT_LEN = 32
-	LOGIN_LOCK_LIFE = 20 //login lock life (second)
+	PASSWD_SALT_LEN    = 32
+	LOGIN_LOCK_LIFE    = 20     //login lock life (second)
 	CHAT_MSG_LIST_SIZE = 100000 //single tab of chat-msg size
-	CHAT_MSG_DES_KEY = "MikmiYua"
+	CHAT_MSG_DES_KEY   = "MikmiYua"
 
-	FORMAT_TAB_GLOBAL_UID        = "global:uid"      // ++ string ++
-	FORMAT_TAB_USER_GLOBAL       = "users:global:%s" //users:global:[name]  ++ hash ++ name | pass | uid | salt
-	FORMAT_TAB_USER_INFO_REFIX   = "user:"           // user:[uid] ++ hash ++ uid | name | age | sex  | addr | level | online_logic | blob_info | head_url
-	FORMAT_TAB_USER_LOGIN_LOCK_PREFIX="user:login_lock:" //user:login:[uid] +string+ valid_second
-	FORMAT_TAB_USER_PREOFILE_PREFIX = "user:profile:" //user:profile:[uid] +string+ <user_basic>
-	FORMAT_TAB_GLOBAL_GRPID      = "global:grp_id"   // +string+
-	FORMAT_TAB_GROUP_INFO_PREFIX = "group:"          // group:[grp_id] +hash+ gid | name | master_uid | pass | salt | create_ts | msg_count | load_serv
-	FORMAT_TAB_GROUP_MEMBERS     = "group:mem:"       //group:mem:[grp_id] +set+ <uid>
-	FORMAT_TAB_GROUP_APPLY_LIST  = "group:apply:"    // group:apply:[grp_id] +list+ <apply_uid|apply_name|apply_msg>
-	FORMAT_TAB_USER_GROUP_APPLIED = "user:group:applied:" //user:group:applied:[uid] +set+ <grp_id|grp_name>
-	FORMAT_TAB_USER_GROUP_AUDITED = "user:group:audited:" //user:group:audited:[uid] +list+ <grp_id|grp_name|result>
-    FORMAT_TAB_CHAT_MSG_LIST      = "chat_msg:%d:%d" //chat_msg:[group]:[index] +list+ <chat_msg encoded>
-    FORMAT_TAB_OFFLINE_INFO_PREFIX = "offline_info:" // offline_info:[uid] +list+ <off_type|xxx...> off_type:REFER SS_OFFLINE_INFO_TYPE_xx
+	FORMAT_TAB_GLOBAL_UID             = "global:uid"       // ++ string ++
+	FORMAT_TAB_USER_GLOBAL            = "users:global:%s"  //users:global:[name]  ++ hash ++ name | pass | uid | salt
+	FORMAT_TAB_USER_INFO_REFIX        = "user:"            // user:[uid] ++ hash ++ uid | name | age | sex  | addr | level | online_logic | blob_info | head_url
+	FORMAT_TAB_USER_LOGIN_LOCK_PREFIX = "user:login_lock:" //user:login:[uid] +string+ valid_second
+	FORMAT_TAB_USER_PREOFILE_PREFIX   = "user:profile:"    //user:profile:[uid] +string+ <user_basic>
+	FORMAT_TAB_GLOBAL_GRPID           = "global:grp_id"    // +string+
+	FORMAT_TAB_GROUP_INFO_PREFIX      = "group:"           // group:[grp_id] +hash+ gid | name | master_uid | pass | salt | create_ts | msg_count | load_serv
+	// | blob_info
+	FORMAT_TAB_GROUP_MEMBERS       = "group:mem:"          //group:mem:[grp_id] +set+ <uid>
+	FORMAT_TAB_GROUP_APPLY_LIST    = "group:apply:"        // group:apply:[grp_id] +list+ <apply_uid|apply_name|apply_msg>
+	FORMAT_TAB_USER_GROUP_APPLIED  = "user:group:applied:" //user:group:applied:[uid] +set+ <grp_id|grp_name>
+	FORMAT_TAB_USER_GROUP_AUDITED  = "user:group:audited:" //user:group:audited:[uid] +list+ <grp_id|grp_name|result>
+	FORMAT_TAB_CHAT_MSG_LIST       = "chat_msg:%d:%d"      //chat_msg:[group]:[index] +list+ <chat_msg encoded>
+	FORMAT_TAB_OFFLINE_INFO_PREFIX = "offline_info:"       // offline_info:[uid] +list+ <off_type|xxx...> off_type:REFER SS_OFFLINE_INFO_TYPE_xx
+
+	FORMAT_TAB_VISIBLE_GROUP_SET = "visible_group" //visible_group_set +zset+  <grp_id|grp_name>
 
 	//Useful FIELD
-	FIELD_USER_INFO_ONLINE_LOGIC  = "online_logic"
-	FIELD_GROUP_INFO_MSG_COUNT    = "msg_count"
-	FILED_GROUP_INFO_NAME         = "name"
-	FILED_USER_INFO_HEAD_URL      = "head_url"
-
-
+	FIELD_USER_INFO_ONLINE_LOGIC = "online_logic"
+	FIELD_GROUP_INFO_MSG_COUNT   = "msg_count"
+	FILED_GROUP_INFO_NAME        = "name"
+	FIELD_GROUP_BLOB_NAME        = "blob_info"
+	FILED_USER_INFO_HEAD_URL     = "head_url"
 )
 
 func OpenRedis(pconfig *Config) *comm.RedisClient {
@@ -89,10 +92,8 @@ func InitRedisDb(arg interface{}) {
 	pconfig.RedisClient.RedisExeCmd(pconfig.Comm, cb_init_global_uid, nil, "SETNX",
 		FORMAT_TAB_GLOBAL_UID, pconfig.FileConfig.InitUid)
 	//init global group id
-	pconfig.RedisClient.RedisExeCmd(pconfig.Comm ,cb_init_global_grpid , nil , "SETNX" ,
-		FORMAT_TAB_GLOBAL_GRPID , pconfig.FileConfig.InitGrpId)
-
-
+	pconfig.RedisClient.RedisExeCmd(pconfig.Comm, cb_init_global_grpid, nil, "SETNX",
+		FORMAT_TAB_GLOBAL_GRPID, pconfig.FileConfig.InitGrpId)
 
 	return
 }

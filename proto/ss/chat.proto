@@ -34,6 +34,7 @@ message UserChatInfo {
   map<int64 , bool> entering_group = 24; //entering group process  
 }
 
+
 message GroupInfo {
   int64 group_id = 1;
   string group_name = 2;
@@ -42,5 +43,17 @@ message GroupInfo {
   int64 created_ts = 5;  
   int32 mem_count = 6;
   
-  map<int64 , int32> members = 20; 
+  map<int64 , int32> members = 20;
+  GroupBlobData blob_info = 21;  
+}
+
+message GroupBlobData {
+  int32 visible = 1; //default 0: group is invisible
+  int32 visible_score = 2;  
+}
+
+
+message GroupGroudItem {
+  int64 grp_id = 1;
+  string grp_name = 2;
 }

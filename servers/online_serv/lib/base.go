@@ -9,9 +9,9 @@ import (
 
 type FileConfig struct {
 	DispServList []int    `json:"disp_serv_list"`
-	LogFile       string   `json:"log_file"`
-	ManageAddr    []string `json:"manage_addr"`
-	MonitorInv    int      `json:"monitor_inv"` //monitor interval seconds
+	LogFile      string   `json:"log_file"`
+	ManageAddr   []string `json:"manage_addr"`
+	MonitorInv   int      `json:"monitor_inv"` //monitor interval seconds
 }
 
 type Config struct {
@@ -27,7 +27,7 @@ type Config struct {
 	ReportCmdToken int64
 	ReportServ     *comm.ReportServ //report to manger
 	//local
-	world_online   WorldOnlineUsers
+	world_online WorldOnlineUsers
 }
 
 //Comm Config Setting
@@ -73,9 +73,8 @@ func LocalSet(pconfig *Config) bool {
 	log := pconfig.Comm.Log
 
 	//WorldOnline
-    pconfig.world_online.user_map = make(map[int64]*UserInfo)
-    pconfig.world_online.world_online = 0
-
+	pconfig.world_online.user_map = make(map[int64]*UserInfo)
+	pconfig.world_online.world_online = 0
 
 	//start report serv
 	pconfig.ReportServ = comm.StartReport(pconfig.Comm, pconfig.ProcId, pconfig.ProcName, pconfig.FileConfig.ManageAddr, comm.REPORT_METHOD_ALL,

@@ -9,13 +9,14 @@ import (
 
 type FileConfig struct {
 	DispServList []int    `json:"disp_serv_list"`
-	LogFile       string   `json:"log_file"`
-	ServIndex     int      `json:"serv_index"`
-	HttpAddr      string   `json:"http_addr"`
-	MaxFileSize   int      `json:"max_file_size"`
-	RealFilePath  string   `json:"real_file_path"`
-	ManageAddr    []string `json:"manage_addr"`
-	MonitorInv    int      `json:"monitor_inv"` //monitor interval seconds
+	LogFile      string   `json:"log_file"`
+	ServIndex    int      `json:"serv_index"`
+	HttpAddr     string   `json:"http_addr"`
+	MaxFileSize  int      `json:"max_file_size"`
+	RealFilePath string   `json:"real_file_path"`
+	SafeMode     int      `json:"safe_mod"` //refer SAFE_MOD_XX
+	ManageAddr   []string `json:"manage_addr"`
+	MonitorInv   int      `json:"monitor_inv"` //monitor interval seconds
 }
 
 type Config struct {
@@ -31,8 +32,8 @@ type Config struct {
 	ReportCmdToken int64
 	ReportServ     *comm.ReportServ //report to manger
 	//local
-	NowToken	   string
-	FileServer     *FileServer //file server
+	NowToken   string
+	FileServer *FileServer //file server
 }
 
 //Comm Config Setting
@@ -79,17 +80,17 @@ func LocalSet(pconfig *Config) bool {
 	log := pconfig.Comm.Log
 
 	//generate token
-	pconfig.NowToken , err  = comm.GenRandNumStr(FILE_SERV_TOKEN_LEN)
+	pconfig.NowToken, err = comm.GenRandNumStr(FILE_SERV_TOKEN_LEN)
 	if err != nil {
-		log.Err("%s generate token failed! err:%v" , _func_ , err)
+		log.Err("%s generate token failed! err:%v", _func_, err)
 		return false
 	}
-	log.Info("%s started token:%s" , _func_ , pconfig.NowToken)
+	log.Info("%s started token:%s", _func_, pconfig.NowToken)
 
 	//start file serv
 	pconfig.FileServer = StartFileServer(pconfig)
 	if pconfig.FileServer == nil {
-		log.Err("%s start file server failed!" , _func_)
+		log.Err("%s start file server failed!", _func_)
 		return false
 	}
 
@@ -106,8 +107,8 @@ func LocalSet(pconfig *Config) bool {
 	pconfig.Comm.TickPool.AddTicker("heart_beat", comm.TICKER_TYPE_CIRCLE, 0, comm.PERIOD_HEART_BEAT_DEFAULT, SendHeartBeatMsg, pconfig)
 	pconfig.Comm.TickPool.AddTicker("report_sync", comm.TICKER_TYPE_CIRCLE, 0, comm.PERIOD_REPORT_SYNC_DEFAULT, ReportSyncServer, pconfig)
 	pconfig.Comm.TickPool.AddTicker("recv_cmd", comm.TICKER_TYPE_CIRCLE, 0, comm.PERIOD_RECV_REPORT_CMD_DEFAULT, RecvReportCmd, pconfig)
-	pconfig.Comm.TickPool.AddTicker("update_token" , comm.TICKER_TYPE_CIRCLE , 0 , PERIOD_UPDATE_TOKEN , UpdateServToken , pconfig)
-	pconfig.Comm.TickPool.AddTicker("sync_token" , comm.TICKER_TYPE_CIRCLE , 10000 , PERIOD_SYNC_TOKEN , SyncServToken , pconfig)
+	pconfig.Comm.TickPool.AddTicker("update_token", comm.TICKER_TYPE_CIRCLE, 0, PERIOD_UPDATE_TOKEN, UpdateServToken, pconfig)
+	pconfig.Comm.TickPool.AddTicker("sync_token", comm.TICKER_TYPE_CIRCLE, 10000, PERIOD_SYNC_TOKEN, SyncServToken, pconfig)
 	return true
 }
 

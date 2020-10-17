@@ -173,7 +173,7 @@ func AfterReLoadConfig(pconfig *Config, old_config *FileConfig, new_config *File
 	log := pconfig.Comm.Log
 
 	//redis
-	ResetRedis(pconfig , old_config , new_config)
+	ResetRedis(pconfig, old_config, new_config)
 
 	log.Info("%s finish", _func_)
 	return

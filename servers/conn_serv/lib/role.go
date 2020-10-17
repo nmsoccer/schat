@@ -6,13 +6,13 @@ import (
 	"schat/servers/comm"
 )
 
-func SendFetchUserProfileReq(pconfig *Config , uid int64 , pfetch *cs.CSFetchUserProfileReq) {
+func SendFetchUserProfileReq(pconfig *Config, uid int64, pfetch *cs.CSFetchUserProfileReq) {
 	var _func_ = "<SendFetchUserProfileReq>"
 	log := pconfig.Comm.Log
 
 	//check
 	if len(pfetch.TargetList) <= 0 {
-		log.Err("%s fetch nothing! uid:%d" , _func_ , uid)
+		log.Err("%s fetch nothing! uid:%d", _func_, uid)
 		return
 	}
 
@@ -22,50 +22,49 @@ func SendFetchUserProfileReq(pconfig *Config , uid int64 , pfetch *cs.CSFetchUse
 	preq.Uid = uid
 	preq.TargetList = pfetch.TargetList
 
-	err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_FETCH_USER_PROFILE_REQ , preq)
+	err := comm.FillSSPkg(&ss_msg, ss.SS_PROTO_TYPE_FETCH_USER_PROFILE_REQ, preq)
 	if err != nil {
-		log.Err("%s gen ss failed! err:%v uid:%d" , _func_ , err , uid)
+		log.Err("%s gen ss failed! err:%v uid:%d", _func_, err, uid)
 		return
 	}
 
 	//to logic
-	SendToLogic(pconfig , &ss_msg)
+	SendToLogic(pconfig, &ss_msg)
 }
 
-func RecvFetchUserProfileRsp(pconfig *Config , prsp *ss.MsgFetchUserProfileRsp) {
+func RecvFetchUserProfileRsp(pconfig *Config, prsp *ss.MsgFetchUserProfileRsp) {
 	var _func_ = "<RecvFetchUserProfileRsp>"
 	log := pconfig.Comm.Log
 	uid := prsp.Uid
 
 	//c_key
-	c_key := GetClientKey(pconfig , uid)
+	c_key := GetClientKey(pconfig, uid)
 	if c_key <= 0 {
-		log.Err("%s user offline! uid:%d" , _func_ , uid)
+		log.Err("%s user offline! uid:%d", _func_, uid)
 		return
 	}
 
 	//check result
 	if prsp.Result != ss.SS_COMMON_RESULT_SUCCESS {
-		log.Err("%s result:%d uid:%d" , _func_ , prsp.Result , uid)
+		log.Err("%s result:%d uid:%d", _func_, prsp.Result, uid)
 		return
 	}
 
 	//length
 	if len(prsp.Profiles) <= 0 {
-		log.Err("%s profile list 0! uid:%d" , _func_ , uid)
+		log.Err("%s profile list 0! uid:%d", _func_, uid)
 		return
 	}
-
 
 	//cs
-	pv , err := cs.Proto2Msg(cs.CS_PROTO_FETCH_USER_PROFILE_RSP)
+	pv, err := cs.Proto2Msg(cs.CS_PROTO_FETCH_USER_PROFILE_RSP)
 	if err != nil {
-		log.Err("%s get msg fail! uid:%d err:%v" , _func_ , uid , err)
+		log.Err("%s get msg fail! uid:%d err:%v", _func_, uid, err)
 		return
 	}
-	pmsg , ok := pv.(*cs.CSFetchUserProfileRsp)
+	pmsg, ok := pv.(*cs.CSFetchUserProfileRsp)
 	if !ok {
-		log.Err("%s not CSFetchUserProfileRsp! uid:%d" , _func_ , uid)
+		log.Err("%s not CSFetchUserProfileRsp! uid:%d", _func_, uid)
 		return
 	}
 
@@ -74,8 +73,8 @@ func RecvFetchUserProfileRsp(pconfig *Config , prsp *ss.MsgFetchUserProfileRsp) 
 	var ss_info *ss.UserProfile
 	var cs_info *cs.UserProfile
 	pmsg.Profiles = make(map[int64]*cs.UserProfile)
-	for tuid , ss_info = range prsp.Profiles {
-		if ss_info  == nil {
+	for tuid, ss_info = range prsp.Profiles {
+		if ss_info == nil {
 			pmsg.Profiles[tuid] = nil
 			continue
 		}
@@ -90,5 +89,5 @@ func RecvFetchUserProfileRsp(pconfig *Config , prsp *ss.MsgFetchUserProfileRsp) 
 	}
 
 	//to client
-	SendToClient(pconfig , c_key , cs.CS_PROTO_FETCH_USER_PROFILE_RSP , pmsg)
+	SendToClient(pconfig, c_key, cs.CS_PROTO_FETCH_USER_PROFILE_RSP, pmsg)
 }

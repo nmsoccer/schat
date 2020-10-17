@@ -57,19 +57,21 @@ func RecvMsg(pconfig *Config) int64 {
 		case ss.SS_PROTO_TYPE_HEART_BEAT_REQ:
 			RecvHeartBeatReq(pconfig, ss_msg.GetHeartBeatReq(), pmsg.sender)
 		case ss.SS_PROTO_TYPE_USE_DISP_PROTO:
-			RecvDispMsg(pconfig , ss_msg.GetMsgDisp())
+			RecvDispMsg(pconfig, ss_msg.GetMsgDisp())
 		case ss.SS_PROTO_TYPE_APPLY_GROUP_RSP:
-			RecvApplyGroupRsp(pconfig , ss_msg.GetApplyGroupRsp())
+			RecvApplyGroupRsp(pconfig, ss_msg.GetApplyGroupRsp())
 		case ss.SS_PROTO_TYPE_APPLY_GROUP_NOTIFY:
-			RecvApplyGroupNotify(pconfig , ss_msg.GetApplyGroupNotify())
+			RecvApplyGroupNotify(pconfig, ss_msg.GetApplyGroupNotify())
 		case ss.SS_PROTO_TYPE_ENTER_GROUP_RSP:
-			RecvEnterGroupRsp(pconfig , ss_msg.GetEnterGroupRsp())
+			RecvEnterGroupRsp(pconfig, ss_msg.GetEnterGroupRsp())
 		case ss.SS_PROTO_TYPE_LOAD_GROUP_RSP:
-			RecvLoadGroupRsp(pconfig , ss_msg.GetLoadGroupRsp())
+			RecvLoadGroupRsp(pconfig, ss_msg.GetLoadGroupRsp())
 		case ss.SS_PROTO_TYPE_SEND_CHAT_RSP:
-			RecvSendChatRsp(pconfig , ss_msg.GetSendChatRsp())
+			RecvSendChatRsp(pconfig, ss_msg.GetSendChatRsp())
 		case ss.SS_PROTO_TYPE_SAVE_GROUP_RSP:
-			RecvSaveChatRsp(pconfig , ss_msg.GetSaveGroupRsp())
+			RecvSaveChatRsp(pconfig, ss_msg.GetSaveGroupRsp())
+		case ss.SS_PROTO_TYPE_CHG_GROUP_ATTR_RSP:
+			RecvChgGroupAttrRsp(pconfig, ss_msg.GetChgGroupAttrRsp())
 		default:
 			log.Err("%s fail! unknown proto type:%v", _func_, ss_msg.ProtoType)
 		}

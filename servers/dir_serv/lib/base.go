@@ -8,16 +8,16 @@ import (
 )
 
 type FileConfig struct {
-	DispServList []int    `json:"disp_serv_list"`
-	LogFile       string   `json:"log_file"`
-	HttpAddr      string   `json:"http_addr"`
-	FileServIndex []int    `json:"file_serv_index"`
-	FileServAddr  []string `json:"file_serv_addr"`
-	ConnServProc  []int    `json:"conn_serv_proc"`
-	ConnServAddr  []string `json:"conn_serv_addr"`
+	DispServList   []int    `json:"disp_serv_list"`
+	LogFile        string   `json:"log_file"`
+	HttpAddr       string   `json:"http_addr"`
+	FileServIndex  []int    `json:"file_serv_index"`
+	FileServAddr   []string `json:"file_serv_addr"`
+	ConnServProc   []int    `json:"conn_serv_proc"`
+	ConnServAddr   []string `json:"conn_serv_addr"`
 	ConnServWeigth []int    `json:"conn_serv_weight"`
-	ManageAddr    []string `json:"manage_addr"`
-	MonitorInv    int      `json:"monitor_inv"` //monitor interval seconds
+	ManageAddr     []string `json:"manage_addr"`
+	MonitorInv     int      `json:"monitor_inv"` //monitor interval seconds
 }
 
 type Config struct {
@@ -33,8 +33,8 @@ type Config struct {
 	ReportCmdToken int64
 	ReportServ     *comm.ReportServ //report to manger
 	//local
-	ServerInfo     *AllServerInfo
-    HttpServer     *HttpServer
+	ServerInfo *AllServerInfo
+	HttpServer *HttpServer
 }
 
 //Comm Config Setting
@@ -81,17 +81,17 @@ func LocalSet(pconfig *Config) bool {
 
 	//server info
 	pconfig.ServerInfo = new(AllServerInfo)
-	ok := InitAllServerInfo(pconfig , pconfig.ServerInfo)
+	ok := InitAllServerInfo(pconfig, pconfig.ServerInfo)
 	if !ok {
-		log.Err("%s init all server info failed!" , _func_)
+		log.Err("%s init all server info failed!", _func_)
 		return false
 	}
 
-    //HttpServer
-    pconfig.HttpServer = StartHttpServer(pconfig)
-    if pconfig.HttpServer == nil {
-    	log.Err("%s start http_server at %s failed!" , _func_ , pconfig.FileConfig.HttpAddr)
-    	return false
+	//HttpServer
+	pconfig.HttpServer = StartHttpServer(pconfig)
+	if pconfig.HttpServer == nil {
+		log.Err("%s start http_server at %s failed!", _func_, pconfig.FileConfig.HttpAddr)
+		return false
 	}
 
 	//start report serv
@@ -107,7 +107,7 @@ func LocalSet(pconfig *Config) bool {
 	pconfig.Comm.TickPool.AddTicker("heart_beat", comm.TICKER_TYPE_CIRCLE, 0, comm.PERIOD_HEART_BEAT_DEFAULT, SendHeartBeatMsg, pconfig)
 	pconfig.Comm.TickPool.AddTicker("report_sync", comm.TICKER_TYPE_CIRCLE, 0, comm.PERIOD_REPORT_SYNC_DEFAULT, ReportSyncServer, pconfig)
 	pconfig.Comm.TickPool.AddTicker("recv_cmd", comm.TICKER_TYPE_CIRCLE, 0, comm.PERIOD_RECV_REPORT_CMD_DEFAULT, RecvReportCmd, pconfig)
-	pconfig.Comm.TickPool.AddTicker("query_token" , comm.TICKER_TYPE_SINGLE , 5000 , 0 , QueryFileServToken , pconfig)
+	pconfig.Comm.TickPool.AddTicker("query_token", comm.TICKER_TYPE_SINGLE, 5000, 0, QueryFileServToken, pconfig)
 
 	return true
 }

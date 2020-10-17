@@ -14,16 +14,16 @@ type FileConfig struct {
 	MaxConn    int      `json:"max_conn"`
 	ListenAddr string   `json:"listen_addr"`
 	ManageAddr []string `json:"manage_addr"`
-	ZlibOn     int      `json:"zlib_on"`     //json compessed by zlib
-	ValidConn  int8     `json:"valid_conn"`  //valid connection by key
-	EncType    int8     `json:"enc_type"`    //encrypt type 0:no 1:des-ecb 2:aes-cbc-128 3:rsa+des
+	ZlibOn     int      `json:"zlib_on"`    //json compessed by zlib
+	ValidConn  int8     `json:"valid_conn"` //valid connection by key
+	EncType    int8     `json:"enc_type"`   //encrypt type 0:no 1:des-ecb 2:aes-cbc-128 3:rsa+des
 	/* rsa private and public key files method:
 	*  create private_key: openssl genrsa -out rsa_private_key.pem 1024
 	*  create public_key:  openssl rsa -in rsa_private_key.pem -pubout -out rsa_public_key.pem
 	 */
-	RsaPubFile string   `json:"rsa_pub_key_file"` //rsa public key file if EncType=3
-	RsaPriFile string   `json:"rsa_pri_key_file"` //rsa private key file if EncType=3
-	MonitorInv int      `json:"monitor_inv"` //monitor interval seconds
+	RsaPubFile string `json:"rsa_pub_key_file"` //rsa public key file if EncType=3
+	RsaPriFile string `json:"rsa_pri_key_file"` //rsa private key file if EncType=3
+	MonitorInv int    `json:"monitor_inv"`      //monitor interval seconds
 }
 
 type Config struct {
@@ -39,9 +39,9 @@ type Config struct {
 	ReportCmdToken int64
 	ReportServ     *comm.ReportServ //report to manger
 	//local
-	TcpServ  *comm.TcpServ
-	Ckey2Uid map[int64]int64 //client key to uid. used for search login user
-	Uid2Ckey map[int64]int64 //uid to client key. used for login user
+	TcpServ   *comm.TcpServ
+	Ckey2Uid  map[int64]int64 //client key to uid. used for search login user
+	Uid2Ckey  map[int64]int64 //uid to client key. used for login user
 	RsaPubKey []byte
 	RsaPriKey []byte
 }
@@ -92,13 +92,13 @@ func LocalSet(pconfig *Config) bool {
 	//read rsa files
 	ok = ReadRsaKeyFiles(pconfig)
 	if !ok {
-		log.Err("%s read RsaKeys Failed!" , _func_)
+		log.Err("%s read RsaKeys Failed!", _func_)
 		return false
 	}
 
 	//start tcp serv to listen clients
-	pserv := comm.StartTcpServ(pconfig.Comm, pconfig.FileConfig.ListenAddr, pconfig.FileConfig.MaxConn , pconfig.FileConfig.ValidConn ,
-		pconfig.FileConfig.EncType , pconfig.RsaPubKey , pconfig.RsaPriKey)
+	pserv := comm.StartTcpServ(pconfig.Comm, pconfig.FileConfig.ListenAddr, pconfig.FileConfig.MaxConn, pconfig.FileConfig.ValidConn,
+		pconfig.FileConfig.EncType, pconfig.RsaPubKey, pconfig.RsaPriKey)
 	if pserv == nil {
 		log.Err("%s fail! start_tcp_serv at %s failed!", _func_, pconfig.FileConfig.ListenAddr)
 		return false
@@ -122,7 +122,7 @@ func LocalSet(pconfig *Config) bool {
 	pconfig.Comm.TickPool.AddTicker("heart_beat", comm.TICKER_TYPE_CIRCLE, 0, comm.PERIOD_HEART_BEAT_DEFAULT, SendHeartBeatMsg, pconfig)
 	pconfig.Comm.TickPool.AddTicker("report_sync", comm.TICKER_TYPE_CIRCLE, 0, comm.PERIOD_REPORT_SYNC_DEFAULT, ReportSyncServer, pconfig)
 	pconfig.Comm.TickPool.AddTicker("recv_cmd", comm.TICKER_TYPE_CIRCLE, 0, comm.PERIOD_RECV_REPORT_CMD_DEFAULT, RecvReportCmd, pconfig)
-    pconfig.Comm.TickPool.AddTicker("notify_load" , comm.TICKER_TYPE_CIRCLE , 5000 , comm.PERIOD_NOTIFY_LOAD_DEFAULT , NotifyLoad , pconfig)
+	pconfig.Comm.TickPool.AddTicker("notify_load", comm.TICKER_TYPE_CIRCLE, 5000, comm.PERIOD_NOTIFY_LOAD_DEFAULT, NotifyLoad, pconfig)
 	return true
 }
 

@@ -255,6 +255,52 @@ func (SS_GROUP_INFO_FIELD) EnumDescriptor() ([]byte, []int) {
 	return file_basic_proto_rawDescGZIP(), []int{4}
 }
 
+type GROUP_ATTR_TYPE int32
+
+const (
+	GROUP_ATTR_TYPE_GRP_ATTR_VISIBLE   GROUP_ATTR_TYPE = 0 //cound be shown on panel
+	GROUP_ATTR_TYPE_GRP_ATTR_INVISIBLE GROUP_ATTR_TYPE = 1 //only be searched by group id
+)
+
+// Enum value maps for GROUP_ATTR_TYPE.
+var (
+	GROUP_ATTR_TYPE_name = map[int32]string{
+		0: "GRP_ATTR_VISIBLE",
+		1: "GRP_ATTR_INVISIBLE",
+	}
+	GROUP_ATTR_TYPE_value = map[string]int32{
+		"GRP_ATTR_VISIBLE":   0,
+		"GRP_ATTR_INVISIBLE": 1,
+	}
+)
+
+func (x GROUP_ATTR_TYPE) Enum() *GROUP_ATTR_TYPE {
+	p := new(GROUP_ATTR_TYPE)
+	*p = x
+	return p
+}
+
+func (x GROUP_ATTR_TYPE) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (GROUP_ATTR_TYPE) Descriptor() protoreflect.EnumDescriptor {
+	return file_basic_proto_enumTypes[5].Descriptor()
+}
+
+func (GROUP_ATTR_TYPE) Type() protoreflect.EnumType {
+	return &file_basic_proto_enumTypes[5]
+}
+
+func (x GROUP_ATTR_TYPE) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use GROUP_ATTR_TYPE.Descriptor instead.
+func (GROUP_ATTR_TYPE) EnumDescriptor() ([]byte, []int) {
+	return file_basic_proto_rawDescGZIP(), []int{5}
+}
+
 var File_basic_proto protoreflect.FileDescriptor
 
 var file_basic_proto_rawDesc = []byte{
@@ -276,8 +322,12 @@ var file_basic_proto_rawDesc = []byte{
 	0x46, 0x54, 0x5f, 0x4b, 0x49, 0x43, 0x4b, 0x5f, 0x47, 0x52, 0x4f, 0x55, 0x50, 0x10, 0x00, 0x2a,
 	0x28, 0x0a, 0x13, 0x53, 0x53, 0x5f, 0x47, 0x52, 0x4f, 0x55, 0x50, 0x5f, 0x49, 0x4e, 0x46, 0x4f,
 	0x5f, 0x46, 0x49, 0x45, 0x4c, 0x44, 0x12, 0x11, 0x0a, 0x0d, 0x47, 0x52, 0x50, 0x5f, 0x46, 0x49,
-	0x45, 0x4c, 0x44, 0x5f, 0x41, 0x4c, 0x4c, 0x10, 0x00, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f,
-	0x33,
+	0x45, 0x4c, 0x44, 0x5f, 0x41, 0x4c, 0x4c, 0x10, 0x00, 0x2a, 0x3f, 0x0a, 0x0f, 0x47, 0x52, 0x4f,
+	0x55, 0x50, 0x5f, 0x41, 0x54, 0x54, 0x52, 0x5f, 0x54, 0x59, 0x50, 0x45, 0x12, 0x14, 0x0a, 0x10,
+	0x47, 0x52, 0x50, 0x5f, 0x41, 0x54, 0x54, 0x52, 0x5f, 0x56, 0x49, 0x53, 0x49, 0x42, 0x4c, 0x45,
+	0x10, 0x00, 0x12, 0x16, 0x0a, 0x12, 0x47, 0x52, 0x50, 0x5f, 0x41, 0x54, 0x54, 0x52, 0x5f, 0x49,
+	0x4e, 0x56, 0x49, 0x53, 0x49, 0x42, 0x4c, 0x45, 0x10, 0x01, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74,
+	0x6f, 0x33,
 }
 
 var (
@@ -292,13 +342,14 @@ func file_basic_proto_rawDescGZIP() []byte {
 	return file_basic_proto_rawDescData
 }
 
-var file_basic_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
+var file_basic_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
 var file_basic_proto_goTypes = []interface{}{
 	(SS_COMMON_RESULT)(0),     // 0: ss.SS_COMMON_RESULT
 	(SS_COMMON_REASON)(0),     // 1: ss.SS_COMMON_REASON
 	(SS_COMMON_TYPE)(0),       // 2: ss.SS_COMMON_TYPE
 	(SS_OFFLINE_INFO_TYPE)(0), // 3: ss.SS_OFFLINE_INFO_TYPE
 	(SS_GROUP_INFO_FIELD)(0),  // 4: ss.SS_GROUP_INFO_FIELD
+	(GROUP_ATTR_TYPE)(0),      // 5: ss.GROUP_ATTR_TYPE
 }
 var file_basic_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
@@ -318,7 +369,7 @@ func file_basic_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_basic_proto_rawDesc,
-			NumEnums:      5,
+			NumEnums:      6,
 			NumMessages:   0,
 			NumExtensions: 0,
 			NumServices:   0,

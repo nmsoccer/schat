@@ -18,4 +18,10 @@ type ChatGroup struct {
 	CreateTs int64 `json:"create"`
 	MemCount int32 `json:"mem_count"`
 	Members  map[int64]int32 `json:"members"`
+	Visible  int32 `json:"visible"`
+}
+
+type GroupGroundItem struct {
+	GrpId int64 `json:"grp_id"`
+	GrpName string `json:"grp_name"`
 }

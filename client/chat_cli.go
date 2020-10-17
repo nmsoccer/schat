@@ -33,6 +33,8 @@ const (
 	CMD_KICK               = "kick"
 	CMD_QUERY_GROUP        = "grp_info"
 	CMD_USER_PROFILE	   = "u_prof"
+	CMD_GROUP_ATTR		   = "g_attr"
+	CMD_GROUP_GROUND	   = "g_ground"
 
 	BUFF_LEN = (10 * 1024)
 
@@ -78,6 +80,8 @@ func init() {
 	cmd_map[CMD_KICK] = "kick group member <group_id><member_id>"
 	cmd_map[CMD_QUERY_GROUP] = "query group info <group_id>"
 	cmd_map[CMD_USER_PROFILE] = "user profile [uid1] [uid2] ..."
+	cmd_map[CMD_GROUP_ATTR] = "chg group attr <group_id><attr_id>"
+	cmd_map[CMD_GROUP_GROUND] = "group ground <start_index>"
 }
 
 func v_print(format string, arg ...interface{}) {
@@ -473,6 +477,29 @@ func RecvPkg(conn *net.TCPConn) {
 					return
 				}
 			}
+		case cs.CS_PROTO_CHG_GROUP_ATTR_RSP:
+			prsp , ok := gmsg.SubMsg.(*cs.CSChgGroupAttrRsp)
+			if ok {
+				v_print("chg group attr result:%d attr:%d grp_id:%d\n" , prsp.Result , prsp.Attr , prsp.GrpId)
+				if *method == METHOD_COMMAND {
+					exit_ch <- true
+					return
+				}
+			}
+		case cs.CS_PROTO_GROUP_GROUND_RSP:
+			prsp , ok := gmsg.SubMsg.(*cs.CSGroupGroundRsp)
+			if ok {
+				v_print("ground group count:%d\n" , prsp.Count)
+				if prsp.Count>0 && len(prsp.ItemList)>0 {
+					for i:=0; i<prsp.Count; i++ {
+						v_print("<%d> grp_id:%d grp_name:%s\n" , i , prsp.ItemList[i].GrpId , prsp.ItemList[i].GrpName)
+					}
+				}
+				if *method == METHOD_COMMAND {
+					exit_ch <- true
+					return
+				}
+			}
 		default:
 			fmt.Printf("illegal proto:%d\n", gmsg.ProtoId)
 		}
@@ -660,6 +687,27 @@ func SendPkg(conn *net.TCPConn, cmd string) {
 			idx++
 		}
 		v_print("fetch user profile req:%v\n" , *psub)
+		gmsg.SubMsg = psub
+	case CMD_GROUP_ATTR: //"chg group attr <group_id><attr_id>"
+		if len(args) != 3 {
+			show_cmd()
+			return
+		}
+		gmsg.ProtoId = cs.CS_PROTO_CHG_GROUP_ATTR_REQ
+		psub := new(cs.CSChgGroupAttrReq)
+		psub.GrpId , _ = strconv.ParseInt(args[1] , 10 , 64)
+		psub.Attr , _ = strconv.Atoi(args[2])
+		v_print("chg group attr req:%v\n", *psub)
+		gmsg.SubMsg = psub
+	case CMD_GROUP_GROUND: //"group ground <start_index>"
+		if len(args) != 2 {
+			show_cmd()
+			return
+		}
+		gmsg.ProtoId = cs.CS_PROTO_GROUP_GROUND_REQ
+		psub := new(cs.CSGroupGroundReq)
+		psub.StartIndex , _ = strconv.Atoi(args[1])
+		v_print("group group req:%v\n", *psub)
 		gmsg.SubMsg = psub
 	default:
 		fmt.Printf("illegal cmd:%s\n", cmd)

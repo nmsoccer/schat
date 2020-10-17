@@ -8,30 +8,29 @@ import (
 	"strings"
 )
 
-func RecvApplyGroupAudit(pconfig *Config , preq *ss.MsgApplyGroupAudit , from int) {
+func RecvApplyGroupAudit(pconfig *Config, preq *ss.MsgApplyGroupAudit, from int) {
 	var _func_ = "<RecvApplyGroupAudit>"
 	log := pconfig.Comm.Log
 
 	log.Debug("%s grp_id:%d uid:%d apply_uid:%d from:%d", _func_, preq.GroupId, preq.ApplyUid, preq.ApplyUid, from)
-	push_v := fmt.Sprintf("%d|%s|%d" , preq.GroupId , preq.GroupName , preq.Result)
+	push_v := fmt.Sprintf("%d|%s|%d", preq.GroupId, preq.GroupName, preq.Result)
 
-	tab_name := fmt.Sprintf(FORMAT_TAB_USER_GROUP_AUDITED+"%d" , preq.ApplyUid)
-	pconfig.RedisClient.RedisExeCmd(pconfig.Comm , cb_push_audit_list , []interface{}{preq , from} , "RPUSH" , tab_name , push_v)
+	tab_name := fmt.Sprintf(FORMAT_TAB_USER_GROUP_AUDITED+"%d", preq.ApplyUid)
+	pconfig.RedisClient.RedisExeCmd(pconfig.Comm, cb_push_audit_list, []interface{}{preq, from}, "RPUSH", tab_name, push_v)
 	return
 }
 
-func RecvFetchAuditGroupReq(pconfig *Config , preq *ss.MsgFetchAuditGrpReq , from int) {
+func RecvFetchAuditGroupReq(pconfig *Config, preq *ss.MsgFetchAuditGrpReq, from int) {
 	var _func_ = "<RecvFetchAuditGroupReq>"
 	log := pconfig.Comm.Log
 
-	log.Debug("%s uid:%d  from:%d" , _func_ , preq.Uid , from)
+	log.Debug("%s uid:%d  from:%d", _func_, preq.Uid, from)
 	//get grp info
 	cb_arg := []interface{}{preq, from}
 	tab_name := fmt.Sprintf(FORMAT_TAB_USER_GROUP_AUDITED+"%d", preq.Uid)
-	pconfig.RedisClient.RedisExeCmd(pconfig.Comm , cb_range_user_audied , cb_arg , "LRANGE" ,
-		tab_name , 0 , preq.FetchCount-1)
+	pconfig.RedisClient.RedisExeCmd(pconfig.Comm, cb_range_user_audied, cb_arg, "LRANGE",
+		tab_name, 0, preq.FetchCount-1)
 }
-
 
 /*-----------------------static func-----------------------*/
 //cg_arg = {preq , from , uid}
@@ -54,7 +53,6 @@ func cb_push_audit_list(comm_config *comm.CommConfig, result interface{}, cb_arg
 		return
 	}
 
-
 	/*---------result handle--------------*/
 	//check result
 	err, ok := result.(error)
@@ -71,10 +69,9 @@ func cb_push_audit_list(comm_config *comm.CommConfig, result interface{}, cb_arg
 	}
 	log.Debug("%s audited_len:%d apply_uid:%d", _func_, res, preq.ApplyUid)
 
-
 	//check online
-	tab_name := fmt.Sprintf(FORMAT_TAB_USER_INFO_REFIX + "%d" , preq.ApplyUid)
-	pconfig.RedisClient.RedisExeCmd(pconfig.Comm, cb_audit_grp_online_logic, cb_arg, "HGET", tab_name , FIELD_USER_INFO_ONLINE_LOGIC)
+	tab_name := fmt.Sprintf(FORMAT_TAB_USER_INFO_REFIX+"%d", preq.ApplyUid)
+	pconfig.RedisClient.RedisExeCmd(pconfig.Comm, cb_audit_grp_online_logic, cb_arg, "HGET", tab_name, FIELD_USER_INFO_ONLINE_LOGIC)
 }
 
 //cg_arg = {preq , from}
@@ -118,20 +115,20 @@ func cb_audit_grp_online_logic(comm_config *comm.CommConfig, result interface{},
 		return
 	}
 	if len(res) == 0 {
-		log.Err("%s online_logic empty! uid:%d" , _func_ , preq.ApplyUid)
+		log.Err("%s online_logic empty! uid:%d", _func_, preq.ApplyUid)
 		return
 	}
 	log.Debug("%s res:%s uid:%d", _func_, res, preq.ApplyUid)
 
 	//check online_logic
-	online_logic , err := strconv.Atoi(res)
+	online_logic, err := strconv.Atoi(res)
 	if err != nil {
-		log.Err("%s conv integer failed! uid:%d res:%s" , _func_ , preq.ApplyUid , res)
+		log.Err("%s conv integer failed! uid:%d res:%s", _func_, preq.ApplyUid, res)
 		return
 	}
 
 	if online_logic <= 0 {
-		log.Debug("%s offline! uid:%d" , _func_ , preq.ApplyUid)
+		log.Debug("%s offline! uid:%d", _func_, preq.ApplyUid)
 		return
 	}
 
@@ -142,15 +139,14 @@ func cb_audit_grp_online_logic(comm_config *comm.CommConfig, result interface{},
 	pnotify.NotifyType = ss.COMMON_NOTIFY_TYPE_NOTIFY_NEW_AUDIT
 	pnotify.IntV = int64(online_logic)
 
-	err = comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_COMMON_NOTIFY , pnotify)
+	err = comm.FillSSPkg(&ss_msg, ss.SS_PROTO_TYPE_COMMON_NOTIFY, pnotify)
 	if err != nil {
-		log.Err("%s gen ss failed! uid:%d" , _func_ , preq.ApplyUid)
+		log.Err("%s gen ss failed! uid:%d", _func_, preq.ApplyUid)
 	}
 
 	//send to chat_serv
-	SendToServ(pconfig , from , &ss_msg)
+	SendToServ(pconfig, from, &ss_msg)
 }
-
 
 //cg_arg = {preq , from}
 func cb_range_user_audied(comm_config *comm.CommConfig, result interface{}, cb_arg []interface{}) {
@@ -201,29 +197,28 @@ func cb_range_user_audied(comm_config *comm.CommConfig, result interface{}, cb_a
 	if int32(len(res)) < preq.FetchCount {
 		prsp.Complete = 1
 	}
-	prsp.AuditList = make([]*ss.MsgApplyGroupAudit , len(res))
+	prsp.AuditList = make([]*ss.MsgApplyGroupAudit, len(res))
 	i := 0
 	//parse
-	for idx:=0 ; idx<len(res); idx++{ //content:grp_id|grp_name|result
-		splits := strings.Split(res[idx] , "|")
+	for idx := 0; idx < len(res); idx++ { //content:grp_id|grp_name|result
+		splits := strings.Split(res[idx], "|")
 		if len(splits) != 3 {
-			log.Err("%s split:%s illegal! uid:%d" , _func_ , res[idx] , preq.Uid)
+			log.Err("%s split:%s illegal! uid:%d", _func_, res[idx], preq.Uid)
 			continue
 		}
 
 		//conv apply_uid
-		grp_id , err := strconv.ParseInt(splits[0] , 10 ,64)
+		grp_id, err := strconv.ParseInt(splits[0], 10, 64)
 		if err != nil {
-			log.Err("%s split:%s conv grp_id failed! uid:%d err:%v" , _func_ , splits[0] , preq.Uid , err)
+			log.Err("%s split:%s conv grp_id failed! uid:%d err:%v", _func_, splits[0], preq.Uid, err)
 			continue
 		}
 
-		audit_result , err := strconv.Atoi(splits[2])
+		audit_result, err := strconv.Atoi(splits[2])
 		if err != nil {
-			log.Err("%s split:%s conv audit_result failed! uid:%d err:%v" , _func_ , splits[2] , preq.Uid , err)
+			log.Err("%s split:%s conv audit_result failed! uid:%d err:%v", _func_, splits[2], preq.Uid, err)
 			continue
 		}
-
 
 		//fill
 		prsp.AuditList[i] = new(ss.MsgApplyGroupAudit)
@@ -234,17 +229,16 @@ func cb_range_user_audied(comm_config *comm.CommConfig, result interface{}, cb_a
 	}
 	prsp.FetchCount = int32(i)
 
-
-	err = comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_FETCH_AUDIT_GROUP_RSP , prsp)
+	err = comm.FillSSPkg(&ss_msg, ss.SS_PROTO_TYPE_FETCH_AUDIT_GROUP_RSP, prsp)
 	if err != nil {
-		log.Err("%s gen ss failed! err:%v uid:%d" , _func_ , err , preq.Uid)
+		log.Err("%s gen ss failed! err:%v uid:%d", _func_, err, preq.Uid)
 		return
 	}
 
-	SendToServ(pconfig , from , &ss_msg)
+	SendToServ(pconfig, from, &ss_msg)
 
 	//del apply list
-	tab_name := fmt.Sprintf(FORMAT_TAB_USER_GROUP_AUDITED+"%d" , preq.Uid)
-	pconfig.RedisClient.RedisExeCmd(pconfig.Comm , nil , cb_arg , "LTRIM" ,
-		tab_name , preq.FetchCount , -1)
+	tab_name := fmt.Sprintf(FORMAT_TAB_USER_GROUP_AUDITED+"%d", preq.Uid)
+	pconfig.RedisClient.RedisExeCmd(pconfig.Comm, nil, cb_arg, "LTRIM",
+		tab_name, preq.FetchCount, -1)
 }

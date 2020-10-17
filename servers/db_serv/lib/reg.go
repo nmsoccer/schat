@@ -37,14 +37,14 @@ func SendRegRsp(pconfig *Config, preq *ss.MsgRegReq, target_serv int, result ss.
 	pRegRsp.Result = result
 
 	//fill
-	err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_REG_RSP , pRegRsp)
+	err := comm.FillSSPkg(&ss_msg, ss.SS_PROTO_TYPE_REG_RSP, pRegRsp)
 	if err != nil {
 		log.Err("%s pack failed! err:%v", _func_, err)
 		return
 	}
 
 	//sendback
-	if ok := SendToServ(pconfig, target_serv , &ss_msg); !ok {
+	if ok := SendToServ(pconfig, target_serv, &ss_msg); !ok {
 		log.Err("%s send to logic:%d failed!", _func_, target_serv)
 	}
 }
@@ -155,21 +155,21 @@ func cb_alloc_uid(comm_config *comm.CommConfig, result interface{}, cb_arg []int
 	}
 
 	//generate salt
-	salt , err := comm.GenRandStr(PASSWD_SALT_LEN)
+	salt, err := comm.GenRandStr(PASSWD_SALT_LEN)
 	if err != nil {
-		log.Err("%s generate salt failed! err:%v name:%s" , _func_ , err , preq.Name)
+		log.Err("%s generate salt failed! err:%v name:%s", _func_, err, preq.Name)
 		SendRegRsp(pconfig, preq, from, ss.REG_RESULT_REG_DB_ERR)
 		return
 	}
 
 	//enc pass
-	enc_pass := comm.EncPassString(preq.Pass , salt)
+	enc_pass := comm.EncPassString(preq.Pass, salt)
 
 	//set user_global[users:global:name]
 	log.Info("%s uid:%d try to set user global. name:%s", _func_, uid, preq.Name)
 	tab_name := fmt.Sprintf(FORMAT_TAB_USER_GLOBAL, preq.Name)
 	pconfig.RedisClient.RedisExeCmd(pconfig.Comm, cb_set_global_info, append(cb_arg, uid), "HMSET", tab_name, "uid", uid,
-		"pass", enc_pass , "salt" , salt)
+		"pass", enc_pass, "salt", salt)
 }
 
 //set global
@@ -229,7 +229,7 @@ func cb_set_global_info(comm_config *comm.CommConfig, result interface{}, cb_arg
 		sex_v = 2
 	}
 	pconfig.RedisClient.RedisExeCmd(pconfig.Comm, cb_reg_set_user_info, cb_arg, "HMSET", tab_name, "uid", uid,
-		"name", preq.RoleName , "addr", preq.Addr, "sex", sex_v , "online_logic", -1)
+		"name", preq.RoleName, "addr", preq.Addr, "sex", sex_v, "online_logic", -1)
 }
 
 func cb_reg_set_user_info(comm_config *comm.CommConfig, result interface{}, cb_arg []interface{}) {

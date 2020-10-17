@@ -4,7 +4,12 @@ const (
   CHAT_MSG_TYPE_TEXT = 0
   CHAT_MSG_TYPE_IMG  = 1
 
+  //sync group field
   SYNC_GROUP_FIELD_ALL = 1
+
+  //group attr
+  GROUP_ATTR_VISIBLE = 0
+  GROUP_ATTR_INVISIBLE = 1
 )
 
 //create group
@@ -113,4 +118,22 @@ type CSFetchUserProfileRsp struct {
 	Profiles map[int64]*UserProfile  `json:"profiles"`
 }
 
+type CSChgGroupAttrReq struct {
+	Attr   int   `json:"attr"` //refer GROUP_ATTR_XX
+	GrpId  int64 `json:"grp_id"`
+}
 
+type CSChgGroupAttrRsp struct {
+	Result int   `json:"result"` //COMMON_RESULT_XX
+	Attr   int   `json:"attr"` //refer GROUP_ATTR_XX
+	GrpId  int64 `json:"grp_id"`
+}
+
+type CSGroupGroundReq struct {
+	StartIndex int `json:"start"` //search start index
+}
+
+type CSGroupGroundRsp struct {
+	Count int `json:"count"`
+	ItemList []*GroupGroundItem `json:"item_list"`
+}

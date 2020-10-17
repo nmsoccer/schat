@@ -63,37 +63,41 @@ func RecvMsg(pconfig *Config) int64 {
 		case ss.SS_PROTO_TYPE_LOGOUT_REQ:
 			RecvUserLogoutReq(pconfig, ss_msg.GetLogoutReq(), pmsg.sender)
 		case ss.SS_PROTO_TYPE_REG_REQ:
-			RecvRegReq(pconfig , ss_msg.GetRegReq() , pmsg.sender)
+			RecvRegReq(pconfig, ss_msg.GetRegReq(), pmsg.sender)
 		case ss.SS_PROTO_TYPE_CREATE_GROUP_REQ:
-			RecvCreateGroupReq(pconfig , ss_msg.GetCreateGroupReq() , pmsg.sender)
+			RecvCreateGroupReq(pconfig, ss_msg.GetCreateGroupReq(), pmsg.sender)
 		case ss.SS_PROTO_TYPE_APPLY_GROUP_REQ:
-			RecvApplyGroupReq(pconfig , ss_msg.GetApplyGroupReq() , pmsg.sender)
+			RecvApplyGroupReq(pconfig, ss_msg.GetApplyGroupReq(), pmsg.sender)
 		case ss.SS_PROTO_TYPE_FETCH_APPLY_GROUP_REQ:
-			RecvFetchApplyGroupReq(pconfig , ss_msg.GetFetchApplyReq() , pmsg.sender)
+			RecvFetchApplyGroupReq(pconfig, ss_msg.GetFetchApplyReq(), pmsg.sender)
 		case ss.SS_PROTO_TYPE_APPLY_GROUP_AUDIT:
-			RecvApplyGroupAudit(pconfig , ss_msg.GetApplyGroupAudit() , pmsg.sender)
+			RecvApplyGroupAudit(pconfig, ss_msg.GetApplyGroupAudit(), pmsg.sender)
 		case ss.SS_PROTO_TYPE_FETCH_AUDIT_GROUP_REQ:
-			RecvFetchAuditGroupReq(pconfig , ss_msg.GetFetchAuditReq() , pmsg.sender)
+			RecvFetchAuditGroupReq(pconfig, ss_msg.GetFetchAuditReq(), pmsg.sender)
 		case ss.SS_PROTO_TYPE_ENTER_GROUP_REQ:
-			RecvEnterGroupReq(pconfig , ss_msg.GetEnterGroupReq() , pmsg.sender)
+			RecvEnterGroupReq(pconfig, ss_msg.GetEnterGroupReq(), pmsg.sender)
 		case ss.SS_PROTO_TYPE_LOAD_GROUP_REQ:
-			RecvLoadGroupReq(pconfig , ss_msg.GetLoadGroupReq() , pmsg.sender)
+			RecvLoadGroupReq(pconfig, ss_msg.GetLoadGroupReq(), pmsg.sender)
 		case ss.SS_PROTO_TYPE_SEND_CHAT_REQ:
-			RecvSendChatReq(pconfig , ss_msg.GetSendChatReq() , pmsg.sender)
+			RecvSendChatReq(pconfig, ss_msg.GetSendChatReq(), pmsg.sender)
 		case ss.SS_PROTO_TYPE_SAVE_GROUP_REQ:
-			RecvSaveChatGroupReq(pconfig , ss_msg.GetSaveGroupReq() , pmsg.sender)
+			RecvSaveChatGroupReq(pconfig, ss_msg.GetSaveGroupReq(), pmsg.sender)
 		case ss.SS_PROTO_TYPE_FETCH_CHAT_REQ:
-			RecvFetchChatReq(pconfig , ss_msg.GetFetchChatReq() , pmsg.sender)
+			RecvFetchChatReq(pconfig, ss_msg.GetFetchChatReq(), pmsg.sender)
 		case ss.SS_PROTO_TYPE_EXIT_GROUP_REQ:
-			RecvExitGroupReq(pconfig , ss_msg.GetExitGroupReq() , pmsg.sender)
+			RecvExitGroupReq(pconfig, ss_msg.GetExitGroupReq(), pmsg.sender)
 		case ss.SS_PROTO_TYPE_KICK_GROUP_REQ:
-			RecvKickGroupReq(pconfig , ss_msg.GetKickGroupReq() , pmsg.sender)
+			RecvKickGroupReq(pconfig, ss_msg.GetKickGroupReq(), pmsg.sender)
 		case ss.SS_PROTO_TYPE_FETCH_OFFLINE_INFO_REQ:
-			RecvFetchOfflineInfoReq(pconfig , ss_msg.GetFetchOfflineInfoReq() , pmsg.sender)
+			RecvFetchOfflineInfoReq(pconfig, ss_msg.GetFetchOfflineInfoReq(), pmsg.sender)
 		case ss.SS_PROTO_TYPE_FETCH_USER_PROFILE_REQ:
-			RecvFetchUserProfileReq(pconfig , ss_msg.GetFetchUserProfileReq() , pmsg.sender)
+			RecvFetchUserProfileReq(pconfig, ss_msg.GetFetchUserProfileReq(), pmsg.sender)
 		case ss.SS_PROTO_TYPE_SAVE_USER_PROFILE_REQ:
-			RecvSaveUserProfileReq(pconfig , ss_msg.GetSaveUserProfileReq())
+			RecvSaveUserProfileReq(pconfig, ss_msg.GetSaveUserProfileReq())
+		case ss.SS_PROTO_TYPE_CHG_GROUP_ATTR_REQ:
+			RecvChgGroupAttrReq(pconfig, ss_msg.GetChgGroupAttrReq(), pmsg.sender)
+		case ss.SS_PROTO_TYPE_GROUP_GROUND_REQ:
+			RecvGroupGroundReq(pconfig, ss_msg.GetGroupGroundReq(), pmsg.sender)
 		default:
 			log.Err("%s fail! unknown proto type:%v", _func_, ss_msg.ProtoType)
 		}

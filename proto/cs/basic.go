@@ -1,0 +1,6 @@
+package cs
+
+const (
+	COMMON_RESULT_SUCCESS = 0
+	COMMON_RESULT_FAILED = 1
+)

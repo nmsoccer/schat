@@ -24,7 +24,7 @@ func init() {
 func RecvMsg(pconfig *Config) int64 {
 	defer func() {
 		if err := recover(); err != nil {
-			pconfig.Comm.Log.Fatal("RecvMsg meets panic! err:%v" , err)
+			pconfig.Comm.Log.Fatal("RecvMsg meets panic! err:%v", err)
 		}
 	}()
 	var _func_ = "RecvMsg"
@@ -69,25 +69,29 @@ func RecvMsg(pconfig *Config) int64 {
 		case ss.SS_PROTO_TYPE_LOGOUT_RSP:
 			RecvLogoutRsp(pconfig, ss_msg.GetLogoutRsp())
 		case ss.SS_PROTO_TYPE_REG_RSP:
-			RecvRegRsp(pconfig , ss_msg.GetRegRsp())
+			RecvRegRsp(pconfig, ss_msg.GetRegRsp())
 		case ss.SS_PROTO_TYPE_CREATE_GROUP_RSP:
-			RecvCreateGroupRsp(pconfig , ss_msg.GetCreateGroupRsp())
+			RecvCreateGroupRsp(pconfig, ss_msg.GetCreateGroupRsp())
 		case ss.SS_PROTO_TYPE_APPLY_GROUP_RSP:
-			RecvApplyGroupRsp(pconfig , ss_msg.GetApplyGroupRsp())
+			RecvApplyGroupRsp(pconfig, ss_msg.GetApplyGroupRsp())
 		case ss.SS_PROTO_TYPE_APPLY_GROUP_NOTIFY:
-			RecvApplyGroupNotify(pconfig , ss_msg.GetApplyGroupNotify())
+			RecvApplyGroupNotify(pconfig, ss_msg.GetApplyGroupNotify())
 		case ss.SS_PROTO_TYPE_SEND_CHAT_RSP:
-			RecvSendChatRsp(pconfig , ss_msg.GetSendChatRsp())
+			RecvSendChatRsp(pconfig, ss_msg.GetSendChatRsp())
 		case ss.SS_PROTO_TYPE_SYNC_CHAT_LIST:
-			RecvSyncChatList(pconfig , ss_msg.GetSyncChatList())
+			RecvSyncChatList(pconfig, ss_msg.GetSyncChatList())
 		case ss.SS_PROTO_TYPE_EXIT_GROUP_RSP:
-			RecvExitGroupRsp(pconfig , ss_msg.GetExitGroupRsp())
+			RecvExitGroupRsp(pconfig, ss_msg.GetExitGroupRsp())
 		case ss.SS_PROTO_TYPE_COMMON_NOTIFY:
-			RecvCommonNotify(pconfig , ss_msg.GetCommonNotify())
+			RecvCommonNotify(pconfig, ss_msg.GetCommonNotify())
 		case ss.SS_PROTO_TYPE_SYNC_GROUP_INFO:
-			RecvSyncGroupInfo(pconfig , ss_msg.GetSyncGroupInfo())
+			RecvSyncGroupInfo(pconfig, ss_msg.GetSyncGroupInfo())
 		case ss.SS_PROTO_TYPE_FETCH_USER_PROFILE_RSP:
-			RecvFetchUserProfileRsp(pconfig , ss_msg.GetFetchUserProfileRsp())
+			RecvFetchUserProfileRsp(pconfig, ss_msg.GetFetchUserProfileRsp())
+		case ss.SS_PROTO_TYPE_CHG_GROUP_ATTR_RSP:
+			RecvChgGroupAttrRsp(pconfig, ss_msg.GetChgGroupAttrRsp())
+		case ss.SS_PROTO_TYPE_GROUP_GROUND_RSP:
+			RecvGroupGroundRsp(pconfig, ss_msg.GetGroupGroundRsp())
 		default:
 			log.Err("%s fail! unknown proto type:%v", _func_, ss_msg.ProtoType)
 		}

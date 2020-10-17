@@ -43,7 +43,9 @@ enum DISP_PROTO_TYPE {
   DISP_SEND_CHAT_REQ = 9;
   DISP_SEND_CHAT_RSP = 10;
   DISP_QUERY_GROUP_REQ = 11;
-  DISP_SYNC_GROUP_INFO = 12;  
+  DISP_SYNC_GROUP_INFO = 12;
+  DISP_CHG_GROUP_ATTR_REQ = 13;
+  DISP_CHG_GROUP_ATTR_RSP = 14; 
   //Add Proto Should Also Modify servers/comm/disp.go:GenDispMsg  
 }
 
@@ -72,7 +74,9 @@ message MsgDisp {
     MsgSendChatReq   send_chat_req  = 29;
 	MsgSendChatRsp   send_chat_rsp  = 30;
     MsgQueryGroupReq query_group_req = 31;
-    MsgSyncGroupInfo sync_group_info = 32;    
+    MsgSyncGroupInfo sync_group_info = 32;
+    MsgChgGroupAttrReq chg_group_attr_req = 33;
+    MsgChgGroupAttrRsp chg_group_attr_rsp = 34;    
   }  
 }
 
@@ -232,3 +236,27 @@ message MsgSyncGroupInfo {
   
   int64 occupy = 20;  
 }
+
+//GroupAttr
+message MsgChgGroupAttrReq {
+  GROUP_ATTR_TYPE attr = 1;
+  int64 uid = 2;
+  int64 grp_id = 3;
+  int64 int_v = 4;
+  string str_v = 5;
+  
+  int64 occupy = 20;
+}
+
+//GroupAttr
+message MsgChgGroupAttrRsp {
+  SS_COMMON_RESULT result = 1;
+  GROUP_ATTR_TYPE attr = 2;
+  int64 uid = 3;
+  int64 grp_id = 4;
+  int64 int_v = 5;
+  string str_v = 6;
+  
+  int64 occupy = 20;
+}
+

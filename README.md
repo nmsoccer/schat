@@ -233,7 +233,7 @@ sxx库是几个支持库，安装简单且基本无依赖,下面均以手动安�
   * 注册
   我们可以注册一个新的用户，命令：``[reg] register <name> <pass> <role_name> <sex:1|2> <addr>``
   ```
-  reg protoss 123 zelot 1 shenzhen                    
+  please input:>>reg protoss 123 zelot 1 shenzhen                    
   reg... name:protoss pass:123 sex:1 addr:shenzhen
   send cmd:reg protoss 123 zelot 1 shenzhen success! 
   reg result:0 name:protoss
@@ -266,9 +266,9 @@ sxx库是几个支持库，安装简单且基本无依赖,下面均以手动安�
   创建群聊成功，群聊名sc2,密码123,同时返回了 群ID：5025
   
   * 加群
-  作为简单处理，我们直接用群主将另一用户拉入裙中即可，已知有另一个用户zerg，我们打开另一个终端登陆，信息如下：
+  作为简单处理，我们直接用群主将另一用户拉入裙中即可，已知有另一个用户zerg，我们打开另一个终端登陆，登录信息如下：
   ```
-  login zerg 123
+  please input:>>login zerg 123
   login...name:zerg pass:123
   send cmd:login zerg 123 success! 
   login result:0 name:zerg role_name:zergling head_url:
@@ -282,8 +282,7 @@ sxx库是几个支持库，安装简单且基本无依赖,下面均以手动安�
   send cmd:audit 5025 sc2 10010 1 success!
   please input:>>
   ```
-  分别输入的是群聊ID，群聊名，拉入的用户UID，同意1
-  此时另外用户也会同步收到入群信息：
+  分别输入的是群聊ID，群聊名，拉入的用户UID，同意1。 此时另外用户也会同步收到入群信息：
   ```
   apply group result:1 grp_name:sc2 grp_id:5025
   ```

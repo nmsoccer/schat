@@ -185,4 +185,160 @@ sxx库是几个支持库，安装简单且基本无依赖,下面均以手动安�
       * 如果拉起进程顺利，我们可以打开页面查看，默认端口是8080同时需要用户名及密码,默认选项配置于spush/tmpl/manage_serv.tmpl:auth,登陆查看：
     ![管理页面](https://github.com/nmsoccer/schat/blob/master/pic/schat_index.png)   
   
+### 简单演示
+源码附带了一个本地命令行客户端功能测试工具.进入schat/client/目录，go build chat_cli.go 生成chat_cli客户端
+  * 连接地址  
+    * 方法一：我们的dir_serv默认监听于10801端口，所以可以使用浏览器打开xxx:10801/query页面获得一个conn_serv的地址：
+    ```
+    {"conn_serv":"xx.xx.xx.xx:17908"} 注意这里返回的是公网IP，我们只需要端口即可
+    ```
+
+    * 方法二：也可以直接在server/schat.json配置文件中查找conn_serv的配置项
+  ```
+    {"name":"conn_serv-1" ,  "cfg_name":"conf/conn_serv.json" , "cfg_tmpl":"./tmpl/conn_serv.tmpl" ,    "tmpl_param":"logic_serv=3001,listen_addr=:17908,m_addr=:7000"}, 
+    {"name":"conn_serv-2" ,  "cfg_name":"conf/conn_serv.json" , "cfg_tmpl":"./tmpl/conn_serv.tmpl" , "tmpl_param":"logic_serv=3002,listen_addr=:17909,m_addr=:7000"}, 
+  ```
+  可以看到我们配置了两个连接进程，分别监听于17908和17909端口
+  
+  * 启动客户端：  
+  进入client目录，执行
+  ```
+  ./chat_cli -p 17908 -m 1
+  start client ...
+  send valid success! pkg_len:45 valid_key:c#s..x*.39&suomeI./().32&show+me_tHe_m0ney$
+  ----cmd----
+  [ping] ping to server
+  [logout] logout
+  [apply] apply group <group_id> <group_pass> <apply_msg>
+  [g_attr] chg group attr <group_id><attr_id>
+  [login] login <name> <pass> [version]
+  [audit] audit group apply <group_id><grp_name><apply_uid><audit 0|1>
+  [quit] quit group <group_id>
+  [chat] chat <chat_type><group_id><msg>
+  [grp_info] query group info <group_id>
+  [u_prof] user profile [uid1] [uid2] ...
+  [g_ground] group ground <start_index>
+  [reg] register <name> <pass> <role_name> <sex:1|2> <addr>
+  [create] create group <group_name> <group_pass>
+  [his] chat history <group_id><now_msg_id>
+  [kick] kick group member <group_id><member_id>
+  please input:>>read spec pkg. tag:18 pkg_len:276 pkg_option:2
+  <RecvConnSpecPkg> valid pkg! enc_type:3 content:-----BEGIN PUBLIC KEY-----
+  ...
+  read spec pkg. tag:25 pkg_len:14 pkg_option:3
+  <RecvConnSpecPkg> rsa_nego pkg! result:ok
+  ```
+  这里打印了可以使用的命令和一些连接中的验证流程，走到这里说明连接OK了
+  
+  * 注册
+  我们可以注册一个新的用户，命令：``[reg] register <name> <pass> <role_name> <sex:1|2> <addr>``
+  ```
+  reg protoss 123 zelot 1 shenzhen                    
+  reg... name:protoss pass:123 sex:1 addr:shenzhen
+  send cmd:reg protoss 123 zelot 1 shenzhen success! 
+  reg result:0 name:protoss
+  please input:>> 
+  ```
+  
+  * 登录
+  我们用刚才的注册用户登陆，命令：``[login] login <name> <pass> [version]``
+  ```
+  please input:>>login protoss 123
+  login...name:protoss pass:123
+  send cmd:login protoss 123 success! 
+  login result:0 name:protoss role_name:zelot head_url:
+  uid:10009 sex:1 addr:shenzhen level:0 Exp:100 AllGroup:0 MasterGroup:0
+  please input:>>common_notify type:1 grp_id:0 intv:2 strv: strs:[1|611736899424|xx.xx.xx.xx:22341 2|909568261602|xx.xx.xx.xx:22342]
+  ```
+  我们登陆成功了并返回了一些初始化数据和file_serv的可用地址
+  
+  使用相同方法我们可以再创建一个用户suomei
+  
+  * 建群
+  我们可以创建一个群聊了，命令: `` [create] create group <group_name> <group_pass> ``
+  ```
+  please input:>>create sc2 123
+  create group name:sc2 pass:123
+  send cmd:create sc2 123 success! 
+  create group result:0 grp_name:sc2 grp_id:5025 ts:1603094610 mem_count:1
+  
+  ```
+  创建群聊成功，群聊名sc2,密码123,同时返回了 群ID：5025
+  
+  * 加群
+  作为简单处理，我们直接用群主将另一用户拉入裙中即可，已知有另一个用户zerg，我们打开另一个终端登陆，信息如下：
+  ```
+  login zerg 123
+  login...name:zerg pass:123
+  send cmd:login zerg 123 success! 
+  login result:0 name:zerg role_name:zergling head_url:
+  uid:10010 sex:1 addr:chengdu level:0 Exp:100 AllGroup:0 MasterGroup:0
+  
+  ```
+  回到protoss用户，使用命令：``[audit] audit group apply <group_id><grp_name><apply_uid><audit 0|1>``
+  ```
+  please input:>>audit 5025 sc2 10010 1
+  audit group request:{1 10010 5025 sc2}
+  send cmd:audit 5025 sc2 10010 1 success!
+  please input:>>
+  ```
+  分别输入的是群聊ID，群聊名，拉入的用户UID，同意1
+  此时另外用户也会同步收到入群信息：
+  ```
+  apply group result:1 grp_name:sc2 grp_id:5025
+  ```
+  
+  * 聊天
+  命令：`` [chat] chat <chat_type><group_id><msg> ``
+  我们在zerg用户输入如下：
+  ```
+  please input:>>chat 0 5025 hello      
+  send cmd:chat 0 5025 hello success!   
+  sync_chat_list grp_id:5025 count:1 type:0
+  [0]<2>sender:10010 name:zergling content:hello time:1603095093 type:0 grp_id:5025
+  
+  please input:>>chat 0 5025 helloassff
+  send cmd:chat 0 5025 helloassff success!   
+  sync_chat_list grp_id:5025 count:1 type:0
+  [0]<3>sender:10010 name:zergling content:helloassff time:1603095164 type:0 grp_id:5025
+  
+  ```
+  发送了两条信息，在另一边群主会收到同步：
+  ```
+  sync_chat_list grp_id:5025 count:2 type:0
+  [0]<1>sender:0 name: content:welcome to sc2 time:1603094610 type:0 grp_id:5025
+  [1]<2>sender:10010 name:zergling content:hello time:1603095093 type:0 grp_id:5025
+  sync_chat_list grp_id:5025 count:1 type:0
+  [0]<3>sender:10010 name:zergling content:helloassff time:1603095164 type:0 grp_id:5025  
+  ```
+  第一条是建群时候放进去的默认信息，后面两条即为新加群员发送的消息
+  
+  * 离线
+  我们使用logout命令登出protoss，然后用zerg多发几条：
+  ```
+  please input:>>chat 0 5025 no.1message
+  please input:>>chat 0 5025 no.2message
+  please input:>>chat 0 5025 no.3message
+  
+  ```
+  然后登录protoss:
+  ```
+please input:>>login protoss 123
+login...name:protoss pass:123
+send cmd:login protoss 123 success! 
+login result:0 name:protoss role_name:zelot head_url:
+uid:10009 sex:1 addr:shenzhen level:0 Exp:100 AllGroup:1 MasterGroup:1
+[5025] grp_id:5025 name:sc2 last_read:3 enter:1603094610
+master_groups:map[5025:true]
+sync_chat_list grp_id:5025 count:3 type:0
+[0]<4>sender:10010 name:zergling content:no.1message time:1603095573 type:0 grp_id:5025
+[1]<5>sender:10010 name:zergling content:no.2message time:1603095587 type:0 grp_id:5025
+[2]<6>sender:10010 name:zergling content:no.3message time:1603095606 type:0 grp_id:5025
+please input:>>
+  
+  ```
+  离线群聊信息也得到了同步，同时是上一次登出时消息的读取位置
+  
+  更多客户端功能请参考wiki
+ 
 * **未完待续**  

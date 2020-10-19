@@ -359,7 +359,7 @@ please input:>>
       please input:>>      
       ```      
     * 发送
-      通过浏览器打开``http://aaa.aa.aa.aaa:22341/upload?token=735104392095``会显示一个测试用的上传页面![管理页面](https://github.com/nmsoccer/schat/blob/master/pic/schat_index.png)    
+      通过浏览器打开``http://aaa.aa.aa.aaa:22341/upload?token=735104392095``会显示一个测试用的上传页面![上传页面](https://github.com/nmsoccer/schat/blob/master/pic/schat_upload.png)    
     * 同步
       发送成功后，发送者zerg的终端都会收到新的信息：
       ```

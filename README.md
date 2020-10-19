@@ -340,13 +340,13 @@ please input:>>
   
   * 图片  
   在群内发送图片也会作为群聊信息的一条进行同步，同步的是生成的url数据。
-    * 地址
+    * 地址  
       首先我们登录时会获得file_serv的外网服务器地址，这里都在spush/dir_serv/tmpl里配置如下      
       ```         
         "file_serv_index":[1,2],
         "file_serv_addr":["aaa.aa.aa.aaa:22341","bb.bb.bbb.bb:22342"],        
        ```               
-    * TOKEN
+    * TOKEN  
       我们登录时获取到的信息就是这里的配置和各file_serv的临时token
       ```
       please input:>>login zerg 123
@@ -358,7 +358,7 @@ please input:>>
       common_notify type:1 grp_id:0 intv:2 strv: strs:[1|735104392095|aaa.aa.aa.aaa:22341 2|659411070450|bb.bb.bbb.bb:22342]
       please input:>>      
       ```      
-    * 发送
+    * 发送  
       通过浏览器打开``http://aaa.aa.aa.aaa:22341/upload?token=735104392095``会显示一个测试用的上传页面![上传页面](https://github.com/nmsoccer/schat/blob/master/pic/schat_upload.png)    
     * 同步
       发送成功后，发送者zerg的终端都会收到新的信息：
@@ -373,9 +373,6 @@ please input:>>
       sync_chat_list grp_id:5025 count:1 type:0
       [0]<7>sender:10010 name:zergling content:1:1:5025:202010_540f35fe0a34e1f8deba6b6692315339_.jpg time:1603096561 type:1 grp_id:5025
       ```
-      
-      
-  
+        
   更多客户端功能请参考wiki
  
-* **未完待续**  

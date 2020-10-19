@@ -113,7 +113,73 @@ sxx库是几个支持库，安装简单且基本无依赖,下面均以手动安�
   一个进程通信组件，sgame里集成了proc_bridge，这里需要安装支持库即可. https://github.com/nmsoccer/proc_bridge 下载proc_bridge-master.zip到本地  
     * 解压安装:cd proc_bridge-master/src/library; ./install_lib.sh(root权限)，安装完毕. 更加详细的各种配置请参考https://github.com/nmsoccer/proc_bridge/wiki
 
-  
+### SCHAT安装  
+这里仍然以手动安装为例
+  * 下载安装    
+  进入 https://github.com/nmsoccer/schat; 下载schat-master.zip到本地; 
+    * 部署cp schat-master.zip $GOPATH/src/; cd $GOPATH/src; unzip schat-master.zip; mv schat-master schat 完成  
+  * 配置通信  
+    * 进入 $GOPATH/src/schat/proc_bridge. (这里的proc_bridge就是上面安装的proc_bridge组件，只是为了方便集成到这个项目里了).然后执行./init.sh初始化一些配置.
+    * 进入schat/目录。 修改bridge.cfg配置，因为我们是本机部署，所以只需要修改BRIDGE_USER，BRIDGE_DIR这两个选项使得用户为本机有效用户即可.具体配置项请参考https://github.com/nmsoccer/proc_bridge/wiki/config-detail
+    * 执行 chmod u+x build.sh; ./build.sh install  
+    * 执行 ./manager -i 1 -N schat 这是一个通信管理工具 执行命令STAT * 可以查看到当前路由的建立情况. 执行PROC-CONN * 可以查看是否有网络连接错误。 具体使用可以参考https://github.com/nmsoccer/proc_bridge/wiki/manager  
+
+  * 编译进程
+    * 进入$GOPATH/src/schat/servers/spush chmod u+x init.sh build_server.sh
+    * 执行./init.sh 初始化设置
+    * 执行 ./build_servers.sh -b 编译(也可以进入servers/xx_serv各目录下go build xx_serv.go 手动编译)
+
+  * 发布进程
+    * 进入$GOPATH/src/schat/servers/spush
+    * spush是一个分发管理工具，下载自https://github.com/nmsoccer/spush 这里也将其集成到了框架内部
+    * schat.json 是spush使用的配置文件，我们都是本地部署所以只需要schat.json文件里的nmsoccer用户名配置成本机有效用户xxx即可
+      sed -i "s/nmsoccer/xxx/g" schat.json
+    * 发布拉起 
+      ./spush -P -f schat.json 结果如下:
+      ```
+      ++++++++++++++++++++spush (2020-10-02 19:54:03)++++++++++++++++++++
+      push all procs
+      .create cfg:18/18
+      ................
+      ----------Push <schat> Result---------- 
+      ok
+      .
+      [18/18]
+      [manage_serv-1]::success 
+      [logic_serv-1]::success 
+      [db_logic_serv-1]::success 
+      [chat_serv-1]::success 
+      [disp_serv-2]::success 
+      [db_chat_serv-2]::success 
+      [online_serv-1]::success 
+      [online_serv-2]::success 
+      [dir_serv-1]::success 
+      [conn_serv-2]::success 
+      [chat_serv-2]::success 
+      [db_chat_serv-1]::success 
+      [disp_serv-1]::success 
+      [file_serv-1]::success 
+      [file_serv-2]::success 
+      [conn_serv-1]::success 
+      [logic_serv-2]::success 
+      [db_logic_serv-2]::success 
+
+      +++++++++++++++++++++end (2020-10-02 19:54:20)+++++++++++++++++++++
+      ```
+      说明OK鸟  
+    
+    * 关闭全部进程    
+      一般进入页面端进行关闭
+    
+    * 单独推送全部进程配置  
+      ./spush -P -f schat.json -O  
+    
+    * 单独推送全部进程BIN文件  
+      ./spush -P -f schat.json -o
+      
+    * 单独推送某个进程BIN文件及配置      
+      ./spush -p ^logic* -f schat.json    
+      更多spush的使用请参考https://github.com/nmsoccer/spush   
   
   
 * **未完待续**  

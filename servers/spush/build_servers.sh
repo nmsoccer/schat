@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DIR=("conn_serv" "db_serv" "logic_serv" "manage_serv" "disp_serv")
+DIR=("conn_serv" "db_serv" "logic_serv" "manage_serv" "disp_serv" "online_serv" "file_serv" "dir_serv" "chat_serv")
 cd ..
 WORKING=`pwd`
 

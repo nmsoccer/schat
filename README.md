@@ -27,6 +27,32 @@ A Simple Chat Serv
 由不同的业务SET构成，SET内的进程均可平行扩展  
 ![架构](https://github.com/nmsoccer/schat/blob/master/pic/schat.jpg)
 
+
+### 进程
+对拓扑图里的进程功能及部署进行说明
+* **conn_serv**   
+  客户端接入进程，负责维护客户端的连接，客户端使用TCP长链接接入  
+* **logic_serv**  
+  在线用户的数据缓存，处理用户本身的主要逻辑服务  
+* **db_logic_serv**  
+  与logic_serv配对的db代理进程，负责与reddis的连接与数据交互
+* **说明1**  
+  conn_serv,logic_serv,db_logic_serv一般1:1:1配置对应作为一个用户连接，处理和数据的逻辑单元，按逻辑单元平行扩展  
+* **disp_serv**    
+  作为星形拓扑的包分发中心，负责分派各业务进程之间的数据包转发，这样每个业务进程不需要维护其他多余的进程通信地址，只需要和disp进程组连接即可。一般需要与其他业务进程组互相通信的进程组与disp_serv进程组建议通信；disp_serv可以平行扩展  
+* **online_serv**  
+  缓存世界里所有在线用户的logic_serv地址，一般部署两个serv即可，双主作为互备  
+* **file_serv**   
+  静态文件服务进程，目前主要有两种功能：1.将群聊内发布的文件包括图片等存储，同时生成对应的聊天记录；2.存储用户头像。进程可以设置安全等级，作为一般的服务验证。每个file_serv需要配置唯一的servindex作为文件url的一部分，同时方便数据迁移而保持所有群聊文件数据。文件服务进程亦可平行扩展，更具体说明可以参考wiki  
+* **chat_serv**  
+  聊天管理进程，这里会缓存所有活跃(主要是聊天等)的群组数据，群组数据按群ID hash分布到chat_serv上。同时用于同步转发聊天信息.
+* **db_chat_serv**  
+  服务于chat_serv的db代理，一般与chat_serv 1:1配置作为一个逻辑处理单元，平行扩展时最好按处理单元扩展  
+* **dir_serv**  
+  用于connect_serv前端的负载均衡，同时作为file_serv的相关地址信息管理  
+
+
+
 ### 环境安装
 schat基于sgame框架，所以其安装环境与sgame流程一致，这里摘自https://github.com/nmsoccer/sgame：  
 #### 基础软件
@@ -48,7 +74,7 @@ schat基于sgame框架，所以其安装环境与sgame流程一致，这里摘�
 
 #### 必需库
 * **PROTOBUF-GO**  
-这里用手动安装来说明.
+probotuf-go是protobuf对go的支持工具，这里用手动安装来说明.
   * 下载安装 进入https://github.com/protocolbuffers/protobuf-go 下载protobuf-go-master.zip 
     * mkdir -p $GOPATH/src/google.golang.org/; cp protobuf-go-master.zip $GOPATH/src/google.golang.org/; 
     * cd $GOPATH/src/google.golang.org/; 解压并改名解压后的目录为protobuf: unzip protobuf-go-master.zip; 
@@ -87,29 +113,6 @@ sxx库是几个支持库，安装简单且基本无依赖,下面均以手动安�
   一个进程通信组件，sgame里集成了proc_bridge，这里需要安装支持库即可. https://github.com/nmsoccer/proc_bridge 下载proc_bridge-master.zip到本地  
     * 解压安装:cd proc_bridge-master/src/library; ./install_lib.sh(root权限)，安装完毕. 更加详细的各种配置请参考https://github.com/nmsoccer/proc_bridge/wiki
 
-
-### 进程
-对拓扑图里的进程功能及部署进行说明
-* **conn_serv**   
-  客户端接入进程，负责维护客户端的连接，客户端使用TCP长链接接入  
-* **logic_serv**  
-  在线用户的数据缓存，处理用户本身的主要逻辑服务  
-* **db_logic_serv**  
-  与logic_serv配对的db代理进程，负责与reddis的连接与数据交互
-* **说明1**  
-  conn_serv,logic_serv,db_logic_serv一般1:1:1配置对应作为一个用户连接，处理和数据的逻辑单元，按逻辑单元平行扩展  
-* **disp_serv**    
-  作为星形拓扑的包分发中心，负责分派各业务进程之间的数据包转发，这样每个业务进程不需要维护其他多余的进程通信地址，只需要和disp进程组连接即可。一般需要与其他业务进程组互相通信的进程组与disp_serv进程组建议通信；disp_serv可以平行扩展  
-* **online_serv**  
-  缓存世界里所有在线用户的logic_serv地址，一般部署两个serv即可，双主作为互备  
-* **file_serv**   
-  静态文件服务进程，目前主要有两种功能：1.将群聊内发布的文件包括图片等存储，同时生成对应的聊天记录；2.存储用户头像。进程可以设置安全等级，作为一般的服务验证。每个file_serv需要配置唯一的servindex作为文件url的一部分，同时方便数据迁移而保持所有群聊文件数据。文件服务进程亦可平行扩展，更具体说明可以参考wiki  
-* **chat_serv**  
-  聊天管理进程，这里会缓存所有活跃(主要是聊天等)的群组数据，群组数据按群ID hash分布到chat_serv上。同时用于同步转发聊天信息.
-* **db_chat_serv**  
-  服务于chat_serv的db代理，一般与chat_serv 1:1配置作为一个逻辑处理单元，平行扩展时最好按处理单元扩展  
-* **dir_serv**  
-  用于connect_serv前端的负载均衡，同时作为file_serv的相关地址信息管理  
   
   
   

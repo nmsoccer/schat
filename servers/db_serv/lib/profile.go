@@ -13,13 +13,19 @@ func RecvFetchUserProfileReq(pconfig *Config, preq *ss.MsgFetchUserProfileReq, f
 
 	//sync
 	go func() {
+		//pclient
+		pclient := SelectRedisClient(pconfig , REDIS_OPT_R)
+		if pclient == nil {
+			log.Err("%s failed! no proper redis found! uid:%d" , _func_ , uid)
+			return
+		}
 		//head
-		phead := pconfig.RedisClient.AllocSyncCmdHead()
+		phead := pclient.AllocSyncCmdHead()
 		if phead == nil {
 			log.Err("%s alloc head fail! uid:%d", _func_, uid)
 			return
 		}
-		defer pconfig.RedisClient.FreeSyncCmdHead(phead)
+		defer pclient.FreeSyncCmdHead(phead)
 
 		//args
 		args := make([]interface{}, len(preq.TargetList))
@@ -36,7 +42,7 @@ func RecvFetchUserProfileReq(pconfig *Config, preq *ss.MsgFetchUserProfileReq, f
 		//exe
 		for {
 			//query
-			res, err := pconfig.RedisClient.RedisExeCmdSync(phead, "MGET", args...)
+			res, err := pclient.RedisExeCmdSync(phead, "MGET", args...)
 			if err != nil {
 				log.Err("%s exe MGET failed! err:%v uid:%d", _func_, err, uid)
 				break
@@ -108,13 +114,19 @@ func RecvSaveUserProfileReq(pconfig *Config, preq *ss.MsgSaveUserProfileReq) {
 
 	//sync
 	go func() {
+		//pclient
+		pclient := SelectRedisClient(pconfig , REDIS_OPT_W)
+		if pclient == nil {
+			log.Err("%s failed! no proper redis found! uid:%d" , _func_ , uid)
+			return
+		}
 		//head
-		phead := pconfig.RedisClient.AllocSyncCmdHead()
+		phead := pclient.AllocSyncCmdHead()
 		if phead == nil {
 			log.Err("%s alloc head fail! uid:%d", _func_, uid)
 			return
 		}
-		defer pconfig.RedisClient.FreeSyncCmdHead(phead)
+		defer pclient.FreeSyncCmdHead(phead)
 
 		//pack
 		enc_data, err := ss.Pack(preq.Profile)
@@ -124,7 +136,7 @@ func RecvSaveUserProfileReq(pconfig *Config, preq *ss.MsgSaveUserProfileReq) {
 		}
 
 		//save
-		result := SaveUserProfile(pconfig, phead, uid, string(enc_data))
+		result := SaveUserProfile(pclient, phead, uid, string(enc_data))
 		log.Debug("%s result:%d uid:%d", _func_, result, uid)
 	}()
 

@@ -7,6 +7,11 @@ import (
 func RecvDispMsg(pconfig *Config, pdisp *ss.MsgDisp) {
 	var _func_ = "<RecvDispMsg>"
 	log := pconfig.Comm.Log
+	defer func() {
+		if err := recover(); err != nil {
+			log.Fatal("%s panic! proto:%d err:%v" , _func_ , pdisp.ProtoType , err)
+		}
+	}()
 
 	log.Debug("%s disp_proto:%d disp_from:%d target:%d spec:%d method:%d", _func_, pdisp.ProtoType, pdisp.FromServer, pdisp.Target,
 		pdisp.SpecServer, pdisp.Method)

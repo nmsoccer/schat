@@ -24,12 +24,19 @@ func RecvSendChatReq(pconfig *Config, preq *ss.MsgSendChatReq, from int) {
 		uid := preq.Uid
 		grp_id := preq.ChatMsg.GroupId
 		curr_ts := time.Now().Unix()
-		phead := pconfig.RedisClient.AllocSyncCmdHead()
+		//pclient
+		pclient := SelectRedisClient(pconfig , REDIS_OPT_W)
+		if pclient == nil {
+			log.Err("%s failed! no proper redis found! uid:%d grp_id:%d" , _func_ , uid , grp_id)
+			return
+		}
+		//phead
+		phead := pclient.AllocSyncCmdHead()
 		if phead == nil {
 			log.Err("%s alloc head failed! uid:%d grp_id:%d", _func_, uid, grp_id)
 			return
 		}
-		defer pconfig.RedisClient.FreeSyncCmdHead(phead)
+		defer pclient.FreeSyncCmdHead(phead)
 
 		log.Debug("%s uid:%d grp_id:%d raw_msg_id:%d tem_id:%d", _func_, uid, grp_id, preq.ChatMsg.MsgId, preq.TempId)
 		//Fill Chat Msg
@@ -54,7 +61,7 @@ func RecvSendChatReq(pconfig *Config, preq *ss.MsgSendChatReq, from int) {
 		offset := 0
 		for {
 			tab_name := fmt.Sprintf(FORMAT_TAB_CHAT_MSG_LIST, grp_id, index)
-			res, err := pconfig.RedisClient.RedisExeCmdSync(phead, "RPUSH", tab_name, coded)
+			res, err := pclient.RedisExeCmdSync(phead, "RPUSH", tab_name, coded)
 			if err != nil {
 				log.Err("%s push chat msg failed! uid:%d grp_id:%d err:%v", _func_, uid, grp_id, err)
 				return
@@ -104,12 +111,19 @@ func RecvFetchChatReq(pconfig *Config, preq *ss.MsgFetchChatReq, from int) {
 	go func() {
 		uid := preq.Uid
 		grp_id := preq.GrpId
-		phead := pconfig.RedisClient.AllocSyncCmdHead()
+		//pclient
+		pclient := SelectRedisClient(pconfig , REDIS_OPT_R)
+		if pclient == nil {
+			log.Err("%s failed! no proper redis found! uid:%d grp_id:%d" , _func_ , uid , grp_id)
+			return
+		}
+		//phead
+		phead := pclient.AllocSyncCmdHead()
 		if phead == nil {
 			log.Err("%s alloc head failed! uid:%d grp_id:%d", _func_, uid, grp_id)
 			return
 		}
-		defer pconfig.RedisClient.FreeSyncCmdHead(phead)
+		defer pclient.FreeSyncCmdHead(phead)
 
 		//Handle
 		start_msg_id := preq.LatestMsgId + 1
@@ -130,7 +144,7 @@ func RecvFetchChatReq(pconfig *Config, preq *ss.MsgFetchChatReq, from int) {
 		for {
 			//Check Len
 			tab_name := fmt.Sprintf(FORMAT_TAB_CHAT_MSG_LIST, grp_id, index)
-			res, err := pconfig.RedisClient.RedisExeCmdSync(phead, "LLEN", tab_name)
+			res, err := pclient.RedisExeCmdSync(phead, "LLEN", tab_name)
 			if err != nil {
 				log.Err("%s LLEN %s failed! uid:%d grp_id:%d err:%v", _func_, tab_name, uid, grp_id, err)
 				return
@@ -147,7 +161,7 @@ func RecvFetchChatReq(pconfig *Config, preq *ss.MsgFetchChatReq, from int) {
 			}
 
 			//Get Msg
-			res, err = pconfig.RedisClient.RedisExeCmdSync(phead, "LRANGE", tab_name, offset, end_offset)
+			res, err = pclient.RedisExeCmdSync(phead, "LRANGE", tab_name, offset, end_offset)
 			if err != nil {
 				log.Err("%s lrange chat msg failed! uid:%d grp_id:%d err:%v", _func_, uid, grp_id, err)
 				return

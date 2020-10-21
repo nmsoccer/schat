@@ -33,7 +33,7 @@ func SendHeartBeatMsg(arg interface{}) {
 
 	//report
 	pconfig.ReportServ.Report(comm.REPORT_PROTO_SERVER_HEART, curr_ts, "", nil)
-	pconfig.ReportServ.Report(comm.REPORT_PROTO_CONN_NUM, int64(pconfig.RedisClient.GetConnNum()), "RedisConn", nil)
+	pconfig.ReportServ.Report(comm.REPORT_PROTO_CONN_NUM, int64(CalcRedisConn(pconfig)), "RedisConn", nil)
 	return
 }
 
@@ -77,7 +77,7 @@ func HeartBeatToRedis(arg interface{}) {
 		return
 	}
 	curr_ts := time.Now().Unix()
-	pclient := pconfig.RedisClient
+	pclient := SelectRedisClient(pconfig , REDIS_OPT_W)
 
 	//this is a press test change heart_beat_circle=1
 	/*

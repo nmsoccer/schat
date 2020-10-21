@@ -36,6 +36,8 @@ func RecvCommNotify(pconfig *Config, pnotify *ss.MsgCommonNotify, src_serv int) 
 		RecvLoginNotify(pconfig, pnotify.Uid, src_serv)
 	case ss.COMMON_NOTIFY_TYPE_NOTIFY_USER_LOGOUT:
 		RecvLogoutNotify(pconfig, pnotify.Uid, src_serv)
+	case ss.COMMON_NOTIFY_TYPE_NOTIFY_NEW_AUDIT:
+		RecvApplyGroupAuditNotify(pconfig , pnotify)
 	case ss.COMMON_NOTIFY_TYPE_NOTIFY_NEW_MSG:
 		RecvNewMsgNotify(pconfig, pnotify)
 	case ss.COMMON_NOTIFY_TYPE_NOTIFY_UPLOAD_FILE:

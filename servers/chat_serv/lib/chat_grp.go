@@ -140,8 +140,16 @@ func RecvApplyGroupNotify(pconfig *Config, pnotify *ss.MsgApplyGroupNotify) {
 func RecvEnterGroupReq(pconfig *Config, preq *ss.MsgEnterGroupReq, from_logic int32) {
 	var _func_ = "<RecvEnterGroupReq>"
 	log := pconfig.Comm.Log
+	uid := preq.Uid
+	grp_id := preq.GrpId
+	defer func() {
+		if err := recover(); err != nil {
+			log.Fatal("%s panic! uid:%d grp_id:%d err:%v" , _func_ , uid , grp_id , err)
+		}
+	}()
 
-	log.Debug("%s uid:%d grp_id:%d", _func_, preq.GrpId, preq.Uid)
+
+	log.Debug("%s uid:%d grp_id:%d", _func_, uid, grp_id)
 	/*
 		//group online
 		pgrp_info := GetGroupInfo(pconfig , preq.GrpId)
@@ -499,19 +507,27 @@ func RecvExitGroupNotify(pconfig *Config, pnotify *ss.MsgCommonNotify) {
 	}
 
 	//check member
-	_, ok := pgrp_info.db_group_info.Members[uid]
-	if !ok {
-		log.Info("%s grp:%d has no member:%d", _func_, grp_id, uid)
+	err := DelGroupMember(pconfig , grp_id , uid)
+	if err != nil {
+		log.Err("%s del member:%d from group:%d failed! err:%v" , _func_ , uid , grp_id , err)
 		return
 	}
-
-	//del it
-	delete(pgrp_info.db_group_info.Members, uid)
-	pgrp_info.db_group_info.MemCount--
-	if pgrp_info.db_group_info.MemCount < 0 {
-		pgrp_info.db_group_info.MemCount = 0
-	}
 	log.Info("%s success! mem_count:%d grp_id:%d uid:%d", _func_, pgrp_info.db_group_info.MemCount, grp_id, uid)
+
+	//notify chg member
+	pnotify.NotifyType = ss.COMMON_NOTIFY_TYPE_NOTIFY_DEL_MEMBER
+	pnotify.Uid = pgrp_info.db_group_info.MasterUid
+	if pgrp_info.db_group_info.MemCount > 0 && pgrp_info.db_group_info.Members != nil {
+		pnotify.Members = pgrp_info.db_group_info.Members
+	}
+	pnotify.IntV = uid
+	pss_msg, err := comm.GenDispMsg(ss.DISP_MSG_TARGET_ONLINE_SERVER, ss.DISP_MSG_METHOD_RAND, ss.DISP_PROTO_TYPE_DISP_COMMON_NOTIFY,
+		0, pconfig.ProcId, 0, pnotify)
+	if err != nil {
+		log.Err("%s gen del member notify ss failed! err:%v grp_id:%d", _func_, err, grp_id)
+		return
+	}
+	SendToDisp(pconfig, 0, pss_msg)
 }
 
 func RecvDelGroupNotify(pconfig *Config, pnotify *ss.MsgCommonNotify) {
@@ -566,6 +582,17 @@ func RecvKickGroupNotify(pconfig *Config, pnotify *ss.MsgCommonNotify) {
 	pgrp := GetGroupInfo(pconfig, grp_id)
 	if pgrp == nil {
 		log.Info("%s group offline! grp_id:%d", _func_, grp_id)
+		//notify kicked uid
+		pnotify.NotifyType = ss.COMMON_NOTIFY_TYPE_NOTIFY_KICK_GROUP
+		pss_msg, err := comm.GenDispMsg(ss.DISP_MSG_TARGET_ONLINE_SERVER, ss.DISP_MSG_METHOD_RAND, ss.DISP_PROTO_TYPE_DISP_COMMON_NOTIFY,
+			0, pconfig.ProcId, 0, pnotify)
+		if err != nil {
+			log.Err("%s gen kick notify ss failed! err:%v grp_id:%d uid:%d", _func_, err, grp_id, uid)
+			return
+		}
+
+		//to online
+		SendToDisp(pconfig, 0, pss_msg)
 		return
 	}
 

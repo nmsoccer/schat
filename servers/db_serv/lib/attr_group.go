@@ -19,12 +19,19 @@ func RecvChgGroupAttrReq(pconfig *Config, preq *ss.MsgChgGroupAttrReq, from_serv
 	log.Info("%s uid:%d grp_id:%d attr:%d", _func_, uid, grp_id, attr)
 	//Sync
 	go func() {
-		phead := pconfig.RedisClient.AllocSyncCmdHead()
+		//pclient
+		pclient := SelectRedisClient(pconfig , REDIS_OPT_W)
+		if pclient == nil {
+			log.Err("%s failed! no proper redis found! uid:%d grp_id:%d attr:%d" , _func_ , uid , grp_id , attr)
+			return
+		}
+		//phead
+		phead := pclient.AllocSyncCmdHead()
 		if phead == nil {
 			log.Err("%s alloc head failed! uid:%d", _func_, uid)
 			return
 		}
-		defer pconfig.RedisClient.FreeSyncCmdHead(phead)
+		defer pclient.FreeSyncCmdHead(phead)
 
 		//rsp
 		prsp := new(ss.MsgChgGroupAttrRsp)
@@ -37,9 +44,9 @@ func RecvChgGroupAttrReq(pconfig *Config, preq *ss.MsgChgGroupAttrReq, from_serv
 		//switch
 		switch attr {
 		case ss.GROUP_ATTR_TYPE_GRP_ATTR_VISIBLE:
-			prsp.Result = set_group_attr_visible(pconfig, phead, preq)
+			prsp.Result = set_group_attr_visible(pclient, phead, preq)
 		case ss.GROUP_ATTR_TYPE_GRP_ATTR_INVISIBLE:
-			prsp.Result = set_group_attr_invisible(pconfig, phead, preq)
+			prsp.Result = set_group_attr_invisible(pclient, phead, preq)
 		default:
 			log.Err("%s unkown attr:%d uid:%d grp_id:%d", _func_, attr, uid, grp_id)
 		}
@@ -64,12 +71,19 @@ func RecvGroupGroundReq(pconfig *Config, preq *ss.MsgGroupGroudReq, from int) {
 
 	//Sync
 	go func() {
-		phead := pconfig.RedisClient.AllocSyncCmdHead()
+		//pclient
+		pclient := SelectRedisClient(pconfig , REDIS_OPT_R)
+		if pclient == nil {
+			log.Err("%s failed! no proper redis found! uid:%d" , _func_ , uid)
+			return
+		}
+		//phead
+		phead := pclient.AllocSyncCmdHead()
 		if phead == nil {
 			log.Err("%s alloc head failed! uid:%d", _func_, uid)
 			return
 		}
-		defer pconfig.RedisClient.FreeSyncCmdHead(phead)
+		defer pclient.FreeSyncCmdHead(phead)
 
 		//rsp
 		prsp := new(ss.MsgGroupGroudRsp)
@@ -80,7 +94,7 @@ func RecvGroupGroundReq(pconfig *Config, preq *ss.MsgGroupGroudReq, from int) {
 
 		for {
 			//exe
-			res, err := pconfig.RedisClient.RedisExeCmdSync(phead, "ZRANGE", FORMAT_TAB_VISIBLE_GROUP_SET, preq.StartIndex,
+			res, err := pclient.RedisExeCmdSync(phead, "ZRANGE", FORMAT_TAB_VISIBLE_GROUP_SET, preq.StartIndex,
 				end_index)
 			if err != nil {
 				log.Err("%s zrange %d:%d failed! err:%v uid:%d", _func_, preq.StartIndex, end_index, err, uid)
@@ -130,9 +144,9 @@ func RecvGroupGroundReq(pconfig *Config, preq *ss.MsgGroupGroudReq, from int) {
 }
 
 /*-------------------static----------------------*/
-func set_group_attr_visible(pconfig *Config, phead *comm.SyncCmdHead, preq *ss.MsgChgGroupAttrReq) ss.SS_COMMON_RESULT {
+func set_group_attr_visible(pclient *comm.RedisClient, phead *comm.SyncCmdHead, preq *ss.MsgChgGroupAttrReq) ss.SS_COMMON_RESULT {
 	var _func_ = "<set_group_attr_visible>"
-	log := pconfig.Comm.Log
+	log := pclient.GetLog()
 	uid := preq.Uid
 	grp_id := preq.GrpId
 
@@ -140,7 +154,7 @@ func set_group_attr_visible(pconfig *Config, phead *comm.SyncCmdHead, preq *ss.M
 	item := gen_ground_string(grp_id, preq.StrV)
 
 	//zadd
-	_, err := pconfig.RedisClient.RedisExeCmdSync(phead, "ZADD", FORMAT_TAB_VISIBLE_GROUP_SET, preq.IntV, item)
+	_, err := pclient.RedisExeCmdSync(phead, "ZADD", FORMAT_TAB_VISIBLE_GROUP_SET, preq.IntV, item)
 	if err != nil {
 		log.Err("%s zadd failed! err:%v item:%s uid:%d", _func_, err, item, uid)
 		return ss.SS_COMMON_RESULT_FAILED
@@ -149,9 +163,9 @@ func set_group_attr_visible(pconfig *Config, phead *comm.SyncCmdHead, preq *ss.M
 	return ss.SS_COMMON_RESULT_SUCCESS
 }
 
-func set_group_attr_invisible(pconfig *Config, phead *comm.SyncCmdHead, preq *ss.MsgChgGroupAttrReq) ss.SS_COMMON_RESULT {
+func set_group_attr_invisible(pclient *comm.RedisClient, phead *comm.SyncCmdHead, preq *ss.MsgChgGroupAttrReq) ss.SS_COMMON_RESULT {
 	var _func_ = "<set_group_attr_invisible>"
-	log := pconfig.Comm.Log
+	log := pclient.GetLog()
 	uid := preq.Uid
 	grp_id := preq.GrpId
 
@@ -159,7 +173,7 @@ func set_group_attr_invisible(pconfig *Config, phead *comm.SyncCmdHead, preq *ss
 	item := fmt.Sprintf("%d|%s", grp_id, preq.StrV)
 
 	//zrem
-	_, err := pconfig.RedisClient.RedisExeCmdSync(phead, "ZREM", FORMAT_TAB_VISIBLE_GROUP_SET, item)
+	_, err := pclient.RedisExeCmdSync(phead, "ZREM", FORMAT_TAB_VISIBLE_GROUP_SET, item)
 	if err != nil {
 		log.Err("%s zrem failed! err:%v item:%s uid:%d", _func_, err, item, uid)
 		return ss.SS_COMMON_RESULT_FAILED

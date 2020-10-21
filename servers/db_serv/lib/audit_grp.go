@@ -8,146 +8,75 @@ import (
 	"strings"
 )
 
-func RecvApplyGroupAudit(pconfig *Config, preq *ss.MsgApplyGroupAudit, from int) {
+func RecvApplyGroupAudit(pconfig *Config , preq *ss.MsgApplyGroupAudit , from int) {
 	var _func_ = "<RecvApplyGroupAudit>"
 	log := pconfig.Comm.Log
 
-	log.Debug("%s grp_id:%d uid:%d apply_uid:%d from:%d", _func_, preq.GroupId, preq.ApplyUid, preq.ApplyUid, from)
-	push_v := fmt.Sprintf("%d|%s|%d", preq.GroupId, preq.GroupName, preq.Result)
+	go func() {
+		uid := preq.Uid
+		grp_id := preq.GroupId
+		log.Debug("%s grp_id:%d uid:%d apply_uid:%d from:%d", _func_, grp_id, uid, preq.ApplyUid, from)
+		//pclient
+		pclient := SelectRedisClient(pconfig , REDIS_OPT_W)
+		if pclient == nil {
+			log.Err("%s failed! no proper redis found! uid:%d grp_id:%d apply:%d" , _func_ , uid , grp_id ,
+				preq.ApplyUid)
+			return
+		}
+		//phead
+		phead := pclient.AllocSyncCmdHead()
+		if phead == nil {
+			log.Err("%s alloc head failed! uid:%d", _func_, uid)
+			return
+		}
+		defer pclient.FreeSyncCmdHead(phead)
 
-	tab_name := fmt.Sprintf(FORMAT_TAB_USER_GROUP_AUDITED+"%d", preq.ApplyUid)
-	pconfig.RedisClient.RedisExeCmd(pconfig.Comm, cb_push_audit_list, []interface{}{preq, from}, "RPUSH", tab_name, push_v)
-	return
+		//v
+		push_v := fmt.Sprintf("%d|%s|%d", preq.GroupId, preq.GroupName, preq.Result)
+		tab_name := fmt.Sprintf(FORMAT_TAB_USER_GROUP_AUDITED+"%d", preq.ApplyUid)
+		_ , err := pclient.RedisExeCmdSync(phead , "RPUSH" , tab_name , push_v)
+		if err != nil {
+			log.Err("%s exe RPUSH %s %s failed! err:%v uid:%d" , _func_ , tab_name , push_v , err , uid)
+			return
+		}
+
+		//back to serv
+		var ss_msg ss.SSMsg
+		preq.FromDb = 1
+
+		err = comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_APPLY_GROUP_AUDIT , preq)
+		if err != nil {
+			log.Err("%s gen ss failed! err:%v uid:%d" , _func_ , err , uid)
+			return
+		}
+
+		SendToServ(pconfig , from , &ss_msg)
+	}()
+
 }
+
 
 func RecvFetchAuditGroupReq(pconfig *Config, preq *ss.MsgFetchAuditGrpReq, from int) {
 	var _func_ = "<RecvFetchAuditGroupReq>"
 	log := pconfig.Comm.Log
 
 	log.Debug("%s uid:%d  from:%d", _func_, preq.Uid, from)
+	//pclient
+	pclient := SelectRedisClient(pconfig , REDIS_OPT_R)
+	if pclient == nil {
+		log.Err("%s failed! no proper redis found! uid:%d" , _func_ , preq.Uid)
+		return
+	}
+
+
 	//get grp info
 	cb_arg := []interface{}{preq, from}
 	tab_name := fmt.Sprintf(FORMAT_TAB_USER_GROUP_AUDITED+"%d", preq.Uid)
-	pconfig.RedisClient.RedisExeCmd(pconfig.Comm, cb_range_user_audied, cb_arg, "LRANGE",
+	pclient.RedisExeCmd(pconfig.Comm, cb_range_user_audied, cb_arg, "LRANGE",
 		tab_name, 0, preq.FetchCount-1)
 }
 
 /*-----------------------static func-----------------------*/
-//cg_arg = {preq , from , uid}
-func cb_push_audit_list(comm_config *comm.CommConfig, result interface{}, cb_arg []interface{}) {
-	var _func_ = "<cb_push_audit_list>"
-	log := comm_config.Log
-
-	/*---------mostly common logic--------------*/
-	//get config
-	pconfig, ok := comm_config.ServerCfg.(*Config)
-	if !ok {
-		log.Err("%s failed! convert config fail!", _func_)
-		return
-	}
-
-	//conv arg
-	preq, ok := cb_arg[0].(*ss.MsgApplyGroupAudit)
-	if !ok {
-		log.Err("%s conv req failed!", _func_)
-		return
-	}
-
-	/*---------result handle--------------*/
-	//check result
-	err, ok := result.(error)
-	if ok {
-		log.Err("%s exe failed! err:%v uid:%s", _func_, err, preq.Uid)
-		return
-	}
-
-	//get result
-	res, err := comm.Conv2Int(result)
-	if err != nil {
-		log.Err("%s conv result failed! err:%v uid:%s", _func_, err, preq.Uid)
-		return
-	}
-	log.Debug("%s audited_len:%d apply_uid:%d", _func_, res, preq.ApplyUid)
-
-	//check online
-	tab_name := fmt.Sprintf(FORMAT_TAB_USER_INFO_REFIX+"%d", preq.ApplyUid)
-	pconfig.RedisClient.RedisExeCmd(pconfig.Comm, cb_audit_grp_online_logic, cb_arg, "HGET", tab_name, FIELD_USER_INFO_ONLINE_LOGIC)
-}
-
-//cg_arg = {preq , from}
-func cb_audit_grp_online_logic(comm_config *comm.CommConfig, result interface{}, cb_arg []interface{}) {
-	var _func_ = "<cb_audit_grp_online_logic>"
-	log := comm_config.Log
-
-	/*---------mostly common logic--------------*/
-	//get config
-	pconfig, ok := comm_config.ServerCfg.(*Config)
-	if !ok {
-		log.Err("%s failed! convert config fail!", _func_)
-		return
-	}
-
-	//conv arg
-	preq, ok := cb_arg[0].(*ss.MsgApplyGroupAudit)
-	if !ok {
-		log.Err("%s conv req failed!", _func_)
-		return
-	}
-
-	from, ok := cb_arg[1].(int)
-	if !ok {
-		log.Err("%s conv from failed!", _func_)
-		return
-	}
-
-	/*---------result handle--------------*/
-	//check result
-	err, ok := result.(error)
-	if ok {
-		log.Err("%s exe failed! err:%v uid:%d", _func_, err, preq.ApplyUid)
-		return
-	}
-
-	//get result
-	res, err := comm.Conv2String(result)
-	if err != nil {
-		log.Err("%s conv result failed! err:%v uid:%d", _func_, err, preq.ApplyUid)
-		return
-	}
-	if len(res) == 0 {
-		log.Err("%s online_logic empty! uid:%d", _func_, preq.ApplyUid)
-		return
-	}
-	log.Debug("%s res:%s uid:%d", _func_, res, preq.ApplyUid)
-
-	//check online_logic
-	online_logic, err := strconv.Atoi(res)
-	if err != nil {
-		log.Err("%s conv integer failed! uid:%d res:%s", _func_, preq.ApplyUid, res)
-		return
-	}
-
-	if online_logic <= 0 {
-		log.Debug("%s offline! uid:%d", _func_, preq.ApplyUid)
-		return
-	}
-
-	//common notify to applied user
-	var ss_msg ss.SSMsg
-	pnotify := new(ss.MsgCommonNotify)
-	pnotify.Uid = preq.ApplyUid
-	pnotify.NotifyType = ss.COMMON_NOTIFY_TYPE_NOTIFY_NEW_AUDIT
-	pnotify.IntV = int64(online_logic)
-
-	err = comm.FillSSPkg(&ss_msg, ss.SS_PROTO_TYPE_COMMON_NOTIFY, pnotify)
-	if err != nil {
-		log.Err("%s gen ss failed! uid:%d", _func_, preq.ApplyUid)
-	}
-
-	//send to chat_serv
-	SendToServ(pconfig, from, &ss_msg)
-}
-
 //cg_arg = {preq , from}
 func cb_range_user_audied(comm_config *comm.CommConfig, result interface{}, cb_arg []interface{}) {
 	var _func_ = "<cb_range_user_audied>"
@@ -234,11 +163,17 @@ func cb_range_user_audied(comm_config *comm.CommConfig, result interface{}, cb_a
 		log.Err("%s gen ss failed! err:%v uid:%d", _func_, err, preq.Uid)
 		return
 	}
-
 	SendToServ(pconfig, from, &ss_msg)
+
+	//pclient
+	pclient := SelectRedisClient(pconfig , REDIS_OPT_W)
+	if pclient == nil {
+		log.Err("%s failed! no proper redis found! uid:%d" , _func_ , preq.Uid)
+		return
+	}
 
 	//del apply list
 	tab_name := fmt.Sprintf(FORMAT_TAB_USER_GROUP_AUDITED+"%d", preq.Uid)
-	pconfig.RedisClient.RedisExeCmd(pconfig.Comm, nil, cb_arg, "LTRIM",
+	pclient.RedisExeCmd(pconfig.Comm, nil, cb_arg, "LTRIM",
 		tab_name, preq.FetchCount, -1)
 }

@@ -16,18 +16,24 @@ func RecvEnterGroupReq(pconfig *Config, preq *ss.MsgEnterGroupReq, from int) {
 	go func() {
 		uid := preq.Uid
 		grp_id := preq.GrpId
+		//pclient
+		pclient := SelectRedisClient(pconfig , REDIS_OPT_RW)
+		if pclient == nil {
+			log.Err("%s failed! no proper redis found! uid:%d grp_id:%d" , _func_ , uid , grp_id)
+			return
+		}
 
 		//head
-		phead := pconfig.RedisClient.AllocSyncCmdHead()
+		phead := pclient.AllocSyncCmdHead()
 		if phead == nil {
 			log.Err("%s alloc head fail! uid:%d grp_id:%d", _func_, uid, grp_id)
 			return
 		}
-		defer pconfig.RedisClient.FreeSyncCmdHead(phead)
+		defer pclient.FreeSyncCmdHead(phead)
 
 		//Get Group Info
 		tab_name := fmt.Sprintf(FORMAT_TAB_GROUP_INFO_PREFIX+"%d", grp_id)
-		res, err := pconfig.RedisClient.RedisExeCmdSync(phead, "HMGET", tab_name, FILED_GROUP_INFO_NAME, FIELD_GROUP_INFO_MSG_COUNT)
+		res, err := pclient.RedisExeCmdSync(phead, "HMGET", tab_name, FILED_GROUP_INFO_NAME, FIELD_GROUP_INFO_MSG_COUNT)
 		if err != nil {
 			log.Err("%s query group failed! err:%v uid:%d grp_id:%d", _func_, err, grp_id, uid)
 			return
@@ -62,7 +68,7 @@ func RecvEnterGroupReq(pconfig *Config, preq *ss.MsgEnterGroupReq, from int) {
 
 		//Add Member
 		tab_name = fmt.Sprintf(FORMAT_TAB_GROUP_MEMBERS+"%d", grp_id)
-		res, err = pconfig.RedisClient.RedisExeCmdSync(phead, "SADD", tab_name, uid)
+		res, err = pclient.RedisExeCmdSync(phead, "SADD", tab_name, uid)
 		if err != nil {
 			log.Err("%s add member failed! err:%v uid:%d grp_id:%d", _func_, err, grp_id, uid)
 			return

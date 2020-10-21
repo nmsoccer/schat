@@ -16,15 +16,22 @@ func RecvCreateGroupReq(pconfig *Config, preq *ss.MsgCreateGrpReq, from int) {
 	log.Info("%s uid:%d grp_name:%s", _func_, uid, preq.GrpName)
 	//Sync
 	go func() {
-		phead := pconfig.RedisClient.AllocSyncCmdHead()
+		//pclient
+		pclient := SelectRedisClient(pconfig , REDIS_OPT_RW)
+		if pclient == nil {
+			log.Err("%s failed! no proper redis found! uid:%d" , _func_ , uid)
+			return
+		}
+		//phead
+		phead := pclient.AllocSyncCmdHead()
 		if phead == nil {
 			log.Err("%s alloc head failed! uid:%d", _func_, uid)
 			return
 		}
-		defer pconfig.RedisClient.FreeSyncCmdHead(phead)
+		defer pclient.FreeSyncCmdHead(phead)
 
 		//Step1.Alloc grp id
-		res, err := pconfig.RedisClient.RedisExeCmdSync(phead, "INCRBY", FORMAT_TAB_GLOBAL_GRPID, pconfig.FileConfig.GrpIdIncr)
+		res, err := pclient.RedisExeCmdSync(phead, "INCRBY", FORMAT_TAB_GLOBAL_GRPID, pconfig.FileConfig.GrpIdIncr)
 		if err != nil {
 			log.Err("%s alloc group id failed! uid:%d err:%v", _func_, uid, err)
 			return
@@ -70,7 +77,7 @@ func RecvCreateGroupReq(pconfig *Config, preq *ss.MsgCreateGrpReq, from int) {
 			return
 		}
 		tab_name := fmt.Sprintf(FORMAT_TAB_CHAT_MSG_LIST, grp_id, 0)
-		_, err = pconfig.RedisClient.RedisExeCmdSync(phead, "RPUSH", tab_name, coded)
+		_, err = pclient.RedisExeCmdSync(phead, "RPUSH", tab_name, coded)
 		if err != nil {
 			log.Err("%s push one_msg faile! err:%v uid:%d", _func_, err, uid)
 			SendCreateGroupErrRsp(pconfig, preq, from, ss.CREATE_GROUP_RESULT_CREATE_RET_DB_ERR)
@@ -79,7 +86,7 @@ func RecvCreateGroupReq(pconfig *Config, preq *ss.MsgCreateGrpReq, from int) {
 
 		//Step3. Set group info
 		tab_name = fmt.Sprintf(FORMAT_TAB_GROUP_INFO_PREFIX+"%d", grp_id)
-		_, err = pconfig.RedisClient.RedisExeCmdSync(phead, "HMSET", tab_name, "gid", grp_id,
+		_, err = pclient.RedisExeCmdSync(phead, "HMSET", tab_name, "gid", grp_id,
 			"name", preq.GrpName, "master_uid", preq.Uid, "pass", enc_pass, "salt", salt, "create_ts", curr_ts, "msg_count", 1, "load_serv",
 			-1)
 		if err != nil {

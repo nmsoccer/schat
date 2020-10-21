@@ -11,13 +11,21 @@ import (
 func RecvFetchApplyGroupReq(pconfig *Config, preq *ss.MsgFetchApplyGrpReq, from int) {
 	var _func_ = "<RecvFetchApplyGroupReq>"
 	log := pconfig.Comm.Log
+	uid := preq.Uid
 
 	log.Debug("%s uid:%d  from:%d", _func_, preq.Uid, from)
+	//pclient
+	pclient := SelectRedisClient(pconfig , REDIS_OPT_R)
+	if pclient == nil {
+		log.Err("%s failed! no proper redis found! uid:%d" , _func_ , uid)
+		return
+	}
+
 	//get grp info
 	cb_arg := []interface{}{preq, from}
 	tab_name := fmt.Sprintf(FORMAT_TAB_USER_GROUP_APPLIED+"%d", preq.Uid)
 	//tab_name := "user:group:applied:10004"
-	pconfig.RedisClient.RedisExeCmd(pconfig.Comm, cb_rand_user_appied, cb_arg, "SRANDMEMBER", tab_name)
+	pclient.RedisExeCmd(pconfig.Comm, cb_rand_user_appied, cb_arg, "SRANDMEMBER", tab_name)
 }
 
 //empty means error or no data or complete
@@ -113,9 +121,16 @@ func cb_rand_user_appied(comm_config *comm.CommConfig, result interface{}, cb_ar
 	}
 	grp_name := splits[1]
 
+	//pclient
+	pclient := SelectRedisClient(pconfig , REDIS_OPT_R)
+	if pclient == nil {
+		log.Err("%s failed! no proper redis found! uid:%d grp_id:%d" , _func_ , preq.Uid , grp_id)
+		return
+	}
+
 	//Fetch Apply List
 	tab_name := fmt.Sprintf(FORMAT_TAB_GROUP_APPLY_LIST+"%d", grp_id)
-	pconfig.RedisClient.RedisExeCmd(pconfig.Comm, cb_range_apply_list, append(cb_arg, grp_id, grp_name), "LRANGE",
+	pclient.RedisExeCmd(pconfig.Comm, cb_range_apply_list, append(cb_arg, grp_id, grp_name), "LRANGE",
 		tab_name, 0, preq.FetchCount-1)
 }
 
@@ -215,16 +230,23 @@ func cb_range_apply_list(comm_config *comm.CommConfig, result interface{}, cb_ar
 
 	SendToServ(pconfig, from, &ss_msg)
 
+	//pclient
+	pclient := SelectRedisClient(pconfig , REDIS_OPT_W)
+	if pclient == nil {
+		log.Err("%s failed! no proper redis found! uid:%d grp_id:%d" , _func_ , preq.Uid , grp_id)
+		return
+	}
+
 	//del apply list
 	tab_name := fmt.Sprintf(FORMAT_TAB_GROUP_APPLY_LIST+"%d", grp_id)
-	pconfig.RedisClient.RedisExeCmd(pconfig.Comm, nil, cb_arg, "LTRIM",
+	pclient.RedisExeCmd(pconfig.Comm, nil, cb_arg, "LTRIM",
 		tab_name, preq.FetchCount, -1)
 
 	//del appied
 	if int32(len(res)) < preq.FetchCount {
 		log.Debug("%s no more apply of group:%d uid:%d", _func_, grp_id, preq.Uid)
 		tab_name = fmt.Sprintf(FORMAT_TAB_USER_GROUP_APPLIED+"%d", preq.Uid)
-		pconfig.RedisClient.RedisExeCmd(pconfig.Comm, nil, cb_arg, "SREM", tab_name,
+		pclient.RedisExeCmd(pconfig.Comm, nil, cb_arg, "SREM", tab_name,
 			fmt.Sprintf("%d|%s", grp_id, grp_name))
 	}
 

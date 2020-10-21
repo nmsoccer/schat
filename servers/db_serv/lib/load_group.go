@@ -23,20 +23,27 @@ func RecvLoadGroupReq(pconfig *Config, preq *ss.MsgLoadGroupReq, from int) {
 		var err error
 		uid := preq.Uid
 		grp_id := preq.GrpId
-		phead := pconfig.RedisClient.AllocSyncCmdHead()
+		//pclient
+		pclient := SelectRedisClient(pconfig , REDIS_OPT_R)
+		if pclient == nil {
+			log.Err("%s failed! no proper redis found! uid:%d grp_id:%d" , _func_ , uid , grp_id)
+			return
+		}
+		//phead
+		phead := pclient.AllocSyncCmdHead()
 		result := ss.SS_COMMON_RESULT_FAILED
 		if phead == nil {
 			log.Err("%s alloc head failed! uid:%d", _func_, preq.Uid)
 			return
 		}
-		defer pconfig.RedisClient.FreeSyncCmdHead(phead)
+		defer pclient.FreeSyncCmdHead(phead)
 
 		//Handle
 		pgroup := new(ss.GroupInfo)
 		for {
 			//load group info
 			tab_name := fmt.Sprintf(FORMAT_TAB_GROUP_INFO_PREFIX+"%d", grp_id)
-			res, err := pconfig.RedisClient.RedisExeCmdSync(phead, "HMGET", tab_name, "name", "master_uid",
+			res, err := pclient.RedisExeCmdSync(phead, "HMGET", tab_name, "name", "master_uid",
 				"create_ts", FIELD_GROUP_INFO_MSG_COUNT, FIELD_GROUP_BLOB_NAME)
 			if err != nil {
 				log.Err("%s load group info failed!err:%v uid:%d grp_id:%d", _func_, err, uid, grp_id)
@@ -52,7 +59,7 @@ func RecvLoadGroupReq(pconfig *Config, preq *ss.MsgLoadGroupReq, from int) {
 
 			//load member
 			tab_name = fmt.Sprintf(FORMAT_TAB_GROUP_MEMBERS+"%d", grp_id)
-			res, err = pconfig.RedisClient.RedisExeCmdSync(phead, "SMEMBERS", tab_name)
+			res, err = pclient.RedisExeCmdSync(phead, "SMEMBERS", tab_name)
 			if err != nil {
 				log.Err("%s load group members failed!err:%v uid:%d grp_id:%d", _func_, err, uid, grp_id)
 				break
@@ -98,12 +105,19 @@ func RecvSaveChatGroupReq(pconfig *Config, preq *ss.MsgSaveGroupReq, from int) {
 
 	//Sync
 	go func() {
-		phead := pconfig.RedisClient.AllocSyncCmdHead()
+		//pclient
+		pclient := SelectRedisClient(pconfig , REDIS_OPT_RW)
+		if pclient == nil {
+			log.Err("%s failed! no proper redis found! grp_id:%d" , _func_ , grp_id)
+			return
+		}
+		//phead
+		phead := pclient.AllocSyncCmdHead()
 		if phead == nil {
 			log.Err("%s alloc head failed! grp_id:%d", _func_, grp_id)
 			return
 		}
-		defer pconfig.RedisClient.FreeSyncCmdHead(phead)
+		defer pclient.FreeSyncCmdHead(phead)
 
 		prsp := new(ss.MsgSaveGroupRsp)
 		prsp.GrpId = preq.GrpId
@@ -111,7 +125,7 @@ func RecvSaveChatGroupReq(pconfig *Config, preq *ss.MsgSaveGroupReq, from int) {
 		//Handle
 		for {
 			//Step1. Check Group Exist
-			_, result = GetGroupInfo(pconfig, phead, grp_id, FILED_GROUP_INFO_NAME)
+			_, result = GetGroupInfo(pclient, phead, grp_id, FILED_GROUP_INFO_NAME)
 			if result != ss.SS_COMMON_RESULT_SUCCESS {
 				log.Err("%s check grp exist failed! grp_id:%d", _func_, grp_id)
 				break
@@ -129,7 +143,7 @@ func RecvSaveChatGroupReq(pconfig *Config, preq *ss.MsgSaveGroupReq, from int) {
 			}
 
 			tab_name := fmt.Sprintf(FORMAT_TAB_GROUP_INFO_PREFIX+"%d", grp_id)
-			res, err := pconfig.RedisClient.RedisExeCmdSync(phead, "HMSET", tab_name, FIELD_GROUP_INFO_MSG_COUNT, preq.MsgCount, "load_serv",
+			res, err := pclient.RedisExeCmdSync(phead, "HMSET", tab_name, FIELD_GROUP_INFO_MSG_COUNT, preq.MsgCount, "load_serv",
 				preq.LoadServ, FIELD_GROUP_BLOB_NAME, string(blob))
 			if err != nil {
 				log.Err("%s hmset %s failed! err:%v grp_id:%d", _func_, tab_name, err, grp_id)
@@ -144,7 +158,7 @@ func RecvSaveChatGroupReq(pconfig *Config, preq *ss.MsgSaveGroupReq, from int) {
 
 			//step3. Get MemCount
 			tab_name = fmt.Sprintf(FORMAT_TAB_GROUP_MEMBERS+"%d", grp_id)
-			res, err = pconfig.RedisClient.RedisExeCmdSync(phead, "SCARD", tab_name)
+			res, err = pclient.RedisExeCmdSync(phead, "SCARD", tab_name)
 			if err != nil {
 				log.Err("%s scard %s failed! err:%v grp_id:%d", _func_, tab_name, err, grp_id)
 				break
@@ -167,7 +181,7 @@ func RecvSaveChatGroupReq(pconfig *Config, preq *ss.MsgSaveGroupReq, from int) {
 			}
 
 			//step4. Load Members
-			res, err = pconfig.RedisClient.RedisExeCmdSync(phead, "SMEMBERS", tab_name)
+			res, err = pclient.RedisExeCmdSync(phead, "SMEMBERS", tab_name)
 			if err != nil {
 				log.Err("%s smembers %s failed! err:%v grp_id:%d", _func_, tab_name, err, grp_id)
 				break

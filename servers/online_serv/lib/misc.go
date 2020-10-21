@@ -44,3 +44,20 @@ func RecvUploadFileNotify(pconfig *Config, pnotify *ss.MsgCommonNotify, file_ser
 	//send
 	SendToDisp(pconfig, 0, pss_msg)
 }
+
+func RecvApplyGroupAuditNotify(pconfig *Config, pnotify *ss.MsgCommonNotify) {
+	var _func_ = "<RecvApplyGroupAuditNotify>"
+	log := pconfig.Comm.Log
+	uid := pnotify.Uid
+	grp_id := pnotify.GrpId
+
+	//user
+	puser_info := GetUserInfo(pconfig , uid)
+	if puser_info == nil {
+		log.Debug("%s offline! uid:%d grp_id:%d" , _func_ , uid , grp_id)
+		return
+	}
+
+	//to logic
+	SendSpecCommNotify(pconfig , ss.DISP_MSG_TARGET_LOGIC_SERVER , puser_info.login_serv , pnotify)
+}

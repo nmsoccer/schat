@@ -16,9 +16,16 @@ func RecvRegReq(pconfig *Config, preq *ss.MsgRegReq, from int) {
 		preq.RoleName = preq.Name
 	}
 
+	//pclient
+	pclient := SelectRedisClient(pconfig , REDIS_OPT_W)
+	if pclient == nil {
+		log.Err("%s failed! no proper redis found! name:%s" , _func_ , preq.Name)
+		return
+	}
+
 	//set name
 	tab_name := fmt.Sprintf(FORMAT_TAB_USER_GLOBAL, preq.Name)
-	pconfig.RedisClient.RedisExeCmd(pconfig.Comm, cb_set_global_name, []interface{}{preq, from}, "HSETNX",
+	pclient.RedisExeCmd(pconfig.Comm, cb_set_global_name, []interface{}{preq, from}, "HSETNX",
 		tab_name, "name", preq.Name)
 
 	return
@@ -100,9 +107,17 @@ func cb_set_global_name(comm_config *comm.CommConfig, result interface{}, cb_arg
 		return
 	}
 
+	//pclient
+	pclient := SelectRedisClient(pconfig , REDIS_OPT_W)
+	if pclient == nil {
+		log.Err("%s failed! no proper redis found! name:%s" , _func_ , preq.Name)
+		SendRegRsp(pconfig, preq, from, ss.REG_RESULT_REG_DB_ERR)
+		return
+	}
+
 	//alloc uid
 	log.Info("%s ret:%d try to alloc uid. name:%s", _func_, ret, preq.Name)
-	pconfig.RedisClient.RedisExeCmd(pconfig.Comm, cb_alloc_uid, cb_arg, "INCRBY", FORMAT_TAB_GLOBAL_UID, pconfig.FileConfig.UidIncr)
+	pclient.RedisExeCmd(pconfig.Comm, cb_alloc_uid, cb_arg, "INCRBY", FORMAT_TAB_GLOBAL_UID, pconfig.FileConfig.UidIncr)
 }
 
 func cb_alloc_uid(comm_config *comm.CommConfig, result interface{}, cb_arg []interface{}) {
@@ -165,10 +180,18 @@ func cb_alloc_uid(comm_config *comm.CommConfig, result interface{}, cb_arg []int
 	//enc pass
 	enc_pass := comm.EncPassString(preq.Pass, salt)
 
+	//pclient
+	pclient := SelectRedisClient(pconfig , REDIS_OPT_W)
+	if pclient == nil {
+		log.Err("%s failed! no proper redis found! name:%s" , _func_ , preq.Name)
+		SendRegRsp(pconfig, preq, from, ss.REG_RESULT_REG_DB_ERR)
+		return
+	}
+
 	//set user_global[users:global:name]
 	log.Info("%s uid:%d try to set user global. name:%s", _func_, uid, preq.Name)
 	tab_name := fmt.Sprintf(FORMAT_TAB_USER_GLOBAL, preq.Name)
-	pconfig.RedisClient.RedisExeCmd(pconfig.Comm, cb_set_global_info, append(cb_arg, uid), "HMSET", tab_name, "uid", uid,
+	pclient.RedisExeCmd(pconfig.Comm, cb_set_global_info, append(cb_arg, uid), "HMSET", tab_name, "uid", uid,
 		"pass", enc_pass, "salt", salt)
 }
 
@@ -228,7 +251,16 @@ func cb_set_global_info(comm_config *comm.CommConfig, result interface{}, cb_arg
 	if preq.Sex == false {
 		sex_v = 2
 	}
-	pconfig.RedisClient.RedisExeCmd(pconfig.Comm, cb_reg_set_user_info, cb_arg, "HMSET", tab_name, "uid", uid,
+
+	//pclient
+	pclient := SelectRedisClient(pconfig , REDIS_OPT_W)
+	if pclient == nil {
+		log.Err("%s failed! no proper redis found! name:%s uid:%d" , _func_ , preq.Name , uid)
+		SendRegRsp(pconfig, preq, from, ss.REG_RESULT_REG_DB_ERR)
+		return
+	}
+
+	pclient.RedisExeCmd(pconfig.Comm, cb_reg_set_user_info, cb_arg, "HMSET", tab_name, "uid", uid,
 		"name", preq.RoleName, "addr", preq.Addr, "sex", sex_v, "online_logic", -1)
 }
 

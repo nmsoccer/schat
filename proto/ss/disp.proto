@@ -143,8 +143,7 @@ message MsgApplyGroupAudit { //master audit apply
   int64 apply_uid = 4;
   int64 uid = 5;
   
-  //int32 occupy_size = 20;
-  //repeated int64 occupy = 21; //occupy data
+  int32 from_db = 20; //0: logic --> db 1:db --> logic
 }
 
 //common notify

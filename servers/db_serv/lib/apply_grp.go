@@ -12,10 +12,17 @@ func RecvApplyGroupReq(pconfig *Config, preq *ss.MsgApplyGroupReq, from int) {
 	log := pconfig.Comm.Log
 
 	log.Debug("%s grp_id:%d uid:%d from_logic:%d from:%d", _func_, preq.GroupId, preq.ApplyUid, preq.Occupy, from)
+	//pclient
+	pclient := SelectRedisClient(pconfig , REDIS_OPT_R)
+	if pclient == nil {
+		log.Err("%s failed! no proper redis found! uid:%d grp_id:%d" , _func_ , preq.ApplyUid , preq.GroupId)
+		return
+	}
+
 	//get grp info
 	cb_arg := []interface{}{preq, from}
 	tab_name := fmt.Sprintf(FORMAT_TAB_GROUP_INFO_PREFIX+"%d", preq.GroupId)
-	pconfig.RedisClient.RedisExeCmd(pconfig.Comm, cb_query_grp_info, cb_arg, "HMGET", tab_name, "name", "master_uid", "pass", "salt")
+	pclient.RedisExeCmd(pconfig.Comm, cb_query_grp_info, cb_arg, "HMGET", tab_name, "name", "master_uid", "pass", "salt")
 }
 
 func SendApplyGroupRsp(pconfig *Config, preq *ss.MsgApplyGroupReq, from int, ret ss.APPLY_GROUP_RESULT) {
@@ -118,10 +125,18 @@ func cb_query_grp_info(comm_config *comm.CommConfig, result interface{}, cb_arg 
 		return
 	}
 
+	//pclient
+	pclient := SelectRedisClient(pconfig , REDIS_OPT_R)
+	if pclient == nil {
+		log.Err("%s failed! no proper redis found! uid:%d grp_id:%d" , _func_ , preq.ApplyUid , preq.GroupId)
+		return
+	}
+
+
 	//notify master if online
 	preq.GroupName = grp_name
 	tab_name := fmt.Sprintf(FORMAT_TAB_USER_INFO_REFIX+"%d", master_uid)
-	pconfig.RedisClient.RedisExeCmd(pconfig.Comm, cb_get_user_online_logic, append(cb_arg, grp_name, master_uid), "HGET", tab_name, "online_logic")
+	pclient.RedisExeCmd(pconfig.Comm, cb_get_user_online_logic, append(cb_arg, grp_name, master_uid), "HGET", tab_name, "online_logic")
 }
 
 //cg_arg = {preq , from , grp_name , master_uid}
@@ -240,11 +255,19 @@ func cb_push_apply_list(comm_config *comm.CommConfig, result interface{}, cb_arg
 	}
 	log.Debug("%s apply_len:%d grp_name:%s master:%d", _func_, res, grp_name, master_uid)
 
+	//client
+	pclient := SelectRedisClient(pconfig , REDIS_OPT_W)
+	if pclient == nil {
+		log.Err("%s failed! no proper redis found! uid:%d grp_id:%d" , _func_ , preq.ApplyUid , preq.GroupId)
+		SendApplyGroupRsp(pconfig, preq, from, ss.APPLY_GROUP_RESULT_APPLY_GRP_ERR)
+		return
+	}
+
 	//add to user_group_applied
 	var add_v string
 	add_v = fmt.Sprintf("%d|%s", preq.GroupId, grp_name)
 	tab_name := fmt.Sprintf(FORMAT_TAB_USER_GROUP_APPLIED+"%d", master_uid)
-	pconfig.RedisClient.RedisExeCmd(pconfig.Comm, cb_add_user_appied, cb_arg, "SADD", tab_name, add_v)
+	pclient.RedisExeCmd(pconfig.Comm, cb_add_user_appied, cb_arg, "SADD", tab_name, add_v)
 	return
 }
 
@@ -315,6 +338,12 @@ func cb_get_user_online_logic(comm_config *comm.CommConfig, result interface{}, 
 
 	if online_logic <= 0 {
 		log.Debug("%s offline! will save to db. uid:%d", _func_, master_uid)
+		pclient := SelectRedisClient(pconfig , REDIS_OPT_W)
+		if pclient == nil {
+			log.Err("%s failed! no proper redis found! uid:%d grp_id:%d" , _func_ , preq.ApplyUid , preq.GroupId)
+			return
+		}
+
 		//append to apply_list
 		var push_v string
 		if len(preq.ApplyMsg) == 0 {
@@ -323,7 +352,7 @@ func cb_get_user_online_logic(comm_config *comm.CommConfig, result interface{}, 
 		push_v = fmt.Sprintf("%d|%s|%s", preq.ApplyUid, preq.ApplyName, preq.ApplyMsg)
 
 		tab_name := fmt.Sprintf(FORMAT_TAB_GROUP_APPLY_LIST+"%d", preq.GroupId)
-		pconfig.RedisClient.RedisExeCmd(pconfig.Comm, cb_push_apply_list, cb_arg, "RPUSH", tab_name, push_v)
+		pclient.RedisExeCmd(pconfig.Comm, cb_push_apply_list, cb_arg, "RPUSH", tab_name, push_v)
 		return
 	}
 

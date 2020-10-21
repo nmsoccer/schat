@@ -23,13 +23,19 @@ func RecvKickGroupReq(pconfig *Config, preq *ss.MsgKickGroupReq, from int) {
 
 	//sync
 	go func() {
-		//head
-		phead := pconfig.RedisClient.AllocSyncCmdHead()
+		//pclient
+		pclient := SelectRedisClient(pconfig , REDIS_OPT_RW)
+		if pclient == nil {
+			log.Err("%s failed! no proper redis found! uid:%d grp_id:%d" , _func_ , uid , grp_id)
+			return
+		}
+		//phead
+		phead := pclient.AllocSyncCmdHead()
 		if phead == nil {
 			log.Err("%s alloc head fail! uid:%d grp_id:%d", _func_, uid, grp_id)
 			return
 		}
-		defer pconfig.RedisClient.FreeSyncCmdHead(phead)
+		defer pclient.FreeSyncCmdHead(phead)
 
 		//rsp
 		prsp := new(ss.MsgKickGroupRsp)
@@ -42,13 +48,13 @@ func RecvKickGroupReq(pconfig *Config, preq *ss.MsgKickGroupReq, from int) {
 		//handle
 		for {
 			//step1. check group exist
-			_, prsp.Result = GetGroupInfo(pconfig, phead, grp_id, FILED_GROUP_INFO_NAME)
+			_, prsp.Result = GetGroupInfo(pclient, phead, grp_id, FILED_GROUP_INFO_NAME)
 			if prsp.Result != ss.SS_COMMON_RESULT_SUCCESS {
 				break
 			}
 
 			//step2. del member
-			prsp.Result = RemGroupMember(pconfig, phead, preq.KickUid, grp_id)
+			prsp.Result = RemGroupMember(pclient, phead, preq.KickUid, grp_id)
 			if prsp.Result != ss.SS_COMMON_RESULT_SUCCESS {
 				log.Err("%s remove member failed! uid:%d grp_id:%d kick_uid:%d", _func_, uid, grp_id, preq.KickUid)
 				break
@@ -57,7 +63,7 @@ func RecvKickGroupReq(pconfig *Config, preq *ss.MsgKickGroupReq, from int) {
 			//step3. append to off_msg <type|grp_id|grp_name|kick_ts>
 			curr_ts := time.Now().Unix()
 			off_info := fmt.Sprintf("%d|%d|%s|%d", ss.SS_OFFLINE_INFO_TYPE_OFT_KICK_GROUP, grp_id, preq.GrpName, curr_ts)
-			_, prsp.Result = AppendOfflineInfo(pconfig, phead, preq.KickUid, off_info)
+			_, prsp.Result = AppendOfflineInfo(pclient, phead, preq.KickUid, off_info)
 			if prsp.Result != ss.SS_COMMON_RESULT_SUCCESS {
 				log.Err("%s append off_msg:%s failed! uid:%d", _func_, off_info, preq.KickUid)
 			}
@@ -86,13 +92,19 @@ func do_exit_group(pconfig *Config, preq *ss.MsgExitGroupReq, from int) {
 	grp_id := preq.GrpId
 
 	go func() {
-		//head
-		phead := pconfig.RedisClient.AllocSyncCmdHead()
+		//pclient
+		pclient := SelectRedisClient(pconfig , REDIS_OPT_RW)
+		if pclient == nil {
+			log.Err("%s failed! no proper redis found! uid:%d grp_id:%d" , _func_ , uid , grp_id)
+			return
+		}
+		//phead
+		phead := pclient.AllocSyncCmdHead()
 		if phead == nil {
 			log.Err("%s alloc head fail! uid:%d grp_id:%d", _func_, uid, grp_id)
 			return
 		}
-		defer pconfig.RedisClient.FreeSyncCmdHead(phead)
+		defer pclient.FreeSyncCmdHead(phead)
 
 		prsp := new(ss.MsgExitGroupRsp)
 		prsp.GrpId = grp_id
@@ -100,14 +112,14 @@ func do_exit_group(pconfig *Config, preq *ss.MsgExitGroupReq, from int) {
 		prsp.GrpName = preq.GrpName
 		for {
 			//check grp
-			_, result := GetGroupInfo(pconfig, phead, grp_id, FILED_GROUP_INFO_NAME)
+			_, result := GetGroupInfo(pclient, phead, grp_id, FILED_GROUP_INFO_NAME)
 			if result != ss.SS_COMMON_RESULT_SUCCESS {
 				prsp.Result = result
 				break
 			}
 
 			//exit group
-			prsp.Result = RemGroupMember(pconfig, phead, uid, grp_id)
+			prsp.Result = RemGroupMember(pclient, phead, uid, grp_id)
 			break
 		}
 
@@ -136,13 +148,19 @@ func do_del_group(pconfig *Config, preq *ss.MsgExitGroupReq, from int) {
 	grp_id := preq.GrpId
 
 	go func() {
-		//head
-		phead := pconfig.RedisClient.AllocSyncCmdHead()
+		//pclient
+		pclient := SelectRedisClient(pconfig , REDIS_OPT_RW)
+		if pclient == nil {
+			log.Err("%s failed! no proper redis found! uid:%d grp_id:%d" , _func_ , uid , grp_id)
+			return
+		}
+		//phead
+		phead := pclient.AllocSyncCmdHead()
 		if phead == nil {
 			log.Err("%s alloc head fail! uid:%d grp_id:%d", _func_, uid, grp_id)
 			return
 		}
-		defer pconfig.RedisClient.FreeSyncCmdHead(phead)
+		defer pclient.FreeSyncCmdHead(phead)
 
 		prsp := new(ss.MsgExitGroupRsp)
 		prsp.GrpId = grp_id
@@ -151,7 +169,7 @@ func do_del_group(pconfig *Config, preq *ss.MsgExitGroupReq, from int) {
 		prsp.DelGroup = 1
 		for {
 			//check grp
-			res, result := GetGroupInfo(pconfig, phead, grp_id, FIELD_GROUP_INFO_MSG_COUNT)
+			res, result := GetGroupInfo(pclient, phead, grp_id, FIELD_GROUP_INFO_MSG_COUNT)
 			if result != ss.SS_COMMON_RESULT_SUCCESS {
 				prsp.Result = result
 				break
@@ -165,7 +183,7 @@ func do_del_group(pconfig *Config, preq *ss.MsgExitGroupReq, from int) {
 
 			//del group:grp_id
 			tab_name := fmt.Sprintf(FORMAT_TAB_GROUP_INFO_PREFIX+"%d", grp_id)
-			res, err = pconfig.RedisClient.RedisExeCmdSync(phead, "DEL", tab_name)
+			res, err = pclient.RedisExeCmdSync(phead, "DEL", tab_name)
 			if err != nil {
 				log.Err("%s del %s failed! err:%v grp_id:%d uid:%d", _func_, tab_name, err, grp_id, uid)
 				prsp.Result = ss.SS_COMMON_RESULT_FAILED
@@ -176,7 +194,7 @@ func do_del_group(pconfig *Config, preq *ss.MsgExitGroupReq, from int) {
 			prsp.Result = ss.SS_COMMON_RESULT_SUCCESS //will always be success next
 			//del group:apply:grp_id
 			tab_name = fmt.Sprintf(FORMAT_TAB_GROUP_APPLY_LIST+"%d", grp_id)
-			res, err = pconfig.RedisClient.RedisExeCmdSync(phead, "DEL", tab_name)
+			res, err = pclient.RedisExeCmdSync(phead, "DEL", tab_name)
 			if err != nil {
 				log.Err("%s del %s failed! err:%v grp_id:%d uid:%d", _func_, tab_name, err, grp_id, uid)
 			} else {
@@ -185,7 +203,7 @@ func do_del_group(pconfig *Config, preq *ss.MsgExitGroupReq, from int) {
 
 			//del group:mem:grp_id
 			tab_name = fmt.Sprintf(FORMAT_TAB_GROUP_MEMBERS+"%d", grp_id)
-			res, err = pconfig.RedisClient.RedisExeCmdSync(phead, "DEL", tab_name)
+			res, err = pclient.RedisExeCmdSync(phead, "DEL", tab_name)
 			if err != nil {
 				log.Err("%s del %s failed! err:%v grp_id:%d uid:%d", _func_, tab_name, err, grp_id, uid)
 			} else {
@@ -198,7 +216,7 @@ func do_del_group(pconfig *Config, preq *ss.MsgExitGroupReq, from int) {
 				tab_cnt := msg_count / CHAT_MSG_LIST_SIZE
 				for i := 0; i <= tab_cnt; i++ {
 					tab_name = fmt.Sprintf(FORMAT_TAB_CHAT_MSG_LIST, grp_id, i)
-					res, err = pconfig.RedisClient.RedisExeCmdSync(phead, "DEL", tab_name)
+					res, err = pclient.RedisExeCmdSync(phead, "DEL", tab_name)
 					if err != nil {
 						log.Err("%s del %s failed! err:%v grp_id:%d uid:%d", _func_, tab_name, err, grp_id, uid)
 					} else {

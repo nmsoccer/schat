@@ -426,48 +426,55 @@ func RecvApplyGroupAudit(pconfig *Config, preq *ss.MsgApplyGroupAudit, msg []byt
 		log.Err("%s uid:%d offline!", _func_, uid)
 		return
 	}
-	log.Debug("%s uid:%d grp_id:%d apply_uid:%d result:%d", _func_, uid, preq.GroupId, preq.ApplyUid, preq.Result)
+	log.Debug("%s uid:%d grp_id:%d apply_uid:%d result:%d from_db:%d", _func_, uid, preq.GroupId, preq.ApplyUid, preq.Result ,
+		preq.FromDb)
 
-	//check master
-	pchat_info := puser.user_info.BlobInfo.ChatInfo
-	if pchat_info.MasterGroup == 0 || pchat_info.MasterGroups == nil {
-		log.Err("%s uid:%d owns none group!", _func_, uid)
+	//from client
+	if preq.FromDb == 0 {
+		//check master
+		pchat_info := puser.user_info.BlobInfo.ChatInfo
+		if pchat_info.MasterGroup == 0 || pchat_info.MasterGroups == nil {
+			log.Err("%s uid:%d owns none group!", _func_, uid)
+			return
+		}
+		_, exist := pchat_info.MasterGroups[preq.GroupId]
+		if !exist {
+			log.Err("%s do not own this group! uid:%d grp_id:%d", _func_, uid, preq.GroupId)
+			return
+		}
+
+		SendToDb(pconfig, msg)
 		return
 	}
-	_, exist := pchat_info.MasterGroups[preq.GroupId]
-	if !exist {
-		log.Err("%s do not own this group! uid:%d grp_id:%d", _func_, uid, preq.GroupId)
+
+	//from db, notify applied user
+	pnotify := new(ss.MsgCommonNotify)
+	pnotify.Uid = preq.ApplyUid
+	pnotify.GrpId = preq.GroupId
+	pnotify.NotifyType = ss.COMMON_NOTIFY_TYPE_NOTIFY_NEW_AUDIT
+
+	pss_msg , err := comm.GenDispMsg(ss.DISP_MSG_TARGET_ONLINE_SERVER , ss.DISP_MSG_METHOD_RAND , ss.DISP_PROTO_TYPE_DISP_COMMON_NOTIFY ,
+		0 , pconfig.ProcId , 0 , pnotify)
+	if err != nil {
+		log.Err("%s gen disp ss failed! uid:%d", _func_, preq.ApplyUid)
 		return
 	}
-
-	SendToDb(pconfig, msg)
+	SendToDisp(pconfig , 0 , pss_msg)
 }
 
 func RecvApplyGroupAuditNotify(pconfig *Config, pnotify *ss.MsgCommonNotify) {
 	var _func_ = "<RecvApplyGroupAuditNotify>"
 	log := pconfig.Comm.Log
 	uid := pnotify.Uid
+	grp_id := pnotify.GrpId
 
-	//diff logic
-	if int(pnotify.IntV) != pconfig.ProcId {
-		log.Debug("%s will trans to logic:%d uid:%d", _func_, pnotify.IntV, uid)
-		pss_msg, err := comm.GenDispMsg(ss.DISP_MSG_TARGET_LOGIC_SERVER, ss.DISP_MSG_METHOD_SPEC, ss.DISP_PROTO_TYPE_DISP_COMMON_NOTIFY,
-			int(pnotify.IntV), pconfig.ProcId, 0, pnotify)
-		if err != nil {
-			log.Err("%s gen dispmsg failed! err:%v uid:%d", _func_, err, uid)
-			return
-		}
-		SendToDisp(pconfig, 0, pss_msg)
-		return
-	}
-
-	//same logic
+	//user
 	puser := GetUserInfo(pconfig, uid)
 	if puser == nil {
-		log.Err("%s offline! uid:%d", _func_, uid)
+		log.Err("%s offline! uid:%d grp_id:%d", _func_, uid , grp_id)
 		return
 	}
-	log.Debug("%s get auidit notify! uid:%d", _func_, uid)
+	log.Debug("%s get auidit notify! uid:%d grp_id:%d", _func_, uid , grp_id)
 
 	//fetch
 	SendFetchAuditGroupReq(pconfig, uid)

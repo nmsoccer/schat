@@ -12,12 +12,19 @@ func RecvFetchOfflineInfoReq(pconfig *Config, preq *ss.MsgFetchOfflineInfoReq, f
 	uid := preq.Uid
 
 	go func() {
-		phead := pconfig.RedisClient.AllocSyncCmdHead()
+		//pclient
+		pclient := SelectRedisClient(pconfig , REDIS_OPT_RW)
+		if pclient == nil {
+			log.Err("%s failed! no proper redis found! uid:%d" , _func_ , uid)
+			return
+		}
+		//phead
+		phead := pclient.AllocSyncCmdHead()
 		if phead == nil {
 			log.Err("%s alloc head failed! uid:%d", _func_, uid)
 			return
 		}
-		defer pconfig.RedisClient.FreeSyncCmdHead(phead)
+		defer pclient.FreeSyncCmdHead(phead)
 
 		//rsp
 		prsp := new(ss.MsgFetchOfflineInfoRsp)
@@ -29,7 +36,7 @@ func RecvFetchOfflineInfoReq(pconfig *Config, preq *ss.MsgFetchOfflineInfoReq, f
 		for {
 			//get offline info
 			tab_name := fmt.Sprintf(FORMAT_TAB_OFFLINE_INFO_PREFIX+"%d", uid)
-			res, err := pconfig.RedisClient.RedisExeCmdSync(phead, "LRANGE", tab_name, 0, preq.FetchCount-1)
+			res, err := pclient.RedisExeCmdSync(phead, "LRANGE", tab_name, 0, preq.FetchCount-1)
 			if err != nil {
 				log.Err("%s lrange %s failed! uid:%d  err:%v", _func_, tab_name, uid, err)
 				break
@@ -51,7 +58,7 @@ func RecvFetchOfflineInfoReq(pconfig *Config, preq *ss.MsgFetchOfflineInfoReq, f
 			prsp.Result = ss.SS_COMMON_RESULT_SUCCESS
 
 			//trim list
-			_, err = pconfig.RedisClient.RedisExeCmdSync(phead, "LTRIM", tab_name, preq.FetchCount, -1)
+			_, err = pclient.RedisExeCmdSync(phead, "LTRIM", tab_name, preq.FetchCount, -1)
 			if err != nil {
 				log.Err("%s ltrim tab:%s %d:%d failed! err:%v uid:%d", _func_, tab_name, preq.FetchCount, -1, err, uid)
 			}

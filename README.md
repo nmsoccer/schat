@@ -69,8 +69,27 @@ schat基于sgame框架，所以其安装环境与sgame流程一致，这里摘�
 * **REDIS**  
 下载页面https://redis.io/download 这里选择下载redis-5.0.8.tar.gz. 
   * 解压到本地后make 然后拷贝src/redis-cli src/redis-server src/redis.conf 到/usr/local/bin.
-  * 修改/usr/local/bin/redis.conf新增密码requirepass cbuju 用作sgame使用redis的连接密码 
-  * 修改port 6698作为监听端口 然后cd /usr/local/bin; ./redis-server ./redis.conf & 拉起即可  
+  * 我们使用redis的主从模式，一主两从，为了方便三个实例都部署到本地,所以创建三个目录 mkdir ~/redis_pool/6600 ~/redis_pool/6601 ~/redis_pool/6602
+  * 6600作为主实例
+    * cd ~/redis_pool/6600; cp /usr/local/bin/redis.conf .
+    * 编辑redis.conf
+    * 搜索requirepass 并新增一行``requirepass cbuju`` 用作sgame使用redis的连接密码 
+    * 搜索port 6379并修改为port 6600作为监听端口 
+    * 执行``redis_server ./redis.conf &``拉起即可
+  * 6601作为从实例1
+    * cd ~/redis_pool/6601; cp ../6600/redis.conf .
+    * 编辑redis.conf
+    * 搜索并修改port 6601
+    * 搜索replicaof 然后添加一行``replicaof 127.0.0.1 6600`` 作为其master
+    * 搜索masterauth 然后添加一行 ``masterauth cbuju``
+    * 执行``redis_server ./redis.conf &``拉起即可
+  * 6602作为从实例2
+    * cd ~/redis_pool/6602; cp ../6600/redis.conf .
+    * 编辑redis.conf
+    * 搜索并修改port 6602
+    * 搜索replicaof 然后添加一行``replicaof 127.0.0.1 6600`` 作为其master
+    * 搜索masterauth 然后添加一行 ``masterauth cbuju``
+    * 执行``redis_server ./redis.conf &``拉起即可  
 
 #### 必需库
 * **PROTOBUF-GO**  

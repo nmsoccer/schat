@@ -27,9 +27,11 @@ enum SS_OFFLINE_INFO_TYPE {
 
 enum SS_GROUP_INFO_FIELD {
   GRP_FIELD_ALL = 0;
+  GRP_FIELD_SNAP = 1;
 }
 
 enum GROUP_ATTR_TYPE {
   GRP_ATTR_VISIBLE = 0;		//cound be shown on panel
   GRP_ATTR_INVISIBLE = 1;	//only be searched by group id
+  GRP_ATTR_DESC = 2;  //change group desc
 }

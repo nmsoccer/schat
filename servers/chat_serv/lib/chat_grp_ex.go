@@ -110,6 +110,11 @@ func ChgGroupAttr(pconfig *Config, preq *ss.MsgChgGroupAttrReq, logic_serv int) 
 		//set visible
 		log.Info("%s will set group invisible! uid:%d grp_id:%d", _func_, uid, grp_id)
 		pgrp_info.db_group_info.BlobInfo.Visible = 0
+	case ss.GROUP_ATTR_TYPE_GRP_ATTR_DESC:
+		log.Info("%s will set group desc! uid:%d grp_id:%d %s-->%s", _func_, uid, grp_id , pgrp_info.db_group_info.BlobInfo.GroupDesc ,
+			preq.StrV)
+		pgrp_info.db_group_info.BlobInfo.GroupDesc = preq.StrV
+		direct_back = true //back to client
 	default:
 		log.Err("%s illegal attr:%d uid:%d grp_id:%d", _func_, preq.Attr, uid, grp_id)
 		return
@@ -123,6 +128,7 @@ func ChgGroupAttr(pconfig *Config, preq *ss.MsgChgGroupAttrReq, logic_serv int) 
 		prsp.GrpId = grp_id
 		prsp.Attr = preq.Attr
 		prsp.Result = ss.SS_COMMON_RESULT_SUCCESS
+		prsp.StrV = preq.StrV
 		pss_msg, err := comm.GenDispMsg(ss.DISP_MSG_TARGET_LOGIC_SERVER, ss.DISP_MSG_METHOD_SPEC, ss.DISP_PROTO_TYPE_DISP_CHG_GROUP_ATTR_RSP,
 			logic_serv, pconfig.ProcId, 0, prsp)
 		if err != nil {
@@ -138,6 +144,8 @@ func ChgGroupAttr(pconfig *Config, preq *ss.MsgChgGroupAttrReq, logic_serv int) 
 	var ss_msg ss.SSMsg
 	preq.StrV = pgrp_info.db_group_info.GroupName
 	preq.Occupy = int64(logic_serv)
+	preq.MemCount = pgrp_info.db_group_info.MemCount
+	preq.Desc = pgrp_info.db_group_info.BlobInfo.GroupDesc
 	err := comm.FillSSPkg(&ss_msg, ss.SS_PROTO_TYPE_CHG_GROUP_ATTR_REQ, preq)
 	if err != nil {
 		log.Err("%s gen ss failed! err:%v uid:%d grp_id:%d attr:%d", _func_, err, uid, grp_id, preq.Attr)

@@ -1429,10 +1429,12 @@ func RecvQueryGroupReq(pconfig *Config, preq *ss.MsgQueryGroupReq) {
 	grp_id := preq.GrpId
 
 	//check in group
+	preq.Field = ss.SS_GROUP_INFO_FIELD_GRP_FIELD_ALL //default query all
 	ok, _ := UserInGroup(pconfig, uid, grp_id)
 	if !ok {
-		log.Err("%s not in group! uid:%d grp_id:%d", _func_, uid, grp_id)
-		return
+		log.Debug("%s not in group! uid:%d grp_id:%d", _func_, uid, grp_id)
+		//return
+		preq.Field = ss.SS_GROUP_INFO_FIELD_GRP_FIELD_SNAP //not in group only search snap
 	}
 
 	//to chat serv

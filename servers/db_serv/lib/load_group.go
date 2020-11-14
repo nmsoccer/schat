@@ -151,6 +151,22 @@ func RecvSaveChatGroupReq(pconfig *Config, preq *ss.MsgSaveGroupReq, from int) {
 			}
 			result = ss.SS_COMMON_RESULT_SUCCESS
 
+			//save profile
+			profile := new(ss.GroupGroudItem)
+			profile.GrpId = preq.GrpId
+			profile.GrpName = preq.GrpName
+			profile.MemCount = preq.MemCount
+			profile.Desc = preq.BlobInfo.GroupDesc
+
+				//pack
+			enc_data, err := ss.Pack(profile)
+			if err != nil {
+				log.Err("%s pack profile failed! err:%v gid:%d", _func_, err, preq.GrpId)
+			} else {
+				SaveGroupProfile(pclient, phead, preq.GrpId, string(enc_data))
+			}
+
+
 			//server exit no need further
 			if preq.Reason == ss.SS_COMMON_REASON_REASON_EXIT {
 				break

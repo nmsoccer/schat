@@ -222,6 +222,7 @@ message MsgSendChatRsp {
 message MsgQueryGroupReq {
   int64 uid = 1;
   int64 grp_id = 2;
+  SS_GROUP_INFO_FIELD field = 3;
   
   int64 occupy = 20;  
 }
@@ -232,6 +233,7 @@ message MsgSyncGroupInfo {
   int64 uid = 2;
   int64 grp_id = 3;
   GroupInfo grp_info = 4;
+  GroupGroudItem grp_snap = 5;
   
   int64 occupy = 20;  
 }
@@ -245,6 +247,8 @@ message MsgChgGroupAttrReq {
   string str_v = 5;
   
   int64 occupy = 20;
+  int32 mem_count = 21;
+  string desc = 22;
 }
 
 //GroupAttr

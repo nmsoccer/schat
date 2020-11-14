@@ -73,10 +73,27 @@ func SaveUserProfile(pclient *comm.RedisClient, phead *comm.SyncCmdHead, uid int
 	log := pclient.GetLog()
 
 	//save profile
-	tab_name := fmt.Sprintf(FORMAT_TAB_USER_PREOFILE_PREFIX+"%d", uid)
+	tab_name := fmt.Sprintf(FORMAT_TAB_USER_PROFILE_PREFIX+"%d", uid)
 	_, err := pclient.RedisExeCmdSync(phead, "SET", tab_name, profile)
 	if err != nil {
 		log.Err("%s set failed! err:%v uid:%d profile:%s", _func_, err, uid, profile)
+		return ss.SS_COMMON_RESULT_FAILED
+	}
+
+	//log.Debug("%s tab:%s set done! uid:%d profile:%s" , _func_ , tab_name , uid , profile)
+	return ss.SS_COMMON_RESULT_SUCCESS
+}
+
+//save group profile
+func SaveGroupProfile(pclient *comm.RedisClient, phead *comm.SyncCmdHead, grp_id int64, profile string) ss.SS_COMMON_RESULT {
+	var _func_ = "<SaveGroupProfile>"
+	log := pclient.GetLog()
+
+	//save profile
+	tab_name := fmt.Sprintf(FORMAT_TAB_GROUP_PROFILE_PREFIX+"%d", grp_id)
+	_, err := pclient.RedisExeCmdSync(phead, "SET", tab_name, profile)
+	if err != nil {
+		log.Err("%s set failed! err:%v grp_id:%d profile:%s", _func_, err, grp_id, profile)
 		return ss.SS_COMMON_RESULT_FAILED
 	}
 

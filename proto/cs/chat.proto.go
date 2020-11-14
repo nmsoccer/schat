@@ -6,10 +6,12 @@ const (
 
   //sync group field
   SYNC_GROUP_FIELD_ALL = 1
+  SYNC_GROUP_FIELD_SNAP = 2
 
   //group attr
   GROUP_ATTR_VISIBLE = 0
   GROUP_ATTR_INVISIBLE = 1
+  GROUP_ATTR_DESC = 2
 )
 
 //create group
@@ -108,6 +110,7 @@ type CSSyncGroupInfo struct {
 	Field  int32 `json:"field"` //refer SYNC_GROUP_FIELD_xx
 	GrpId  int64 `json:"grp_id"`
 	GrpInfo *ChatGroup `json:"grp_info"`
+	GrpSnap *GroupGroundItem `json:"grp_snap"`
 }
 
 type CSFetchUserProfileReq struct {
@@ -121,12 +124,16 @@ type CSFetchUserProfileRsp struct {
 type CSChgGroupAttrReq struct {
 	Attr   int   `json:"attr"` //refer GROUP_ATTR_XX
 	GrpId  int64 `json:"grp_id"`
+	IntV   int64  `json:"int_v"`
+	StrV   string `json:"str_v"`
 }
 
 type CSChgGroupAttrRsp struct {
 	Result int   `json:"result"` //COMMON_RESULT_XX
 	Attr   int   `json:"attr"` //refer GROUP_ATTR_XX
 	GrpId  int64 `json:"grp_id"`
+	IntV   int64  `json:"int_v"`
+	StrV   string `json:"str_v"`
 }
 
 type CSGroupGroundReq struct {

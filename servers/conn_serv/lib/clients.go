@@ -39,6 +39,7 @@ var pkg_buff PkgBuff
 
 func init() {
 	pzenv.c_w = zlib.NewWriter(&pzenv.c_bf) //using default compress level
+	//pzenv.c_w  , _ = zlib.NewWriterLevel(&pzenv.c_bf , 9)
 	pzenv.u_reader = bytes.NewReader(nil)
 	pzenv.u_zr, _ = zlib.NewReader(pzenv.u_reader) //here is no log if failed,will new again
 
@@ -130,6 +131,7 @@ func HandleClientPkg(pconfig *Config, pclient *comm.ClientPkg) {
 	//normal pkg
 	//zib uncompress
 	client_data := pclient.Data
+	//log.Debug("%s raw_len:%d raw:%v" , _func_ , len(client_data) , client_data)
 	if pconfig.FileConfig.ZlibOn == 1 {
 		new_reader = true
 		pzenv.u_reader.Reset(pclient.Data)
@@ -175,6 +177,7 @@ func HandleClientPkg(pconfig *Config, pclient *comm.ClientPkg) {
 	}
 
 	//decode msg
+	//log.Debug("%s uncompressed:%v" , _func_ , string(client_data))
 	err = cs.DecodeMsg(client_data, &gmsg)
 	if err != nil {
 		log.Err("%s decode msg failed! err:%v", _func_, err)
@@ -199,7 +202,7 @@ func HandleClientPkg(pconfig *Config, pclient *comm.ClientPkg) {
 	case cs.CS_PROTO_PING_REQ:
 		pmsg, ok := gmsg.SubMsg.(*cs.CSPingReq)
 		if ok {
-			log.Debug("%s recv proto:%d success! v:%v", _func_, proto_id, *pmsg)
+			log.Debug("%s recv ping success! v:%v", _func_, *pmsg)
 			SendPingReq(pconfig, pclient.ClientKey, pmsg)
 			conv_err = false
 		}
@@ -325,6 +328,7 @@ func SendToClient(pconfig *Config, client_key int64, proto int, pmsg interface{}
 		log.Err("%s encode msg failed! key:%v err:%v", _func_, client_key, err)
 		return false
 	}
+	log.Debug("%s msg:%v len:%d" , _func_ , string(enc_data) , len(enc_data))
 
 	//zlib
 	if pconfig.FileConfig.ZlibOn == 1 {

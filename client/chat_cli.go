@@ -80,7 +80,7 @@ func init() {
 	cmd_map[CMD_KICK] = "kick group member <group_id><member_id>"
 	cmd_map[CMD_QUERY_GROUP] = "query group info <group_id>"
 	cmd_map[CMD_USER_PROFILE] = "user profile [uid1] [uid2] ..."
-	cmd_map[CMD_GROUP_ATTR] = "chg group attr <group_id><attr_id>"
+	cmd_map[CMD_GROUP_ATTR] = "chg group attr <group_id><attr_id>[...]"
 	cmd_map[CMD_GROUP_GROUND] = "group ground <start_index>"
 }
 
@@ -275,7 +275,7 @@ func RecvPkg(conn *net.TCPConn) {
 			RecvConnSpecPkg(tag, pkg_data)
 			continue
 		}
-		//v_print("recv pkg: tag:%d pkg_len:%d pkg_data:%v\n" , tag , pkg_len , string(pkg_data))
+		//v_print("recv pkg: tag:%d pkg_len:%d pkg_data:%v\n" , tag , pkg_len , pkg_data);
 		//decrypt
 		if enc_type != lnet.NET_ENCRYPT_NONE {
 			pkg_data = DecryptRecv(pkg_data)
@@ -451,9 +451,18 @@ func RecvPkg(conn *net.TCPConn) {
 			prsp , ok := gmsg.SubMsg.(*cs.CSSyncGroupInfo)
 			if ok {
 				v_print("sync group info field:%d grp_id:%d\n" , prsp.Field , prsp.GrpId)
-				if prsp.GrpInfo != nil {
-					v_print("group_info:%v\n" , *prsp.GrpInfo)
+				switch prsp.Field {
+				case cs.SYNC_GROUP_FIELD_ALL:
+					if prsp.GrpInfo != nil {
+						v_print("group_info:%v\n" , *prsp.GrpInfo)
+					}
+				case cs.SYNC_GROUP_FIELD_SNAP:
+					if prsp.GrpSnap != nil {
+						v_print("group_snap:%v\n" , *prsp.GrpSnap)
+					}
+
 				}
+
 				if *method == METHOD_COMMAND {
 					exit_ch <- true
 					return
@@ -480,7 +489,8 @@ func RecvPkg(conn *net.TCPConn) {
 		case cs.CS_PROTO_CHG_GROUP_ATTR_RSP:
 			prsp , ok := gmsg.SubMsg.(*cs.CSChgGroupAttrRsp)
 			if ok {
-				v_print("chg group attr result:%d attr:%d grp_id:%d\n" , prsp.Result , prsp.Attr , prsp.GrpId)
+				v_print("chg group attr result:%d attr:%d grp_id:%d str_v:%s\n" , prsp.Result , prsp.Attr , prsp.GrpId ,
+					prsp.StrV)
 				if *method == METHOD_COMMAND {
 					exit_ch <- true
 					return
@@ -492,7 +502,8 @@ func RecvPkg(conn *net.TCPConn) {
 				v_print("ground group count:%d\n" , prsp.Count)
 				if prsp.Count>0 && len(prsp.ItemList)>0 {
 					for i:=0; i<prsp.Count; i++ {
-						v_print("<%d> grp_id:%d grp_name:%s\n" , i , prsp.ItemList[i].GrpId , prsp.ItemList[i].GrpName)
+						v_print("<%d> grp_id:%d grp_name:%s mem_count:%d desc:%s\n" , i , prsp.ItemList[i].GrpId , prsp.ItemList[i].GrpName,
+							prsp.ItemList[i].MemCount , prsp.ItemList[i].Desc)
 					}
 				}
 				if *method == METHOD_COMMAND {
@@ -688,8 +699,8 @@ func SendPkg(conn *net.TCPConn, cmd string) {
 		}
 		v_print("fetch user profile req:%v\n" , *psub)
 		gmsg.SubMsg = psub
-	case CMD_GROUP_ATTR: //"chg group attr <group_id><attr_id>"
-		if len(args) != 3 {
+	case CMD_GROUP_ATTR: //"chg group attr <group_id><attr_id>[...]"
+		if len(args) < 3 {
 			show_cmd()
 			return
 		}
@@ -697,6 +708,9 @@ func SendPkg(conn *net.TCPConn, cmd string) {
 		psub := new(cs.CSChgGroupAttrReq)
 		psub.GrpId , _ = strconv.ParseInt(args[1] , 10 , 64)
 		psub.Attr , _ = strconv.Atoi(args[2])
+		if len(args) == 4 {
+			psub.StrV = args[3]
+		}
 		v_print("chg group attr req:%v\n", *psub)
 		gmsg.SubMsg = psub
 	case CMD_GROUP_GROUND: //"group ground <start_index>"
@@ -803,6 +817,31 @@ func main() {
 
 	//init
 	//exit_ch = make(chan bool, 1)
+	test_data := []byte{120,156,170,86,42,40,202,47 ,201 ,87, 178, 50, 210, 81, 42, 46, 77, 82, 178, 170, 86, 42, 41, 86, 178, 50, 52, 51, 48, 49, 48, 49, 53, 49, 53, 54, 52, 49, 175, 173, 5, 0, 0, 0, 255, 255};
+	//uncompress
+	if zlib_enable {
+		b := bytes.NewReader(test_data)
+		var out bytes.Buffer
+		r, err := zlib.NewReader(b)
+		if err != nil {
+			fmt.Printf("uncompress data failed! err:%v", err)
+			return
+		}
+		io.Copy(&out, r)
+		test_data = out.Bytes()
+	}
+	fmt.Printf("test_data:%v\n" , string(test_data))
+	//decode
+	var gmsg cs.GeneralMsg
+	err := cs.DecodeMsg(test_data, &gmsg)
+	if err != nil {
+		fmt.Printf("decode failed! err:%v\n", err)
+		return
+	} else {
+		fmt.Printf("decode:%v\n" , gmsg)
+	}
+
+
 
 	//connect
 	tcp_addr, err := net.ResolveTCPAddr("tcp4", server_addr)

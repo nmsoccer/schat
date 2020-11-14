@@ -475,10 +475,25 @@ func RecvSyncGroupInfo(pconfig *Config, pinfo *ss.MsgSyncGroupInfo) {
 		pmsg.GrpInfo.MsgCount = pinfo.GrpInfo.LatestMsgId
 		pmsg.GrpInfo.CreateTs = pinfo.GrpInfo.CreatedTs
 		pmsg.GrpInfo.MemCount = pinfo.GrpInfo.MemCount
+		pmsg.GrpInfo.Visible = pinfo.GrpInfo.BlobInfo.Visible
+		pmsg.GrpInfo.Desc = pinfo.GrpInfo.BlobInfo.GroupDesc
 		if pinfo.GrpInfo.MemCount > 0 || pinfo.GrpInfo.Members != nil {
 			pmsg.GrpInfo.Members = make(map[int64]int32)
 			pmsg.GrpInfo.Members = pinfo.GrpInfo.Members
 		}
+	case ss.SS_GROUP_INFO_FIELD_GRP_FIELD_SNAP:
+		pmsg.Field = cs.SYNC_GROUP_FIELD_SNAP
+		pmsg.GrpId = grp_id
+		if pinfo.GrpSnap == nil {
+			log.Err("%s field all but group_snap nil! uid:%d grp_id:%d", _func_, uid, grp_id)
+			return
+		}
+
+		pmsg.GrpSnap = new(cs.GroupGroundItem)
+		pmsg.GrpSnap.GrpId = grp_id
+		pmsg.GrpSnap.GrpName = pinfo.GrpSnap.GrpName
+		pmsg.GrpSnap.MemCount = pinfo.GrpSnap.MemCount
+		pmsg.GrpSnap.Desc = pinfo.GrpSnap.Desc
 	default:
 		log.Err("%s unknwon field:%d uid:%d grp_id:%d", _func_, pinfo.Field, uid, grp_id)
 		return
@@ -504,6 +519,9 @@ func SendChgGroupAttrReq(pconfig *Config, uid int64, pchg *cs.CSChgGroupAttrReq)
 		preq.Attr = ss.GROUP_ATTR_TYPE_GRP_ATTR_VISIBLE
 	case cs.GROUP_ATTR_INVISIBLE:
 		preq.Attr = ss.GROUP_ATTR_TYPE_GRP_ATTR_INVISIBLE
+	case cs.GROUP_ATTR_DESC:
+		preq.Attr = ss.GROUP_ATTR_TYPE_GRP_ATTR_DESC
+		preq.StrV = pchg.StrV
 	default:
 		log.Err("%s illegal attr:%d uid:%d", _func_, pchg.Attr, uid)
 		return
@@ -556,6 +574,9 @@ func RecvChgGroupAttrRsp(pconfig *Config, prsp *ss.MsgChgGroupAttrRsp) {
 		pmsg.Attr = cs.GROUP_ATTR_VISIBLE
 	case ss.GROUP_ATTR_TYPE_GRP_ATTR_INVISIBLE:
 		pmsg.Attr = cs.GROUP_ATTR_INVISIBLE
+	case ss.GROUP_ATTR_TYPE_GRP_ATTR_DESC:
+		pmsg.Attr = cs.GROUP_ATTR_DESC
+		pmsg.StrV = prsp.StrV
 	default:
 		log.Err("%s illegal attr:%d uid:%d grp_id:%d", _func_, prsp.Attr, uid, grp_id)
 		return
@@ -620,6 +641,8 @@ func RecvGroupGroundRsp(pconfig *Config, prsp *ss.MsgGroupGroudRsp) {
 		pitem := new(cs.GroupGroundItem)
 		pitem.GrpId = prsp.ItemList[i].GrpId
 		pitem.GrpName = prsp.ItemList[i].GrpName
+		pitem.MemCount = prsp.ItemList[i].MemCount
+		pitem.Desc = prsp.ItemList[i].Desc
 		pmsg.ItemList[i] = pitem
 	}
 

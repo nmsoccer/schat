@@ -327,8 +327,23 @@ func AfterLoadGroupSuccess(pconfig *Config, prsp *ss.MsgLoadGroupRsp, pgrp_info 
 		pinfo := new(ss.MsgSyncGroupInfo)
 		pinfo.GrpId = grp_id
 		pinfo.Uid = uid
-		pinfo.Field = ss.SS_GROUP_INFO_FIELD_GRP_FIELD_ALL
-		pinfo.GrpInfo = pgrp_info
+		pinfo.Field = ss.SS_GROUP_INFO_FIELD(prsp.IntV)
+		//switch
+		switch pinfo.Field {
+		case ss.SS_GROUP_INFO_FIELD_GRP_FIELD_ALL:
+			pinfo.GrpInfo = pgrp_info
+		case ss.SS_GROUP_INFO_FIELD_GRP_FIELD_SNAP:
+			psnap := new(ss.GroupGroudItem)
+			psnap.GrpId = grp_id
+			psnap.GrpName = pgrp_info.GroupName
+			psnap.MemCount = pgrp_info.MemCount
+			psnap.Desc = pgrp_info.BlobInfo.GroupDesc
+			pinfo.GrpSnap = psnap
+		default:
+			log.Err("%s query group illegal field! grp_id:%d field:%d uid:%d" , _func_ , grp_id , pinfo.Field ,
+				uid)
+			return
+		}
 
 		//ss
 		pss_msg, err := comm.GenDispMsg(ss.DISP_MSG_TARGET_LOGIC_SERVER, ss.DISP_MSG_METHOD_SPEC, ss.DISP_PROTO_TYPE_DISP_SYNC_GROUP_INFO,
@@ -345,6 +360,7 @@ func AfterLoadGroupSuccess(pconfig *Config, prsp *ss.MsgLoadGroupRsp, pgrp_info 
 		preq.Uid = uid
 		preq.GrpId = grp_id
 		preq.Attr = ss.GROUP_ATTR_TYPE(prsp.IntV)
+		preq.StrV = prsp.StrV
 		ChgGroupAttr(pconfig, preq, int(prsp.Occoupy))
 	default:
 		//nothing to do
@@ -356,7 +372,7 @@ func LoadGroupNoExist(pconfig *Config, prsp *ss.MsgLoadGroupRsp) {
 	var _func_ = "<LoadGroupNoExist>"
 	log := pconfig.Comm.Log
 
-	log.Info("%s uid:%d reason:%d grp_id:%d", _func_, prsp.Uid, prsp.GrpId, prsp.Reason)
+	log.Info("%s uid:%d grp_id:%d reason:%d ", _func_, prsp.Uid, prsp.GrpId, prsp.Reason)
 	switch prsp.Reason {
 	case ss.LOAD_GROUP_REASON_LOAD_GRP_SEND_CHAT:
 		if prsp.Occoupy <= 0 {
@@ -402,6 +418,7 @@ func SaveChatGroup(pconfig *Config, grp_id int64, reason ss.SS_COMMON_REASON) {
 	preq.MsgCount = pgroup_Info.db_group_info.LatestMsgId
 	preq.Reason = reason
 	preq.MemCount = pgroup_Info.db_group_info.MemCount
+	preq.GrpName = pgroup_Info.db_group_info.GroupName
 	preq.BlobInfo = pgroup_Info.db_group_info.BlobInfo
 	if reason == ss.SS_COMMON_REASON_REASON_EXIT {
 		preq.LoadServ = -1
@@ -647,8 +664,22 @@ func RecvQueryGroupReq(pconfig *Config, preq *ss.MsgQueryGroupReq, src_server in
 		pinfo := new(ss.MsgSyncGroupInfo)
 		pinfo.GrpId = grp_id
 		pinfo.Uid = uid
-		pinfo.Field = ss.SS_GROUP_INFO_FIELD_GRP_FIELD_ALL
-		pinfo.GrpInfo = pgrp.db_group_info
+		pinfo.Field = preq.Field
+		switch pinfo.Field {
+		case ss.SS_GROUP_INFO_FIELD_GRP_FIELD_ALL:
+			pinfo.GrpInfo = pgrp.db_group_info
+		case ss.SS_GROUP_INFO_FIELD_GRP_FIELD_SNAP:
+			psnap := new(ss.GroupGroudItem)
+			psnap.GrpId = grp_id
+			psnap.GrpName = pgrp.db_group_info.GroupName
+			psnap.MemCount = pgrp.db_group_info.MemCount
+			psnap.Desc = pgrp.db_group_info.BlobInfo.GroupDesc
+			pinfo.GrpSnap = psnap
+		default:
+			log.Err("%s illegal field! grp_id:%d field:%d uid:%d" , _func_ , grp_id , pinfo.Field ,
+				uid)
+			return
+		}
 
 		//ss
 		pss_msg, err := comm.GenDispMsg(ss.DISP_MSG_TARGET_LOGIC_SERVER, ss.DISP_MSG_METHOD_SPEC, ss.DISP_PROTO_TYPE_DISP_SYNC_GROUP_INFO,
@@ -663,7 +694,7 @@ func RecvQueryGroupReq(pconfig *Config, preq *ss.MsgQueryGroupReq, src_server in
 	}
 
 	//load from db
-	LoadGroup(pconfig, uid, grp_id, ss.LOAD_GROUP_REASON_LOAD_GRP_QUERY_INFO, int64(src_server), nil)
+	LoadGroup(pconfig, uid, grp_id, ss.LOAD_GROUP_REASON_LOAD_GRP_QUERY_INFO, int64(src_server), preq)
 }
 
 func LoadGroup(pconfig *Config, uid int64, grp_id int64, reason ss.LOAD_GROUP_REASON, occuply int64, v interface{}) {
@@ -689,6 +720,13 @@ func LoadGroup(pconfig *Config, uid int64, grp_id int64, reason ss.LOAD_GROUP_RE
 		pload.ChatMsg = preq.ChatMsg
 	case ss.LOAD_GROUP_REASON_LOAD_GRP_QUERY_INFO:
 		//nothing
+		preq, ok := v.(*ss.MsgQueryGroupReq)
+		if !ok {
+			log.Err("%s v type not *MsgQueryGroupReq! uid:%d grp_id:%d", _func_, uid, grp_id)
+			return
+		}
+
+		pload.IntV = int64(preq.Field)
 	case ss.LOAD_GROUP_REASON_LOAD_GRP_CHG_GROUP_ATTR:
 		preq, ok := v.(*ss.MsgChgGroupAttrReq)
 		if !ok {
@@ -762,12 +800,20 @@ func CheckEliminateGroup(pconfig *Config) {
 }
 
 func InitGroupInfo(pconfig *Config, pgrp_info *ss.GroupInfo) {
+	if pgrp_info.Members == nil {
+		pgrp_info.Members = make(map[int64] int32)
+		pgrp_info.MemCount = 0
+	}
+
 	if pgrp_info.BlobInfo == nil {
 		pgrp_info.BlobInfo = new(ss.GroupBlobData)
 		pgrp_info.BlobInfo.Visible = 0
 		pgrp_info.BlobInfo.VisibleScore = INIT_GROUP_SCORE
+		pgrp_info.BlobInfo.GroupDesc = "..."
 	}
-
+	if len(pgrp_info.BlobInfo.GroupDesc) <= 0 {
+		pgrp_info.BlobInfo.GroupDesc = "..."
+	}
 	//init something else
 
 }

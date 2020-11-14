@@ -21,6 +21,7 @@ import (
 * #chat_msg:[group]:[index] +list+ <chat_msg encoded>
 * #offline_info:[uid] +list+ <off_type|xxx...> //off_type:REFER SS_OFFLINE_INFO_TYPE_xx
 * #visible_group_set +zset+  <grp_id|grp_name>
+* #group:profile:[grp_id] +string+ <GroupGroudItem>
  */
 
 /*--------------------INSTRUCTION--------------------
@@ -48,7 +49,7 @@ const (
 	FORMAT_TAB_USER_GLOBAL            = "users:global:%s"  //users:global:[name]  ++ hash ++ name | pass | uid | salt
 	FORMAT_TAB_USER_INFO_REFIX        = "user:"            // user:[uid] ++ hash ++ uid | name | age | sex  | addr | level | online_logic | blob_info | head_url
 	FORMAT_TAB_USER_LOGIN_LOCK_PREFIX = "user:login_lock:" //user:login:[uid] +string+ valid_second
-	FORMAT_TAB_USER_PREOFILE_PREFIX   = "user:profile:"    //user:profile:[uid] +string+ <user_basic>
+	FORMAT_TAB_USER_PROFILE_PREFIX   = "user:profile:"    //user:profile:[uid] +string+ <user_basic>
 	FORMAT_TAB_GLOBAL_GRPID           = "global:grp_id"    // +string+
 	FORMAT_TAB_GROUP_INFO_PREFIX      = "group:"           // group:[grp_id] +hash+ gid | name | master_uid | pass | salt | create_ts | msg_count | load_serv
 	// | blob_info
@@ -60,6 +61,7 @@ const (
 	FORMAT_TAB_OFFLINE_INFO_PREFIX = "offline_info:"       // offline_info:[uid] +list+ <off_type|xxx...> off_type:REFER SS_OFFLINE_INFO_TYPE_xx
 
 	FORMAT_TAB_VISIBLE_GROUP_SET = "visible_group" //visible_group_set +zset+  <grp_id|grp_name>
+	FORMAT_TAB_GROUP_PROFILE_PREFIX = "group:profile:" //* #group:profile:[grp_id] +string+ <GroupGroudItem>
 
 	//Useful FIELD
 	FIELD_USER_INFO_ONLINE_LOGIC = "online_logic"

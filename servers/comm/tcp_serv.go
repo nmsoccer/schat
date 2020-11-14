@@ -1142,7 +1142,7 @@ func (pclient *tcp_client) flush_send_cache(pconfig *CommConfig, pserv *TcpServ)
 	//send data
 	_ = conn.SetWriteDeadline(time.Now().Add(CLIENT_RW_TIMEOUT * time.Millisecond))
 	send_len, err := conn.Write(raw_data)
-	//log.Debug("%s raw:%d send:%d err:%v" , _func_ , len(raw_data) , send_len , err);
+	//log.Debug("%s raw:%d send:%d err:%v data:%v" , _func_ , len(raw_data) , send_len , err , raw_data)
 
 	//check err
 	if err != nil { //parse err

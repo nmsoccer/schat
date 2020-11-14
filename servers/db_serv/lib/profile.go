@@ -30,7 +30,7 @@ func RecvFetchUserProfileReq(pconfig *Config, preq *ss.MsgFetchUserProfileReq, f
 		//args
 		args := make([]interface{}, len(preq.TargetList))
 		for i := 0; i < len(preq.TargetList); i++ {
-			args[i] = fmt.Sprintf(FORMAT_TAB_USER_PREOFILE_PREFIX+"%d", preq.TargetList[i])
+			args[i] = fmt.Sprintf(FORMAT_TAB_USER_PROFILE_PREFIX+"%d", preq.TargetList[i])
 		}
 
 		//resp

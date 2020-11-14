@@ -113,7 +113,8 @@ func RecvGroupGroundReq(pconfig *Config, preq *ss.MsgGroupGroudReq, from int) {
 			}
 
 			//fill
-			prsp.ItemList = make([]*ss.GroupGroudItem, len(strs))
+			args := make([]interface{}, len(strs))
+			gids := make([]int64 , len(strs))
 			var pitem *ss.GroupGroudItem
 			var idx int32 = 0
 			for i := 0; i < len(strs); i++ {
@@ -123,7 +124,52 @@ func RecvGroupGroundReq(pconfig *Config, preq *ss.MsgGroupGroudReq, from int) {
 					continue
 				}
 
-				prsp.ItemList[idx] = pitem
+				args[idx] = fmt.Sprintf(FORMAT_TAB_GROUP_PROFILE_PREFIX+"%d", pitem.GrpId)
+				gids[idx] = pitem.GrpId
+				idx++
+			}
+			args = args[:idx]
+
+			//batch query group profiles
+			//query
+			res, err = pclient.RedisExeCmdSync(phead, "MGET", args...)
+			if err != nil {
+				log.Err("%s exe MGET failed! err:%v uid:%d", _func_, err, uid)
+				break
+			}
+
+			//convert
+			strs, err = comm.Conv2Strings(res)
+			if err != nil {
+				log.Err("%s convert group-profiles res failed! err:%v uid:%d", _func_, err, uid)
+				break
+			}
+
+			if len(strs) != len(args) {
+				log.Err("%s group-profiles res length not match! %d:%d err:%v uid:%d", _func_, len(strs), len(args), err, uid)
+				break
+			}
+
+			//fill rsp
+			prsp.ItemList = make([]*ss.GroupGroudItem, len(strs))
+			idx = 0
+			for i := 0; i < len(strs); i++ {
+				//empty
+				if len(strs[i]) == 0 {
+					log.Debug("%s group profile empty! gid:%d", _func_ , gids[i])
+					continue
+				}
+
+				//fail
+				profile := new(ss.GroupGroudItem)
+				err = ss.UnPack([]byte(strs[i]), profile)
+				if err != nil {
+					log.Err("%s unpack profile %d failed! err:%v", _func_, gids[i], err)
+					continue
+				}
+
+				//set
+				prsp.ItemList[idx] = profile
 				idx++
 			}
 			prsp.Count = idx
@@ -151,7 +197,7 @@ func set_group_attr_visible(pclient *comm.RedisClient, phead *comm.SyncCmdHead, 
 	grp_id := preq.GrpId
 
 	//gen value <grp_id|grp_name>
-	item := gen_ground_string(grp_id, preq.StrV)
+	item := gen_ground_string(grp_id, preq)
 
 	//zadd
 	_, err := pclient.RedisExeCmdSync(phead, "ZADD", FORMAT_TAB_VISIBLE_GROUP_SET, preq.IntV, item)
@@ -183,8 +229,8 @@ func set_group_attr_invisible(pclient *comm.RedisClient, phead *comm.SyncCmdHead
 }
 
 //<grp_id|grp_name>
-func gen_ground_string(grp_id int64, grp_name string) string {
-	return fmt.Sprintf("%d|%s", grp_id, grp_name)
+func gen_ground_string(grp_id int64, preq *ss.MsgChgGroupAttrReq) string {
+	return fmt.Sprintf("%d|%s", grp_id, preq.StrV)
 }
 
 func parse_ground_string(str string) (*ss.GroupGroudItem, error) {
@@ -192,7 +238,8 @@ func parse_ground_string(str string) (*ss.GroupGroudItem, error) {
 
 	//splice
 	strs := strings.Split(str, "|")
-	if len(strs) < 2 {
+	sl_len := len(strs)
+	if sl_len < 2 {
 		return nil, errors.New("length illegal")
 	}
 
@@ -203,5 +250,15 @@ func parse_ground_string(str string) (*ss.GroupGroudItem, error) {
 		return nil, errors.New("convert grp_id failed")
 	}
 	pitem.GrpName = strs[1]
+	/*
+	if sl_len == 3 {
+		v , _ := strconv.Atoi(strs[2])
+		pitem.MemCount = int32(v)
+	}
+	if sl_len == 4 {
+		pitem.Desc = strs[3]
+	}*/
+
+
 	return pitem, nil
 }

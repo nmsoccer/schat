@@ -49,11 +49,14 @@ message GroupInfo {
 
 message GroupBlobData {
   int32 visible = 1; //default 0: group is invisible
-  int32 visible_score = 2;  
+  int32 visible_score = 2;
+  string group_desc = 20;  
 }
 
 
 message GroupGroudItem {
   int64 grp_id = 1;
   string grp_name = 2;
+  int32 mem_count = 3;
+  string desc = 4;
 }

@@ -306,6 +306,7 @@ message MsgSaveGroupReq {
   
   int64 msg_count = 20;
   int32 mem_count = 21;
+  string grp_name = 22;
 }
 
 message MsgSaveGroupRsp {

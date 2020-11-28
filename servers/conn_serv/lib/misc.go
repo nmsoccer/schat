@@ -3,6 +3,7 @@ package lib
 import (
 	"schat/proto/cs"
 	"schat/proto/ss"
+	"schat/servers/comm"
 )
 
 func RecvCommonNotify(pconfig *Config, pnotify *ss.MsgCommonNotify) {
@@ -60,6 +61,23 @@ func RecvCommonNotify(pconfig *Config, pnotify *ss.MsgCommonNotify) {
 		pmsg.StrV = pnotify.StrV
 		pmsg.IntV = pnotify.IntV
 		log.Debug("%s del member id:%d grp_id:%d grp_name:%s", _func_, pmsg.IntV, pmsg.GrpId, pmsg.StrV)
+	case ss.COMMON_NOTIFY_TYPE_NOTIFY_HEAD_URL:
+		if pnotify.StrV == "" {
+			log.Err("%s head url arg nil! uid:%d", _func_, uid)
+			return
+		}
+		pmsg.NotifyType = cs.COMMON_NOTIFY_T_HEAD_URL
+		pmsg.StrV = pnotify.StrV
+		log.Debug("%s head_url url:%s", _func_, pmsg.StrV)
+	case ss.COMMON_NOTIFY_TYPE_NOTIFY_ENTER_GROUP:
+		if pnotify.GrpId == 0 {
+			log.Err("%s grp_id illegal! uid:%d" , _func_ , uid)
+			return
+		}
+		pmsg.NotifyType = cs.COMMON_NOTIFY_T_ENTER_GROUP
+		pmsg.GrpId = pnotify.GrpId
+		pmsg.StrV = pnotify.StrV
+		log.Debug("%s enter_group grp_id:%d grp_name:%s", _func_, pmsg.GrpId , pmsg.StrV)
 	default:
 		log.Err("%s unknown proto:%d uid:%d", _func_, pnotify.NotifyType, uid)
 		return
@@ -67,4 +85,29 @@ func RecvCommonNotify(pconfig *Config, pnotify *ss.MsgCommonNotify) {
 
 	//send
 	SendToClient(pconfig, c_key, cs.CS_PROTO_COMMON_NOTIFY, pmsg)
+}
+
+func SendCommonQuery(pconfig *Config , uid int64 , pquery *cs.CSCommonQuery) {
+	var _func_ = "<SendCommonQuery>"
+	log := pconfig.Comm.Log
+
+	//req
+	preq := new(ss.MsgCommonQuery)
+	preq.Uid = uid
+	preq.GrpId = pquery.GrpId
+	preq.QueryType = int32(pquery.QueryType)
+	preq.IntV = pquery.IntV
+	preq.StrV = pquery.StrV
+
+
+	//ss
+	var ss_msg ss.SSMsg
+	err := comm.FillSSPkg(&ss_msg, ss.SS_PROTO_TYPE_COMMON_QUERY, preq)
+	if err != nil {
+		log.Err("%s gen ss failed! err:%v uid:%d", _func_, err, uid)
+		return
+	}
+
+	//to logic
+	SendToLogic(pconfig, &ss_msg)
 }

@@ -59,6 +59,12 @@ enum SS_PROTO_TYPE {
   CHG_GROUP_ATTR_RSP = 48;
   GROUP_GROUND_REQ = 49;
   GROUP_GROUND_RSP = 50;
+  BATCH_QUERY_GROUP_SNAP = 51;
+  COMMON_QUERY = 52;
+  UPDATE_USER_REQ = 53;
+  UPDATE_USER_RSP = 54;
+  UPDATE_CHAT_REQ = 55;
+  UPDATE_CHAT_RSP = 56;
   //new proto defined could add to servers/comm/ss_pack.go:GenSSPkg  
 }
 
@@ -113,7 +119,13 @@ message SSMsg {
     MsgChgGroupAttrReq chg_group_attr_req = 65;
     MsgChgGroupAttrRsp chg_group_attr_rsp = 66;
     MsgGroupGroudReq group_ground_req = 67;
-    MsgGroupGroudRsp group_ground_rsp = 68;	
+    MsgGroupGroudRsp group_ground_rsp = 68;
+    MsgBatchQueryGroupSnap batch_query_group_snap = 69;
+    MsgCommonQuery common_query = 70;
+    MsgUpdateUserReq update_user_req = 71;
+    MsgUpdateUserRsp  update_user_rsp = 72;
+    MsgUpdateChatReq update_chat_req = 73;
+    MsgUpdateChatRsp update_chat_rsp = 74;	
   }  
 }
 
@@ -196,6 +208,7 @@ message MsgRegReq {
   string role_name = 23; //role name
   bool sex=24;
   string addr=25;
+  string desc = 26; //self desc
 }
 
 enum REG_RESULT {
@@ -224,6 +237,7 @@ message MsgCreateGrpReq {
   int64 uid = 1;
   string grp_name = 2;
   string grp_pass = 3;
+  string desc = 4;
 }
 
 message MsgCreateGrpRsp {
@@ -233,6 +247,7 @@ message MsgCreateGrpRsp {
   string grp_name = 4;
   int32 mem_count = 5;
   int64 create_ts = 6;
+  string desc = 7;
 }
 
 //Fetch Apply Group
@@ -425,7 +440,55 @@ message MsgGroupGroudRsp {
   repeated GroupGroudItem item_list = 3;
 }
 
+//Batch Qury GroupSnap
+message MsgBatchQueryGroupSnap {
+  int64 uid = 1;
+  int32 count = 2;
+  repeated int64 target_list = 3;
+}
+
+//Update UserInfo
+message MsgUpdateUserReq {
+  int64 uid = 1;
+  string account_name = 2; //if update password
+  
+  string role_name = 20; //if len>0 means update
+  string addr = 21; //if len>0 means update
+  string desc = 22; //if len>0 means update
+  string passwd = 23; //if len>0 will update
+}
+
+message MsgUpdateUserRsp {
+  SS_COMMON_RESULT result = 1;
+  int64 uid = 2;  
+  
+  string role_name = 20; //if len>0 means update
+  string addr = 21; //if len>0 means update
+  string desc = 22; //if len>0 means update
+  string passwd = 23; //if len>0 will update
+}
+
+//Update ChatMsg
+enum UPDATE_CHAT_TYPE {
+  UPT_CHAT_DEL = 0 ;//del chat
+  UPT_CHAT_CANCEL = 1; //cancel chat
+}
 
 
+message MsgUpdateChatReq {
+  UPDATE_CHAT_TYPE update_type = 1;
+  int64 uid = 2;
+  int64 grp_id = 3;
+  int64 msg_id = 4; 
+}
 
+message MsgUpdateChatRsp {
+  SS_COMMON_RESULT result = 1;
+  UPDATE_CHAT_TYPE update_type = 2;
+  int64 uid = 3;
+  int64 grp_id = 4;
+  int64 msg_id = 5;
 
+  CHAT_MSG_TYPE src_type = 20;
+  string src_content = 21;  
+}

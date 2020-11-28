@@ -62,13 +62,15 @@ func RecvSendChatRsp(pconfig *Config, prsp *ss.MsgSendChatRsp) {
 	grp_id := prsp.ChatMsg.GroupId
 
 	log.Debug("%s uid:%d grp_id:%d result:%d", _func_, uid, grp_id, prsp.Result)
-	//Back To Logic
-	pss_msg, err := comm.GenDispMsg(ss.DISP_MSG_TARGET_LOGIC_SERVER, ss.DISP_MSG_METHOD_SPEC, ss.DISP_PROTO_TYPE_DISP_SEND_CHAT_RSP,
-		int(prsp.Occupy), pconfig.ProcId, 0, prsp)
-	if err != nil {
-		log.Err("%s gen send_chat_rsp ss failed! err:%v uid:%d", _func_, err, prsp.Uid)
-	} else {
-		SendToDisp(pconfig, 0, pss_msg)
+	//Back To Logic System
+	if ss.SS_SPEC_UID(uid) != ss.SS_SPEC_UID_SYS_UID {
+		pss_msg, err := comm.GenDispMsg(ss.DISP_MSG_TARGET_LOGIC_SERVER, ss.DISP_MSG_METHOD_SPEC, ss.DISP_PROTO_TYPE_DISP_SEND_CHAT_RSP,
+			int(prsp.Occupy), pconfig.ProcId, 0, prsp)
+		if err != nil {
+			log.Err("%s gen send_chat_rsp ss failed! err:%v uid:%d", _func_, err, prsp.Uid)
+		} else {
+			SendToDisp(pconfig, 0, pss_msg)
+		}
 	}
 
 	if prsp.Result != ss.SEND_CHAT_RESULT_SEND_CHAT_SUCCESS {
@@ -96,7 +98,8 @@ func RecvSendChatRsp(pconfig *Config, prsp *ss.MsgSendChatRsp) {
 		pnotify.Members = pgrp_info.db_group_info.Members
 	}
 	pnotify.ChatMsg = prsp.ChatMsg //carry latest
-	pss_msg, err = comm.GenDispMsg(ss.DISP_MSG_TARGET_ONLINE_SERVER, ss.DISP_MSG_METHOD_RAND, ss.DISP_PROTO_TYPE_DISP_COMMON_NOTIFY,
+	pnotify.StrV = pgrp_info.db_group_info.GroupName //carry group name
+	pss_msg, err := comm.GenDispMsg(ss.DISP_MSG_TARGET_ONLINE_SERVER, ss.DISP_MSG_METHOD_RAND, ss.DISP_PROTO_TYPE_DISP_COMMON_NOTIFY,
 		0, pconfig.ProcId, 0, pnotify)
 	if err != nil {
 		log.Err("%s broadcast failed! gen ss fail! err:%v grp_id:%d", _func_, err, grp_id)

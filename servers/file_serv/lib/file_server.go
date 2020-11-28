@@ -22,11 +22,13 @@ import (
 REFER comm.FILE_URL_T_xx
 CHAT_FILE URL> 1:index:grp_id:file_name  | FILE_DIR> CHAT_PARENT_PATH/GROUP_ID/YYYYMM/ | FILE_NAME> YYYYMM_MD5.TYPE
 HEAD_FILE URL> 2:index:sub_dir:file_name | FILE_DIR> HEAD_PARENT_PATH/SUB_DIR/UID/ | FILE_NAME> UID_MD5.TYPE
+GROUP_FILE URL> 3:index:sub_dir:file_name | FILE_DIR> GROUP_HEAD_PARENT_PATH/SUB_DIR/GRPID/ | FILE_NAME> GRPID_MD5.TYPE
 */
 
 const (
 	UPLOAD_TMPL = "./html_tmpl/upload.html"
 
+	//UPLOAD LABEL
 	FORM_LABEL_URL_TYPE = "url_type"
 	FORM_LABEL_UID      = "uid"
 	FORM_LABEL_GRP_ID   = "grp_id"
@@ -34,6 +36,7 @@ const (
 	FORM_LABEL_UPLOAD   = "upload_file"
 	FORM_LABEL_TOKEN    = "token"
 
+	//UPLOAD RESULT
 	UPLOAD_RESULT_SUCCESS = 0
 	UPLOAD_RESULT_FAILED  = 1
 	UPLOAD_RESULT_SIZE    = 2
@@ -44,6 +47,12 @@ const (
 	//SUB_DIR --> type
 	FILE_PARENT_DIR_CHATS = "chat"
 	FILE_PARENT_DIR_HEADS = "head"
+	FILE_PARENT_DIR_GROUP_HEADS = "g_head"
+
+	//URL PATTERN
+	URL_HEAD_CHATS = "/static"
+	URL_HEAD_HEADS = "/head"
+	URL_HEAD_G_HEADS = "/g_head"
 
 	//FILE_MSG_TYPE
 	FILE_MSG_EXIT              = 0 //exit
@@ -53,6 +62,8 @@ const (
 
 	//MAX_SUB_DIR
 	MAX_HEAD_SUB_DIRS = 64 //uid % dirs
+	MAX_GROUP_HEAD_SUB_DIRS = 61 //grp_id % dirs
+
 )
 
 type FileMsg struct {
@@ -88,6 +99,7 @@ type FileServer struct {
 	parent_path      string
 	chat_parent_path string
 	head_parent_path string
+	group_head_parent_path string
 	//channel
 	snd_chan  chan *FileMsg
 	recv_chan chan *FileMsg
@@ -107,6 +119,7 @@ type UploadResult struct {
 
 var chat_fs http.Handler //chat file server
 var head_fs http.Handler //head file server
+var group_head_fs http.Handler //group head file server
 
 func StartFileServer(pconfig *Config) *FileServer {
 	var _func_ = "<StartFileServer>"
@@ -121,6 +134,7 @@ func StartFileServer(pconfig *Config) *FileServer {
 	fs.parent_path = pconfig.FileConfig.RealFilePath
 	fs.chat_parent_path = fmt.Sprintf("%s/%s", fs.parent_path, FILE_PARENT_DIR_CHATS)
 	fs.head_parent_path = fmt.Sprintf("%s/%s", fs.parent_path, FILE_PARENT_DIR_HEADS)
+	fs.group_head_parent_path = fmt.Sprintf("%s/%s" , fs.parent_path , FILE_PARENT_DIR_GROUP_HEADS)
 	fs.recv_chan = make(chan *FileMsg, FILE_MSG_CHAN_SIZE)
 	fs.snd_chan = make(chan *FileMsg, FILE_MSG_CHAN_SIZE)
 	fs.last_token = pconfig.NowToken
@@ -140,9 +154,15 @@ func StartFileServer(pconfig *Config) *FileServer {
 		return nil
 	}
 
+	group_head_fs = http.FileServer(http.Dir(fs.group_head_parent_path))
+	if group_head_fs == nil {
+		log.Err("%s GroupHeadFileServer %s failed!", _func_, fs.group_head_parent_path)
+		return nil
+	}
+
 	//start
-	log.Info("%s addr:%s size:%d index:%d parent_path:%s chat_dir:%s head_dir:%s", _func_, fs.http_addr, fs.file_size, fs.serv_index,
-		fs.parent_path, fs.chat_parent_path, fs.head_parent_path)
+	log.Info("%s addr:%s size:%d index:%d parent_path:%s chat_dir:%s head_dir:%s group_head_dir:%s", _func_, fs.http_addr, fs.file_size, fs.serv_index,
+		fs.parent_path, fs.chat_parent_path, fs.head_parent_path , fs.group_head_parent_path)
 	go fs.start_serv()
 	return fs
 }
@@ -197,8 +217,9 @@ func (fs *FileServer) start_serv() {
 		//reg handler
 		http.Handle("/", http.HandlerFunc(fs.index_handler))
 		http.Handle("/upload/", http.HandlerFunc(fs.upload_handler))
-		http.Handle("/static/", http.HandlerFunc(fs.static_handler))
-		http.Handle("/head/", http.HandlerFunc(fs.head_handler))
+		http.Handle(URL_HEAD_CHATS + "/", http.HandlerFunc(fs.static_handler))
+		http.Handle(URL_HEAD_HEADS + "/", http.HandlerFunc(fs.head_handler))
+		http.Handle(URL_HEAD_G_HEADS + "/", http.HandlerFunc(fs.group_head_handler))
 
 		err := http.ListenAndServe(fs.http_addr, nil)
 		if err != nil {
@@ -428,11 +449,30 @@ func (fs *FileServer) safe_check_token(w http.ResponseWriter, r *http.Request) b
 	}
 
 	//get token
-	token := r.FormValue(FORM_LABEL_TOKEN)
+	uid_v := r.FormValue(FORM_LABEL_UID)
+	u_token := r.FormValue(FORM_LABEL_TOKEN)
+	if len(uid_v) <=0 || len(u_token)<=0 {
+		log.Err("%s uid or u_token nil!" , _func_)
+		return false
+	}
+	uid , err := strconv.ParseInt(uid_v , 10 ,64)
+	if err != nil {
+		log.Err("%s convert uid failed! err:%v uid:%s" , _func_ , err , uid)
+		return false
+	}
+
 	fs.RLock()
-	defer fs.RUnlock()
-	if token != fs.curr_token && token != fs.last_token {
-		log.Err("%s token not match! token:%s now:%s last:%s", _func_, token, fs.curr_token, fs.last_token)
+	curr_token := fs.curr_token
+	last_token := fs.last_token
+	fs.RUnlock()
+
+	//compare token
+	curr_real_token := comm.CalcUserToken(uid , curr_token)
+	last_real_token := comm.CalcUserToken(uid , last_token)
+
+	if u_token != curr_real_token && u_token != last_real_token {
+		log.Err("%s token not match! uid:%s u_token:%s now:%s last:%s", _func_, uid, u_token, curr_real_token ,
+			last_real_token)
 		return false
 	}
 
@@ -487,7 +527,7 @@ func (fs *FileServer) static_handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//real handle
-	http.StripPrefix("/static", chat_fs).ServeHTTP(w, r)
+	http.StripPrefix(URL_HEAD_CHATS, chat_fs).ServeHTTP(w, r)
 }
 
 func (fs *FileServer) head_handler(w http.ResponseWriter, r *http.Request) {
@@ -498,8 +538,20 @@ func (fs *FileServer) head_handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//real handle
-	http.StripPrefix("/head", head_fs).ServeHTTP(w, r)
+	http.StripPrefix(URL_HEAD_HEADS, head_fs).ServeHTTP(w, r)
 }
+
+func (fs *FileServer) group_head_handler(w http.ResponseWriter, r *http.Request) {
+	// /head/group_id/sub_dir/uid/xx.jpeg
+	if !fs.file_safe_check(w , r , 3) {
+		http.NotFound(w , r)
+		return
+	}
+
+	//real handle
+	http.StripPrefix(URL_HEAD_G_HEADS, group_head_fs).ServeHTTP(w, r)
+}
+
 
 func (fs *FileServer) upload_handler(w http.ResponseWriter, r *http.Request) {
 	if !fs.safe_check_token(w, r) {
@@ -620,6 +672,8 @@ func (fs *FileServer) upload_handle_post(w http.ResponseWriter, r *http.Request)
 		fs.upload_chat_file(w, r, uid, grp_id, tmp_id)
 	case comm.FILE_URL_T_HEAD:
 		fs.upload_head_file(w, r, uid, 0, tmp_id)
+	case comm.FILE_URL_T_GROUP:
+		fs.upload_group_head_file(w , r , uid , grp_id , tmp_id)
 	default:
 		log.Err("%s url_type:%d illegal! uid:%d", _func_, url_type, uid)
 		fmt.Fprintf(w, convert_upload_result(UPLOAD_RESULT_FAILED, "arg error", 0))
@@ -628,6 +682,13 @@ func (fs *FileServer) upload_handle_post(w http.ResponseWriter, r *http.Request)
 
 }
 
+/*-----------------------------------DIFF URL TYPE--------------------------------
+#
+#
+#
+#
+#
+*/
 //upload chat file
 func (fs *FileServer) upload_chat_file(w http.ResponseWriter, r *http.Request, uid int64, grp_id int64, tmp_id int64) {
 	var _func_ = "<FileServer.upload_chat_file>"
@@ -831,6 +892,109 @@ func (fs *FileServer) upload_head_file(w http.ResponseWriter, r *http.Request, u
 	fs.snd_chan <- pmsg
 }
 
+
+//upload group_head file url> 3:index:sub_dir:file_name
+func (fs *FileServer) upload_group_head_file(w http.ResponseWriter, r *http.Request, uid int64, grp_id int64, tmp_id int64) {
+	var _func_ = "<FileServer.upload_group_head_file>"
+	log := fs.pconfig.Comm.Log
+	defer func() {
+		if err := recover(); err != nil {
+			log.Fatal("%s recover from panic! uid:%d", _func_, uid)
+		}
+	}()
+
+	log.Debug("%s will upload file! uid:%d grp_id:%d tmp_id:%d", _func_, uid, grp_id, tmp_id)
+	//file
+	file, _, err := r.FormFile(FORM_LABEL_UPLOAD)
+	if err != nil {
+		log.Err("%s form file faile! err:%v uid:%d grp_id:%d", _func_, err, uid , grp_id)
+		fmt.Fprintf(w, convert_upload_result(UPLOAD_RESULT_FAILED, "file error", tmp_id))
+		return
+	}
+	defer file.Close()
+
+	//check size
+	file_bytes, err := ioutil.ReadAll(file)
+	if err != nil {
+		log.Err("%s read file failed! err:%v uid:%d", _func_, err, uid)
+		fmt.Fprintf(w, convert_upload_result(UPLOAD_RESULT_FAILED, "file error", tmp_id))
+		return
+	}
+	if len(file_bytes) > fs.file_size {
+		log.Err("%s file too large! %d:%d uid:%d", _func_, len(file_bytes), fs.file_size, uid)
+		fmt.Fprintf(w, convert_upload_result(UPLOAD_RESULT_SIZE, "file error", tmp_id))
+		return
+	}
+
+	//check type
+	file_type := http.DetectContentType(file_bytes)
+
+	//create dir FILE_PATH/SUB_DIR/UID/
+	sub_dir := grp_id % MAX_GROUP_HEAD_SUB_DIRS
+	file_dir := fmt.Sprintf("%s/%d/%d/", fs.group_head_parent_path, sub_dir, grp_id)
+	err = os.MkdirAll(file_dir, 0766)
+	if err != nil {
+		log.Err("%s mkdir %s failed! uid:%d err:%v", _func_, file_dir, uid, err)
+		fmt.Fprintf(w, convert_upload_result(UPLOAD_RESULT_SIZE, "sys error", tmp_id))
+		return
+	}
+
+	//file_name:GRPID_MD5.TYPE
+	md5_str := comm.EncMd5Bytes(file_bytes)
+
+	file_endings, err := mime.ExtensionsByType(file_type)
+	if err != nil {
+		log.Err("%s extension failed! uid:%d err:%v", _func_, uid, err)
+		fmt.Fprintf(w, convert_upload_result(UPLOAD_RESULT_SIZE, "file type error", tmp_id))
+		return
+	}
+	file_name := fmt.Sprintf("%d_%s_%s", grp_id, md5_str, file_endings[0])
+
+	//create file
+	new_path := filepath.Join(file_dir, file_name)
+	log.Debug("%s will locate on:%s uid:%d grp_id:%d", _func_, new_path, uid , grp_id)
+
+	//check exist
+	if comm.FileExist(new_path) {
+		log.Debug("%s file:%s is exist already!", _func_, new_path)
+	} else {
+		//write
+		new_file, err := os.Create(new_path)
+		if err != nil {
+			log.Err("%s create %s failed! err:%v uid:%d", _func_, new_path, err, uid)
+			fmt.Fprintf(w, convert_upload_result(UPLOAD_RESULT_SIZE, "sys error", tmp_id))
+			return
+		}
+		defer new_file.Close()
+
+		_, err = new_file.Write(file_bytes)
+		if err != nil {
+			log.Err("%s write new file:%s failed! err:%v uid:%d", _func_, new_path, err, uid)
+			fmt.Fprintf(w, convert_upload_result(UPLOAD_RESULT_SIZE, "sys error", tmp_id))
+			return
+		}
+	}
+
+	//FILE_URL: 3:index:sub_dir:file_name
+	file_url := fmt.Sprintf("%d:%d:%d:%s", comm.FILE_URL_T_GROUP, fs.serv_index, sub_dir, file_name)
+	log.Info("%s upload success! uid:%d sub_dir:%d file_url:%s grp_id:%d", _func_, uid, sub_dir, file_url , grp_id)
+	fmt.Fprintf(w, convert_upload_result(UPLOAD_RESULT_SUCCESS, "done", tmp_id))
+
+	//notify
+	if len(fs.snd_chan) >= cap(fs.snd_chan) {
+		log.Err("%s snd channel full! will not check file! uid:%d grp_id:%d url:%s", _func_, uid, grp_id, file_url)
+		return
+	}
+	pmsg := new(FileMsg)
+	pmsg.msg_type = FILE_MSG_UPLOAD
+	pmsg.uid = uid
+	pmsg.grp_id = grp_id
+	pmsg.url = file_url
+	pmsg.int_v = tmp_id
+	fs.snd_chan <- pmsg
+}
+
+
 //url> url_type:xxx:xxx...
 func (fs *FileServer) remove_file(uid int64, grp_id int64, url string) {
 	var _func_ = "<FileServer.remove_file>"
@@ -849,6 +1013,8 @@ func (fs *FileServer) remove_file(uid int64, grp_id int64, url string) {
 		fs.remove_chat_file(uid, grp_id, url)
 	case comm.FILE_URL_T_HEAD:
 		fs.remove_head_file(uid, 0, url)
+	case comm.FILE_URL_T_GROUP:
+		fs.remove_group_head_file(uid , grp_id , url)
 	default:
 		log.Err("%s unhandled url_type:%d url:%s uid:%d", _func_, url_type, url, uid)
 	}
@@ -892,7 +1058,7 @@ func (fs *FileServer) remove_chat_file(uid int64, grp_id int64, url string) {
 
 //remove head file
 //URL> 2:index:sub_dir:file_name | FILE_DIR> HEAD_PARENT_PATH/SUB_DIR/UID/ | FILE_NAME> UID_MD5.TYPE
-//exam: 2:1:5024:202010_fb6164acd88582da34857c5f1ffe07b9_.jpg
+//exam: 2:2:20:10004_f7d02aeae4c2e4faec47195cf7667608_.jpeg
 func (fs *FileServer) remove_head_file(uid int64, grp_id int64, url string) {
 	var _func_ = "<FileServer.remove_head_file>"
 	log := fs.pconfig.Comm.Log
@@ -918,4 +1084,34 @@ func (fs *FileServer) remove_head_file(uid int64, grp_id int64, url string) {
 	}
 
 	log.Info("%s remove file %s success! uid:%d", _func_, file_path, uid)
+}
+
+//remove g_head file
+//URL> 3:index:sub_dir:file_name | FILE_DIR> GROUP_HEAD_PARENT_PATH/SUB_DIR/GROUP_ID/ | FILE_NAME> GRPID_MD5.TYPE
+//exam: 3:1:24:5026_e9095dc1eb1480aa045f0cc8048f2837_.jpeg
+func (fs *FileServer) remove_group_head_file(uid int64, grp_id int64, url string) {
+	var _func_ = "<FileServer.remove_group_head_file>"
+	log := fs.pconfig.Comm.Log
+
+	log.Info("%s uid:%d grp_id:%d uri:%s", _func_, uid, grp_id, url)
+	//fetch sub_dir and file_name
+	uri_strs := strings.Split(url, ":")
+	if len(uri_strs) != 4 {
+		log.Err("%s illegal uri:%s uid:%d", _func_, url, uid)
+		return
+	}
+	sub_dir := uri_strs[2]
+	file_name := uri_strs[3]
+
+	//file path
+	file_path := fmt.Sprintf("%s/%s/%d/%s", fs.group_head_parent_path, sub_dir, grp_id, file_name)
+
+	//del it
+	err := os.Remove(file_path)
+	if err != nil {
+		log.Err("%s remove file %s failed! uid:%d grp_id:%d err:%v", _func_, file_path, uid, grp_id , err)
+		return
+	}
+
+	log.Info("%s remove file %s success! uid:%d grp_id:%d", _func_, file_path, uid , grp_id)
 }

@@ -155,7 +155,7 @@ func RsaEncrypt(origData []byte , publicKey []byte) ([]byte, error) {
 	return rsa.EncryptPKCS1v15(rand.Reader, pub, origData)
 }
 
-// 解密
+// 解密 PKCS1
 func RsaDecrypt(ciphertext []byte , privateKey []byte) ([]byte, error) {
 	//解密
 	block, _ := pem.Decode(privateKey)
@@ -167,6 +167,27 @@ func RsaDecrypt(ciphertext []byte , privateKey []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	// 解密
+	return rsa.DecryptPKCS1v15(rand.Reader, priv, ciphertext)
+}
+
+// 解密 PKCS8(java may use it)
+func RsaDecrypt8(ciphertext []byte , privateKey []byte) ([]byte, error) {
+	//解密
+	block, _ := pem.Decode(privateKey)
+	if block == nil {
+		return nil, errors.New("private key error!")
+	}
+	//解析PKCS8格式的私钥
+	v, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+	priv , ok := v.(*rsa.PrivateKey )
+	if !ok {
+		return nil , errors.New("not private key")
+	}
+
 	// 解密
 	return rsa.DecryptPKCS1v15(rand.Reader, priv, ciphertext)
 }

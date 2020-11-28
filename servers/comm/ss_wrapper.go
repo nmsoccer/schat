@@ -384,6 +384,54 @@ func FillSSPkg(ss_msg *ss.SSMsg, proto ss.SS_PROTO_TYPE, pmsg interface{}) error
 		}
 		body.GroupGroundRsp = pv
 		ss_msg.MsgBody = body
+	case ss.SS_PROTO_TYPE_BATCH_QUERY_GROUP_SNAP:
+		body := new(ss.SSMsg_BatchQueryGroupSnap)
+		pv, ok := pmsg.(*ss.MsgBatchQueryGroupSnap)
+		if !ok {
+			return errors.New("not MsgBatchQueryGroupSnap")
+		}
+		body.BatchQueryGroupSnap = pv
+		ss_msg.MsgBody = body
+	case ss.SS_PROTO_TYPE_COMMON_QUERY:
+		body := new(ss.SSMsg_CommonQuery)
+		pv, ok := pmsg.(*ss.MsgCommonQuery)
+		if !ok {
+			return errors.New("not MsgCommonQuery")
+		}
+		body.CommonQuery = pv
+		ss_msg.MsgBody = body
+	case ss.SS_PROTO_TYPE_UPDATE_USER_REQ:
+		body := new(ss.SSMsg_UpdateUserReq)
+		pv, ok := pmsg.(*ss.MsgUpdateUserReq)
+		if !ok {
+			return errors.New("not MsgUpdateUserReq")
+		}
+		body.UpdateUserReq = pv
+		ss_msg.MsgBody = body
+	case ss.SS_PROTO_TYPE_UPDATE_USER_RSP:
+		body := new(ss.SSMsg_UpdateUserRsp)
+		pv, ok := pmsg.(*ss.MsgUpdateUserRsp)
+		if !ok {
+			return errors.New("not MsgUpdateUserRsp")
+		}
+		body.UpdateUserRsp = pv
+		ss_msg.MsgBody = body
+	case ss.SS_PROTO_TYPE_UPDATE_CHAT_REQ:
+		body := new(ss.SSMsg_UpdateChatReq)
+		pv, ok := pmsg.(*ss.MsgUpdateChatReq)
+		if !ok {
+			return errors.New("not MsgUpdateChatReq")
+		}
+		body.UpdateChatReq = pv
+		ss_msg.MsgBody = body
+	case ss.SS_PROTO_TYPE_UPDATE_CHAT_RSP:
+		body := new(ss.SSMsg_UpdateChatRsp)
+		pv, ok := pmsg.(*ss.MsgUpdateChatRsp)
+		if !ok {
+			return errors.New("not MsgUpdateChatRsp")
+		}
+		body.UpdateChatRsp = pv
+		ss_msg.MsgBody = body
 	default:
 		return errors.New(fmt.Sprintf("disp proto:%d not handled", proto))
 	}

@@ -3,8 +3,9 @@ package ss;
 
 import "chat.proto";
 
-message UserBasic { 
-  string name = 20;
+message UserBasic {
+  string account_name = 1; //account name 
+  string name = 20; //role name
   int64 uid = 21;
   string addr = 22;
   bool sex = 23; //true:male false:female
@@ -20,6 +21,7 @@ message UserBlob {
   int64 last_logout_ts = 22;
   //UserDepot depot = 23;
   UserChatInfo chat_info = 23;
+  string user_desc = 24;
 }
 
 
@@ -30,9 +32,10 @@ message UserInfo {
 
 message UserProfile {
   int64 uid = 1;
-  string name = 2; 
+  string name = 2; //role name
   string addr = 3;
   int32 sex = 4; //1:male 2:female
   int32 level = 5;
   string head_url = 6;
+  string user_desc = 7;
 }

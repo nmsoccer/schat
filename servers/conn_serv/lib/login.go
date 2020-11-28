@@ -87,6 +87,7 @@ func RecvLoginRsp(pconfig *Config, prsp *ss.MsgLoginRsp) {
 			//detail
 			pmsg.Detail.Exp = prsp.UserInfo.BlobInfo.Exp
 			pmsg.Detail.ChatInfo = new(cs.UserChatInfo)
+			pmsg.Detail.Desc = prsp.UserInfo.BlobInfo.UserDesc
 			if pblob.ChatInfo != nil && pblob.ChatInfo.AllGroup > 0 {
 				blob_chat_info := pblob.GetChatInfo()
 				cs_chat_info := pmsg.Detail.ChatInfo
@@ -208,6 +209,7 @@ func SendRegReq(pconfig *Config, client_key int64, preq *cs.CSRegReq) {
 	pRegReq.Addr = preq.Addr
 	pRegReq.CKey = client_key
 	pRegReq.RoleName = preq.RoleName
+	pRegReq.Desc = preq.Desc
 	if preq.Sex == 1 {
 		pRegReq.Sex = true
 	} else {

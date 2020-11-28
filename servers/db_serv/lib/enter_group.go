@@ -33,7 +33,7 @@ func RecvEnterGroupReq(pconfig *Config, preq *ss.MsgEnterGroupReq, from int) {
 
 		//Get Group Info
 		tab_name := fmt.Sprintf(FORMAT_TAB_GROUP_INFO_PREFIX+"%d", grp_id)
-		res, err := pclient.RedisExeCmdSync(phead, "HMGET", tab_name, FILED_GROUP_INFO_NAME, FIELD_GROUP_INFO_MSG_COUNT)
+		res, err := pclient.RedisExeCmdSync(phead, "HMGET", tab_name, FIELD_GROUP_INFO_NAME , FIELD_GROUP_INFO_MSG_COUNT)
 		if err != nil {
 			log.Err("%s query group failed! err:%v uid:%d grp_id:%d", _func_, err, grp_id, uid)
 			return

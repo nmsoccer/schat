@@ -14,6 +14,9 @@ type UserOnLine struct {
 	last_notify_online   int64
 	grp_ground_start     int32 //start index of query visible group
 	user_info            *ss.UserInfo
+	conn_valid			 bool //client connection valid
+	last_sync_own_snap   int64
+	new_chat_when_lost    map[int64] bool //recv chat when lost connection
 }
 
 type OnLineList struct {
@@ -65,37 +68,48 @@ func RecvLoginRsp(pconfig *Config, prsp *ss.MsgLoginRsp, msg []byte) {
 		SendDupUserKick(pconfig, prsp)
 
 	case ss.USER_LOGIN_RET_LOGIN_SUCCESS:
+		new_login := true
 		puser_info := prsp.GetUserInfo()
 		uid := puser_info.BasicInfo.Uid
 		log.Info("%s login success! user:%s uid:%d last_login:%s last_logout:%s", _func_, prsp.Name, uid,
 			time.Unix(puser_info.BlobInfo.LastLoginTs, 0).Format(comm.TIME_FORMAT_SEC), time.Unix(puser_info.BlobInfo.LastLogoutTs, 0).Format(comm.TIME_FORMAT_SEC))
-		//check exist
-		if _, ok := pconfig.Users.user_map[uid]; ok {
+
+		//already exist
+		if ponline, ok := pconfig.Users.user_map[uid]; ok {
 			log.Info("%s user is already online! uid:%v", _func_, uid)
-			break
+
+			//use online info
+			ponline.conn_valid = true
+			puser_info.BasicInfo = ponline.user_info.BasicInfo
+			puser_info.BlobInfo = ponline.user_info.BlobInfo
+			new_login = false
+		} else {
+			//new online info
+			//useronline
+			ponline := new(UserOnLine)
+			pconfig.Users.user_map[uid] = ponline
+			ponline.user_info = puser_info
+			ponline.login_ts = curr_ts
+			ponline.hearbeat = curr_ts
+			ponline.conn_valid = true
+			ponline.new_chat_when_lost = make(map[int64]bool)
+			log.Info("%s account_name:%s role_name:%s" , _func_ , ponline.user_info.BasicInfo.AccountName , ponline.user_info.BasicInfo.Name)
+
+			//init user_info
+			if puser_info.BlobInfo == nil {
+				puser_info.BlobInfo = new(ss.UserBlob)
+			}
+			InitUserInfo(pconfig, puser_info, uid)
+
+			//update user_Info
+			puser_info.BlobInfo.LastLoginTs = curr_ts
+
+			//add
+			pconfig.Users.curr_online++
+			log_content := fmt.Sprintf("%d|%s|LoginFlow|%d|%s|%s|%d", pconfig.ProcId, pconfig.ProcName, uid, prsp.Name,
+				prsp.UserInfo.BasicInfo.Addr, curr_ts)
+			pconfig.NetLog.Log("|", log_content)
 		}
-
-		//useronline
-		ponline := new(UserOnLine)
-		pconfig.Users.user_map[uid] = ponline
-		ponline.user_info = puser_info
-		ponline.login_ts = curr_ts
-		ponline.hearbeat = curr_ts
-
-		//init user_info
-		if puser_info.BlobInfo == nil {
-			puser_info.BlobInfo = new(ss.UserBlob)
-		}
-		InitUserInfo(pconfig, puser_info, uid)
-
-		//update user_Info
-		puser_info.BlobInfo.LastLoginTs = curr_ts
-
-		//add
-		pconfig.Users.curr_online++
-		log_content := fmt.Sprintf("%d|%s|LoginFlow|%d|%s|%s|%d", pconfig.ProcId, pconfig.ProcName, uid, prsp.Name,
-			prsp.UserInfo.BasicInfo.Addr, curr_ts)
-		pconfig.NetLog.Log("|", log_content)
 
 		//repack ss_msg
 		var ss_msg ss.SSMsg
@@ -110,7 +124,7 @@ func RecvLoginRsp(pconfig *Config, prsp *ss.MsgLoginRsp, msg []byte) {
 		SendToConnect(pconfig, &ss_msg)
 
 		//after login success
-		AfterLoginSucess(pconfig, uid)
+		AfterLoginSucess(pconfig, uid , new_login)
 		return
 	default:
 		//nothing to do
@@ -172,6 +186,38 @@ func RecvDupUserKick(pconfig *Config, pmsg *ss.MsgDispKickDupUser, from int) {
 	RecvLogoutReq(pconfig, &logout)
 }
 
+func SetUserConnStat(pconfig *Config , uid int64 , stat bool) {
+	var _func_ = "<SetUserConnStat>"
+	log := pconfig.Comm.Log
+
+	//get user
+	puser_info := GetUserInfo(pconfig , uid)
+	if puser_info == nil {
+		log.Err("%s user offline! uid:%d" , _func_ , uid)
+		return
+	}
+
+	puser_info.conn_valid = stat
+	log.Debug("%s set %v! uid:%d" , _func_ , stat , uid)
+}
+
+func GetUserConnStat(pconfig *Config , uid int64) bool {
+	var _func_ = "<GetUserConnStat>"
+	log := pconfig.Comm.Log
+
+	//get user
+	puser_info := GetUserInfo(pconfig , uid)
+	if puser_info == nil {
+		log.Err("%s user offline! uid:%d" , _func_ , uid)
+		return false
+	}
+
+	log.Debug("%s uid:%d stat:%v" , _func_ , uid , puser_info.conn_valid)
+	return puser_info.conn_valid
+}
+
+
+
 func RecvLogoutReq(pconfig *Config, plogout *ss.MsgLogoutReq) {
 	var _func_ = "<RecvLogoutReq>"
 	log := pconfig.Comm.Log
@@ -181,7 +227,9 @@ func RecvLogoutReq(pconfig *Config, plogout *ss.MsgLogoutReq) {
 	switch plogout.Reason {
 	case ss.USER_LOGOUT_REASON_LOGOUT_CONN_CLOSED:
 		//return. wait for re-connect
+		SetUserConnStat(pconfig , plogout.Uid , false)
 		return
+		//break //connection closed will logout role immediately for some notify should role-online or will lose it
 	case ss.USER_LOGOUT_REASON_LOGOUT_CLIENT_EXIT:
 		//back to client
 		SendLogoutRsp(pconfig, plogout.Uid, plogout.Reason, "fuck")
@@ -309,7 +357,8 @@ func InitUserInfo(pconfig *Config, pinfo *ss.UserInfo, uid int64) {
 	log := pconfig.Comm.Log
 
 	log.Debug("%s uid:%d", _func_, uid)
-	//init depot
+
+	//init blob
 	if pinfo.BlobInfo.ChatInfo == nil {
 		pinfo.BlobInfo.ChatInfo = new(ss.UserChatInfo)
 	}
@@ -317,7 +366,7 @@ func InitUserInfo(pconfig *Config, pinfo *ss.UserInfo, uid int64) {
 }
 
 //after login success
-func AfterLoginSucess(pconfig *Config, uid int64) {
+func AfterLoginSucess(pconfig *Config, uid int64 , new_login bool) {
 	var _func_ = "<AfterLoginSucess>"
 	log := pconfig.Comm.Log
 
@@ -329,11 +378,16 @@ func AfterLoginSucess(pconfig *Config, uid int64) {
 	}
 
 	//Handles
+	if new_login == true { //1st
+		CheckEnteringGroup(pconfig, uid)
+		NotifyOnline(pconfig, uid, NOTIFY_ONLINE_FLAG_LOGIN)
+		SyncUserGroupSnap(pconfig , uid)
+		SendFetchChatReq(pconfig, uid, 0) //fetch all group chat
+	}
+	SendFetchOfflineInfoReq(pconfig, uid)
 	SendFetchApplyGroupReq(pconfig, uid)
 	SendFetchAuditGroupReq(pconfig, uid)
-	CheckEnteringGroup(pconfig, uid)
-	SendFetchChatReq(pconfig, uid, 0)
-	NotifyOnline(pconfig, uid, NOTIFY_ONLINE_FLAG_LOGIN)
+	//SendFetchChatReq(pconfig, uid, 0)
+	CheckNewMsgNotify(pconfig , uid) //fetch new msg when connection lost
 	QueryFileServAddr(pconfig, uid)
-	SendFetchOfflineInfoReq(pconfig, uid)
 }

@@ -20,7 +20,7 @@ import (
 * #user:group:audited:[uid] +list+ <grp_id|grp_name|result>
 * #chat_msg:[group]:[index] +list+ <chat_msg encoded>
 * #offline_info:[uid] +list+ <off_type|xxx...> //off_type:REFER SS_OFFLINE_INFO_TYPE_xx
-* #visible_group_set +zset+  <grp_id|grp_name>
+* #visible_group_set +zset+  <grp_id>
 * #group:profile:[grp_id] +string+ <GroupGroudItem>
  */
 
@@ -41,7 +41,7 @@ const (
 	REDIS_OPT_RW = REDIS_OPT_R | REDIS_OPT_W
 
 	PASSWD_SALT_LEN    = 32
-	LOGIN_LOCK_LIFE    = 20     //login lock life (second)
+	LOGIN_LOCK_LIFE    = 10     //login lock life (second)
 	CHAT_MSG_LIST_SIZE = 100000 //single tab of chat-msg size
 	CHAT_MSG_DES_KEY   = "MikmiYua"
 
@@ -64,11 +64,14 @@ const (
 	FORMAT_TAB_GROUP_PROFILE_PREFIX = "group:profile:" //* #group:profile:[grp_id] +string+ <GroupGroudItem>
 
 	//Useful FIELD
+	FIELD_USER_INFO_NAME = "name"
 	FIELD_USER_INFO_ONLINE_LOGIC = "online_logic"
 	FIELD_GROUP_INFO_MSG_COUNT   = "msg_count"
-	FILED_GROUP_INFO_NAME        = "name"
+	FIELD_GROUP_INFO_NAME        = "name"
 	FIELD_GROUP_BLOB_NAME        = "blob_info"
 	FILED_USER_INFO_HEAD_URL     = "head_url"
+
+	//other
 )
 
 type RedisClientInfo struct {

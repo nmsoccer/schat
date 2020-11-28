@@ -33,6 +33,7 @@ func GenUserProfile(pconfig *Config, uid int64) *ss.UserProfile {
 	}
 	profile.Addr = puser_info.user_info.BasicInfo.Addr
 	profile.HeadUrl = puser_info.user_info.BasicInfo.HeadUrl
+	profile.UserDesc = puser_info.user_info.BlobInfo.UserDesc
 	return profile
 }
 
@@ -290,4 +291,96 @@ func RecvFetchUserProfileRsp(pconfig *Config, prsp *ss.MsgFetchUserProfileRsp) {
 
 	//to db
 	SendToConnect(pconfig, &ss_msg)
+}
+
+
+func RecvUpdateUserReq(pconfig *Config, preq *ss.MsgUpdateUserReq) {
+	var _func_ = "<RecvUpdateUserReq>"
+	log := pconfig.Comm.Log
+	uid := preq.Uid
+
+	//check online
+	puser_info := GetUserInfo(pconfig, uid)
+	if puser_info == nil {
+		log.Err("%s offline! uid:%d", _func_, uid)
+		return
+	}
+
+	//set info
+	log.Info("%s uid:%d" , _func_ , uid)
+	//role name
+	if len(preq.RoleName) > 0 {
+		log.Info("%s will change role_name uid:%d %s-->%s" , _func_ , uid , puser_info.user_info.BasicInfo.Name ,
+			preq.RoleName)
+		puser_info.user_info.BasicInfo.Name = preq.RoleName
+	}
+
+	//addr
+	if len(preq.Addr) > 0 {
+		log.Info("%s will change addr uid:%d %s-->%s" , _func_ , uid , puser_info.user_info.BasicInfo.Addr ,
+			preq.Addr)
+		puser_info.user_info.BasicInfo.Addr = preq.Addr
+	}
+
+	//desc
+	if len(preq.Desc) > 0 {
+		log.Info("%s will change desc uid:%d %s-->%s" , _func_ , uid , puser_info.user_info.BlobInfo.UserDesc ,
+			preq.Desc)
+		puser_info.user_info.BlobInfo.UserDesc = preq.Desc
+	}
+
+	//password should to db
+	if len(preq.Passwd) > 0 {
+		log.Info("%s will change pasword! uid:%d to db!" , _func_ , uid)
+		preq.AccountName = puser_info.user_info.BasicInfo.AccountName
+
+		var ss_msg ss.SSMsg
+		err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_UPDATE_USER_REQ , preq)
+		if err != nil {
+			log.Err("%s gen db ss failed! uid:%d err:%v" , _func_ , uid , err)
+			return
+		}
+
+		SendToDb(pconfig , &ss_msg)
+		return
+	}
+
+	//save profile
+	SaveUserProfile(pconfig , uid)
+
+	//ss_msg
+	var ss_msg ss.SSMsg
+	prsp := new(ss.MsgUpdateUserRsp)
+	prsp.Result = ss.SS_COMMON_RESULT_SUCCESS
+	prsp.RoleName = preq.RoleName
+	prsp.Addr = preq.Addr
+	prsp.Desc = preq.Desc
+	prsp.Passwd = preq.Passwd
+	prsp.Uid = uid
+
+    err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_UPDATE_USER_RSP , prsp)
+    if err != nil {
+    	log.Err("%s gen ss to client failed! uid:%d err:%v" , _func_ , uid , err)
+    	return
+	}
+
+	//to connect
+	SendToConnect(pconfig , &ss_msg)
+}
+
+func RecvUpdateUserRsp(pconfig *Config, prsp *ss.MsgUpdateUserRsp , msg []byte) {
+	var _func_ = "<RecvUpdateUserRsp>"
+	log := pconfig.Comm.Log
+	uid := prsp.Uid
+
+	//check online
+	puser_info := GetUserInfo(pconfig, uid)
+	if puser_info == nil {
+		log.Err("%s offline! uid:%d", _func_, uid)
+		return
+	}
+
+	log.Info("%s uid:%d result:%d" , _func_ , uid , prsp.Result)
+	//to connect
+	SendToConnect(pconfig , msg)
 }

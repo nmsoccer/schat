@@ -141,3 +141,103 @@ func RecvSaveUserProfileReq(pconfig *Config, preq *ss.MsgSaveUserProfileReq) {
 	}()
 
 }
+
+func RecvBatchQueryGroupSnap(pconfig *Config, preq *ss.MsgBatchQueryGroupSnap, from_serv int) {
+	var _func_ = "<RecvBatchQueryGroupSnap>"
+	log := pconfig.Comm.Log
+	uid := preq.Uid
+
+	if preq.Count <=0 {
+		log.Err("%s empty query! uid:%d" , _func_ , uid)
+		return
+	}
+
+
+	//sync
+	go func() {
+		//pclient
+		pclient := SelectRedisClient(pconfig , REDIS_OPT_R)
+		if pclient == nil {
+			log.Err("%s failed! no proper redis found! uid:%d" , _func_ , uid)
+			return
+		}
+		//head
+		phead := pclient.AllocSyncCmdHead()
+		if phead == nil {
+			log.Err("%s alloc head fail! uid:%d", _func_, uid)
+			return
+		}
+		defer pclient.FreeSyncCmdHead(phead)
+
+		//args
+		args := make([]interface{}, preq.Count)
+		for i := 0; i < int(preq.Count); i++ {
+			args[i] = fmt.Sprintf(FORMAT_TAB_GROUP_PROFILE_PREFIX+"%d", preq.TargetList[i])
+		}
+
+		//resp
+		prsp := new(ss.MsgGroupGroudRsp)
+		prsp.Uid = uid
+		prsp.Count = 0
+		prsp.ItemList = make([]*ss.GroupGroudItem , preq.Count)
+
+		//exe
+		for {
+			//query
+			res, err := pclient.RedisExeCmdSync(phead, "MGET", args...)
+			if err != nil {
+				log.Err("%s exe MGET failed! err:%v uid:%d", _func_, err, uid)
+				break
+			}
+
+			//convert
+			strs, err := comm.Conv2Strings(res)
+			if err != nil {
+				log.Err("%s convert res failed! err:%v uid:%d", _func_, err, uid)
+				break
+			}
+
+			if len(strs) != int(preq.Count) {
+				log.Err("%s length not match! %d:%d err:%v uid:%d", _func_, len(strs), preq.Count, err, uid)
+				break
+			}
+
+			//fill info
+			var grp_id int64
+			for i := 0; i < len(strs); i++ {
+				grp_id = preq.TargetList[i]
+				//empty
+				if len(strs[i]) == 0 {
+					log.Debug("%s profile empty! grp_id:%d", _func_, grp_id)
+					continue
+				}
+
+				//fail
+				profile := new(ss.GroupGroudItem)
+				err = ss.UnPack([]byte(strs[i]), profile)
+				if err != nil {
+					log.Err("%s unpack profile %d failed! err:%v", _func_, grp_id, err)
+					continue
+				}
+
+				//set
+				prsp.ItemList[prsp.Count] = profile
+				prsp.Count++
+			}
+			log.Debug("%s fill %d target! uid:%d", _func_, prsp.Count, uid)
+			break
+		}
+
+		//ss
+		var ss_msg ss.SSMsg
+		err := comm.FillSSPkg(&ss_msg, ss.SS_PROTO_TYPE_GROUP_GROUND_RSP, prsp)
+		if err != nil {
+			log.Err("%s gen ss failed! err:%v uid:%d", _func_, err, uid)
+			return
+		}
+
+		//to logic
+		SendToServ(pconfig, from_serv, &ss_msg)
+	}()
+
+}

@@ -25,8 +25,11 @@ func RecvFileAddrNotify(pconfig *Config, pnotify *ss.MsgCommonNotify, src_serv i
 		//create
 		pnotify.Strs = make([]string, addr_count)
 		var pinfo *FileServInfo
+		var user_token = ""
 		for _, pinfo = range pall.FileServMap {
-			pnotify.Strs[idx] = fmt.Sprintf("%d|%s|%s", pinfo.ServIndex, pinfo.Token, pinfo.ServAddr)
+			user_token = comm.CalcUserToken(uid , pinfo.Token)
+			pnotify.Strs[idx] = fmt.Sprintf("%d|%s|%s", pinfo.ServIndex, user_token, pinfo.ServAddr)
+			log.Debug("%s calc user_token:%s uid:%d server_token:%s" , _func_ , user_token , uid , pinfo.Token)
 			idx++
 		}
 
@@ -126,33 +129,11 @@ func RecvUploadFileNotify(pconfig *Config, pnotify *ss.MsgCommonNotify) {
 	var _func_ = "<RecvUploadFileNotify>"
 	log := pconfig.Comm.Log
 	uid := pnotify.Uid
+	grp_id := pnotify.GrpId
 	url := pnotify.StrV
+	file_index := int(pnotify.Occupy)
 
-	//url_type
-	url_type, err := comm.GetUrlType(url)
-	if err != nil {
-		log.Err("%s parse url failed! url:%s uid:%d", _func_, url, uid)
-		return
-	}
-
-	//switch
-	switch url_type {
-	case comm.FILE_URL_T_HEAD:
-		UploadHeadFileNotify(pconfig, pnotify)
-	default:
-		log.Err("%s illegal url_type:%d uid:%d url:%s", _func_, url_type, uid, url)
-	}
-
-}
-
-func UploadHeadFileNotify(pconfig *Config, pnotify *ss.MsgCommonNotify) {
-	var _func_ = "<UploadHeadFileNotify>"
-	log := pconfig.Comm.Log
-	uid := pnotify.Uid
-	url := pnotify.StrV
-	file_index := int(pnotify.GrpId)
-
-	log.Debug("%s. uid:%d url:%s file_index:%d", _func_, uid, url, file_index)
+	log.Debug("%s. uid:%d url:%s file_index:%d grp_id:%d", _func_, uid, url, file_index , grp_id)
 	//Get Info
 	pinfo := GetFileServInfo(pconfig, file_index)
 	if pinfo == nil || pinfo.ServProc <= 0 {
@@ -161,7 +142,6 @@ func UploadHeadFileNotify(pconfig *Config, pnotify *ss.MsgCommonNotify) {
 	}
 
 	//to file server
-	pnotify.GrpId = 0 //reset
 	pss_msg, err := comm.GenDispMsg(ss.DISP_MSG_TARGET_FILE_SERVER, ss.DISP_MSG_METHOD_SPEC, ss.DISP_PROTO_TYPE_DISP_COMMON_NOTIFY,
 		pinfo.ServProc, pconfig.ProcId, 0, pnotify)
 	if err != nil {
@@ -172,3 +152,4 @@ func UploadHeadFileNotify(pconfig *Config, pnotify *ss.MsgCommonNotify) {
 	//send
 	SendToDisp(pconfig, 0, pss_msg)
 }
+

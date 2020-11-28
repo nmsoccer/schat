@@ -6,7 +6,6 @@ import (
 	"schat/proto/ss"
 	"schat/servers/comm"
 	"strconv"
-	"strings"
 )
 
 func RecvChgGroupAttrReq(pconfig *Config, preq *ss.MsgChgGroupAttrReq, from_serv int) {
@@ -196,7 +195,7 @@ func set_group_attr_visible(pclient *comm.RedisClient, phead *comm.SyncCmdHead, 
 	uid := preq.Uid
 	grp_id := preq.GrpId
 
-	//gen value <grp_id|grp_name>
+	//gen value <grp_id>
 	item := gen_ground_string(grp_id, preq)
 
 	//zadd
@@ -215,8 +214,8 @@ func set_group_attr_invisible(pclient *comm.RedisClient, phead *comm.SyncCmdHead
 	uid := preq.Uid
 	grp_id := preq.GrpId
 
-	//gen value <grp_id|grp_name>
-	item := fmt.Sprintf("%d|%s", grp_id, preq.StrV)
+	//gen value <grp_id>
+	item := fmt.Sprintf("%d", grp_id)
 
 	//zrem
 	_, err := pclient.RedisExeCmdSync(phead, "ZREM", FORMAT_TAB_VISIBLE_GROUP_SET, item)
@@ -228,28 +227,29 @@ func set_group_attr_invisible(pclient *comm.RedisClient, phead *comm.SyncCmdHead
 	return ss.SS_COMMON_RESULT_SUCCESS
 }
 
-//<grp_id|grp_name>
+//<grp_id>
 func gen_ground_string(grp_id int64, preq *ss.MsgChgGroupAttrReq) string {
-	return fmt.Sprintf("%d|%s", grp_id, preq.StrV)
+	return fmt.Sprintf("%d", grp_id)
 }
 
 func parse_ground_string(str string) (*ss.GroupGroudItem, error) {
 	var err error
 
+	/*
 	//splice
 	strs := strings.Split(str, "|")
 	sl_len := len(strs)
 	if sl_len < 2 {
 		return nil, errors.New("length illegal")
-	}
+	}*/
 
 	//parse
 	pitem := new(ss.GroupGroudItem)
-	pitem.GrpId, err = strconv.ParseInt(strs[0], 10, 64)
+	pitem.GrpId, err = strconv.ParseInt(str, 10, 64)
 	if err != nil {
 		return nil, errors.New("convert grp_id failed")
 	}
-	pitem.GrpName = strs[1]
+	//pitem.GrpName = strs[1]
 	/*
 	if sl_len == 3 {
 		v , _ := strconv.Atoi(strs[2])

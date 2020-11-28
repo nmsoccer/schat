@@ -77,6 +77,8 @@ func RecvUploadFileNotify(pconfig *Config, pnotify *ss.MsgCommonNotify, file_ser
 		UploadChatFileNotify(pconfig, pnotify, file_server)
 	case comm.FILE_URL_T_HEAD:
 		UploadHeadFileNotify(pconfig, pnotify, file_server)
+	case comm.FILE_URL_T_GROUP:
+		UploadGroupHeadFileNotify(pconfig , pnotify , file_server)
 	default:
 		log.Err("%s illegal url_type:%d uid:%d url:%s", _func_, url_type, uid, url)
 	}
@@ -99,7 +101,7 @@ func UploadHeadFileNotify(pconfig *Config, pnotify *ss.MsgCommonNotify, file_ser
 		//check url
 		file_index, err = comm.GetUrlIndex(url)
 		if err != nil {
-			log.Err("%s get url index failed! err:%v uid:%d url:%s", _func_, err, uid, url)
+			log.Err("%s get url index failed! err:%v uid:%d url:%s file_index:%d", _func_, err, uid, url , file_index)
 			return
 		}
 
@@ -127,12 +129,32 @@ func UploadHeadFileNotify(pconfig *Config, pnotify *ss.MsgCommonNotify, file_ser
 		break
 	}
 
-	if check_err == 0 {
-		return
+	//save
+	if check_err==0 || check_err==comm.FILE_UPT_CHECK_DEL {
+		//save profile
+		SaveUserProfile(pconfig, uid)
+
+		//to client
+		pnotify2 := new(ss.MsgCommonNotify)
+		pnotify2.NotifyType = ss.COMMON_NOTIFY_TYPE_NOTIFY_HEAD_URL
+		pnotify2.GrpId = 0
+		pnotify2.Uid = uid
+		pnotify2.StrV = url
+
+		//pack
+		var ss_msg ss.SSMsg
+		err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_COMMON_NOTIFY , pnotify2)
+		if err != nil {
+			log.Err("%s gen ss_msg to client failed! uid:%d" , _func_ , uid)
+			return
+		}
+		SendToConnect(pconfig , &ss_msg)
+
+		if check_err == 0 {
+			return
+		}
 	}
 
-	//save profile
-	SaveUserProfile(pconfig, uid)
 
 	//back to file serv
 	pss_msg := new(ss.SSMsg)
@@ -146,6 +168,9 @@ func UploadHeadFileNotify(pconfig *Config, pnotify *ss.MsgCommonNotify, file_ser
 			return
 		}
 	case comm.FILE_UPT_CHECK_DEL:
+		SendDelOldFile(pconfig , old_url , uid , 0)
+		return
+		/*
 		pnotify.StrV = old_url //del old head file
 		//old_url index
 		old_file_index, _ := comm.GetUrlIndex(old_url)
@@ -163,13 +188,13 @@ func UploadHeadFileNotify(pconfig *Config, pnotify *ss.MsgCommonNotify, file_ser
 
 		log.Debug("%s new and old url  diff file_index %d:%d uid:%d to dir", _func_, old_file_index, file_index, uid)
 		//old and new url from diff file server
-		pnotify.GrpId = int64(old_file_index)
+		pnotify.Occupy = int64(old_file_index)
 		pss_msg, err = comm.GenDispMsg(ss.DISP_MSG_TARGET_DIR_SERVER, ss.DISP_MSG_METHOD_RAND, ss.DISP_PROTO_TYPE_DISP_COMMON_NOTIFY,
 			0, pconfig.ProcId, 0, pnotify)
 		if err != nil {
 			log.Err("%s gen dir ss msg failed! err:%v uid:%d  old_url:%s", _func_, err, uid, old_url)
 			return
-		}
+		}*/
 	default:
 		//nothing
 		return
@@ -257,4 +282,182 @@ func UploadChatFileNotify(pconfig *Config, pnotify *ss.MsgCommonNotify, file_ser
 
 	//to chat_serv
 	SendToDisp(pconfig, 0, pss_msg)
+}
+
+func UploadGroupHeadFileNotify(pconfig *Config, pnotify *ss.MsgCommonNotify, file_server int) {
+	var _func_ = "<UploadGroupHeadFileNotify>"
+	var puser_info *UserOnLine
+	log := pconfig.Comm.Log
+	uid := pnotify.Uid
+	grp_id := pnotify.GrpId
+	url := pnotify.StrV
+	check_err := 0
+
+	log.Debug("%s. uid:%d grp_id:%d url:%s tmp_id:%d", _func_, uid, grp_id, pnotify.StrV, pnotify.IntV)
+	for {
+		//check online
+		puser_info = GetUserInfo(pconfig, uid)
+		if puser_info == nil {
+			log.Err("%s not online!! uid:%d", _func_, uid)
+			check_err = comm.FILE_UPT_CHECK_ONLINE
+			break
+		}
+
+		//check group
+		pchat_info := puser_info.user_info.BlobInfo.ChatInfo
+		if pchat_info.AllGroup <= 0 || pchat_info.AllGroups == nil {
+			log.Err("%s enter no group!! uid:%d grp_id:%d", _func_, uid, grp_id)
+			check_err = comm.FILE_UPT_CHECK_GROUP
+			break
+		}
+
+		_, ok := pchat_info.AllGroups[grp_id]
+		if !ok {
+			log.Err("%s no in group!! uid:%d grp_id:%d", _func_, uid, grp_id)
+			check_err = comm.FILE_UPT_CHECK_GROUP
+			break
+		}
+
+		if pchat_info.MasterGroup <=0 || pchat_info.MasterGroups == nil {
+			log.Err("%s owns no group!! uid:%d grp_id:%d", _func_, uid, grp_id)
+			check_err = comm.FILE_UPT_CHECK_GROUP
+			break
+		}
+
+		_ , ok = pchat_info.MasterGroups[grp_id]
+		if !ok {
+			log.Err("%s not own such group!! uid:%d grp_id:%d", _func_, uid, grp_id)
+			check_err = comm.FILE_UPT_CHECK_GROUP
+			break
+		}
+
+		break
+	}
+	//check value
+	if check_err != 0 {
+		pnotify.IntV = int64(check_err)
+		pss_msg, err := comm.GenDispMsg(ss.DISP_MSG_TARGET_FILE_SERVER, ss.DISP_MSG_METHOD_SPEC, ss.DISP_PROTO_TYPE_DISP_COMMON_NOTIFY,
+			file_server, pconfig.ProcId, 0, pnotify)
+
+		if err != nil {
+			log.Err("%s gen -->file ss msg failed! err:%v uid:%d grp_id:%d url:%s", _func_, err, uid, grp_id, url)
+			return
+		}
+
+		//send
+		SendToDisp(pconfig, 0, pss_msg)
+		return
+	}
+
+	//check passed
+	//create attr req
+	log.Debug("%s check passed! will create chg attr req! uid:%d grp_id:%d url:%s", _func_, uid, grp_id, url)
+	preq := new(ss.MsgChgGroupAttrReq)
+	preq.Attr = ss.GROUP_ATTR_TYPE_GRP_ATTR_HEAD_URL
+	preq.Uid = uid
+	preq.GrpId = grp_id
+	preq.StrV = url
+
+	//ss
+	pss_msg, err := comm.GenDispMsg(ss.DISP_MSG_TARGET_CHAT_SERVER, ss.DISP_MSG_METHOD_HASH, ss.DISP_PROTO_TYPE_DISP_CHG_GROUP_ATTR_REQ,
+		0, pconfig.ProcId, grp_id, preq)
+	if err != nil {
+		log.Err("%s gen chg_attr_req ss failed! err:%v uid:%d grp_id:%d content:%s", _func_, err, uid, grp_id, url)
+		return
+	}
+
+	//to chat_serv
+	SendToDisp(pconfig, 0, pss_msg)
+}
+
+func SendDelOldFile(pconfig *Config , del_url string , uid int64 , grp_id int64) {
+	var _func_ = "<SendDelOldFile>"
+	log := pconfig.Comm.Log
+	del_file_index, _ := comm.GetUrlIndex(del_url)
+
+	log.Info("%s del_url:%s file_index:%d uid:%d grp_id:%d" , _func_ , del_url , del_file_index , uid , grp_id)
+	//notify
+	pnotify := new(ss.MsgCommonNotify)
+	pnotify.Uid = uid
+	pnotify.GrpId = grp_id
+	pnotify.NotifyType = ss.COMMON_NOTIFY_TYPE_NOTIFY_UPLOAD_FILE
+	pnotify.Occupy = int64(del_file_index)
+	pnotify.StrV = del_url
+	pnotify.IntV = comm.FILE_UPT_CHECK_DEL
+
+	//ss_msg
+	pss_msg, err := comm.GenDispMsg(ss.DISP_MSG_TARGET_DIR_SERVER, ss.DISP_MSG_METHOD_RAND, ss.DISP_PROTO_TYPE_DISP_COMMON_NOTIFY,
+		0, pconfig.ProcId, 0, pnotify)
+	if err != nil {
+		log.Err("%s gen dir ss msg failed! err:%v uid:%d  del_url:%s", _func_, err, uid, del_url)
+		return
+	}
+
+	//to dir
+	SendToDisp(pconfig , 0 , pss_msg)
+}
+
+
+func RecvCommonQuery(pconfig *Config , preq *ss.MsgCommonQuery) {
+	var _func_ = "<RecvCommonQuery>"
+	log := pconfig.Comm.Log
+	uid := preq.Uid
+
+	//check online
+	puser_info := GetUserInfo(pconfig , uid)
+	if puser_info == nil {
+		log.Err("%s offline! uid:%d type:%d" , _func_ , uid , preq.QueryType)
+		return
+	}
+
+	//switch
+	switch ss.SS_COMMON_QUERY_TYPE(preq.QueryType) {
+	case ss.SS_COMMON_QUERY_TYPE_QRY_OWN_SNAP:
+		log.Debug("%s query own group snap! uid:%d" , _func_ , uid)
+		SyncUserGroupSnap(pconfig , uid)
+	default:
+		log.Err("%s illegal query type:%d uid:%d" , _func_ , preq.QueryType , uid)
+	}
+
+}
+
+func StoreNewMsgNotify(pconfig *Config , uid int64 , grp_id int64) {
+	var _func_ = "<StoreNewMsgNotify>"
+	log := pconfig.Comm.Log
+
+	//check online
+	puser_info := GetUserInfo(pconfig , uid)
+	if puser_info == nil {
+		log.Err("%s offline! uid:%d" , _func_ , uid)
+		return
+	}
+
+	//set
+	puser_info.new_chat_when_lost[grp_id] = true
+    log.Debug("%s set grp_id:%d uid:%d" , _func_ , grp_id , uid)
+}
+
+//check new msg notify when connected
+func CheckNewMsgNotify(pconfig *Config , uid int64) {
+	var _func_ = "<StoreNewMsgNotify>"
+	log := pconfig.Comm.Log
+
+	//check online
+	puser_info := GetUserInfo(pconfig , uid)
+	if puser_info == nil {
+		log.Err("%s offline! uid:%d" , _func_ , uid)
+		return
+	}
+
+	if len(puser_info.new_chat_when_lost) <= 0 {
+		return
+	}
+
+	//set
+	for grp_id , _ := range puser_info.new_chat_when_lost {
+		log.Debug("%s fetch chat from grp_id:%d uid:%d", _func_, grp_id, uid)
+		SendFetchChatReq(pconfig , uid , grp_id)
+	}
+
+	puser_info.new_chat_when_lost = make(map[int64] bool) //new as clear
 }

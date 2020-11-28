@@ -54,6 +54,18 @@ func RecvCreateGroupReq(pconfig *Config, preq *ss.MsgCreateGrpReq, from int) {
 		//enc pass
 		enc_pass := comm.EncPassString(preq.GrpPass, salt)
 
+
+		//blob info
+		pblob := new(ss.GroupBlobData)
+		pblob.GroupDesc = preq.Desc
+		enc_blob, err := ss.Pack(pblob)
+		if err != nil {
+			log.Err("%s pack blob info failed! err:%v grp_id:%d", _func_, err, grp_id)
+			SendCreateGroupErrRsp(pconfig, preq, from, ss.CREATE_GROUP_RESULT_CREATE_RET_DB_ERR)
+			return
+		}
+
+
 		//Step2.Push One Msg
 		var curr_ts = time.Now().Unix()
 		var one_msg ss.ChatMsg
@@ -84,11 +96,12 @@ func RecvCreateGroupReq(pconfig *Config, preq *ss.MsgCreateGrpReq, from int) {
 			return
 		}
 
+
 		//Step3. Set group info
 		tab_name = fmt.Sprintf(FORMAT_TAB_GROUP_INFO_PREFIX+"%d", grp_id)
 		_, err = pclient.RedisExeCmdSync(phead, "HMSET", tab_name, "gid", grp_id,
-			"name", preq.GrpName, "master_uid", preq.Uid, "pass", enc_pass, "salt", salt, "create_ts", curr_ts, "msg_count", 1, "load_serv",
-			-1)
+			FIELD_GROUP_INFO_NAME , preq.GrpName, "master_uid", preq.Uid, "pass", enc_pass, "salt", salt, "create_ts", curr_ts, FIELD_GROUP_INFO_MSG_COUNT, 1, "load_serv",
+			-1 , FIELD_GROUP_BLOB_NAME , string(enc_blob))
 		if err != nil {
 			log.Err("%s Set Group Info Failed! err:%v uid:%d grp_id:%d", _func_, err, uid, grp_id)
 			SendCreateGroupErrRsp(pconfig, preq, from, ss.CREATE_GROUP_RESULT_CREATE_RET_DB_ERR)
@@ -98,6 +111,22 @@ func RecvCreateGroupReq(pconfig *Config, preq *ss.MsgCreateGrpReq, from int) {
 		//res should always right
 		log.Info("%s uid:%d grp_id:%d grp_name:%s create_ts:%d mem:%d", _func_, preq.Uid, grp_id, preq.GrpName,
 			curr_ts, 1)
+
+		//step4. save profile
+		profile := new(ss.GroupGroudItem)
+		profile.GrpId = grp_id
+		profile.GrpName = preq.GrpName
+		profile.MemCount = 0
+		profile.Desc = preq.Desc
+
+		    //pack
+		enc_profile, err := ss.Pack(profile)
+		if err != nil {
+			log.Err("%s pack profile failed! err:%v gid:%d", _func_, err, grp_id)
+		} else {
+			SaveGroupProfile(pclient, phead, grp_id, string(enc_profile))
+		}
+
 
 		//back to logic
 		var ss_msg ss.SSMsg

@@ -125,7 +125,7 @@ func RecvSaveChatGroupReq(pconfig *Config, preq *ss.MsgSaveGroupReq, from int) {
 		//Handle
 		for {
 			//Step1. Check Group Exist
-			_, result = GetGroupInfo(pclient, phead, grp_id, FILED_GROUP_INFO_NAME)
+			_, result = GetGroupInfo(pclient, phead, grp_id, FIELD_GROUP_INFO_NAME)
 			if result != ss.SS_COMMON_RESULT_SUCCESS {
 				log.Err("%s check grp exist failed! grp_id:%d", _func_, grp_id)
 				break
@@ -144,7 +144,7 @@ func RecvSaveChatGroupReq(pconfig *Config, preq *ss.MsgSaveGroupReq, from int) {
 
 			tab_name := fmt.Sprintf(FORMAT_TAB_GROUP_INFO_PREFIX+"%d", grp_id)
 			res, err := pclient.RedisExeCmdSync(phead, "HMSET", tab_name, FIELD_GROUP_INFO_MSG_COUNT, preq.MsgCount, "load_serv",
-				preq.LoadServ, FIELD_GROUP_BLOB_NAME, string(blob))
+				preq.LoadServ, FIELD_GROUP_BLOB_NAME, string(blob) , FIELD_GROUP_INFO_NAME , preq.GrpName)
 			if err != nil {
 				log.Err("%s hmset %s failed! err:%v grp_id:%d", _func_, tab_name, err, grp_id)
 				break
@@ -157,6 +157,7 @@ func RecvSaveChatGroupReq(pconfig *Config, preq *ss.MsgSaveGroupReq, from int) {
 			profile.GrpName = preq.GrpName
 			profile.MemCount = preq.MemCount
 			profile.Desc = preq.BlobInfo.GroupDesc
+			profile.HeadUrl = preq.BlobInfo.HeadUrl
 
 				//pack
 			enc_data, err := ss.Pack(profile)

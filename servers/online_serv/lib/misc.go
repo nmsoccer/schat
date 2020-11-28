@@ -17,7 +17,7 @@ func RecvUploadFileNotify(pconfig *Config, pnotify *ss.MsgCommonNotify, file_ser
 	if puser_info == nil {
 		log.Err("%s not online! will send back! uid:%d", _func_, uid)
 
-		pnotify.IntV = 1
+		pnotify.IntV = comm.FILE_UPT_CHECK_ONLINE
 		//gen ss
 		pss_msg, err := comm.GenDispMsg(ss.DISP_MSG_TARGET_FILE_SERVER, ss.DISP_MSG_METHOD_SPEC, ss.DISP_PROTO_TYPE_DISP_COMMON_NOTIFY,
 			file_server, pconfig.ProcId, 0, pnotify)

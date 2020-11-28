@@ -7,6 +7,13 @@ enum CHAT_MSG_TYPE {
   CHAT_TYPE_IMG = 1; //msg
 }
 
+enum CHAT_MSG_FLAG {
+  CHAT_FLAG_NORMAL = 0 ;//normal chat
+  CHAT_FLAG_DEL = 1; //deleted
+  CHAT_FLAG_CANCELED = 2; //canceled chat
+  CHAT_FLAG_CANCELLER = 3; //cancel master chat
+}
+
 
 message ChatMsg {
   CHAT_MSG_TYPE chat_type = 1; //chat type
@@ -16,6 +23,8 @@ message ChatMsg {
   string sender = 5;
   int64 send_ts = 6;
   string content = 7; //chat content
+  
+  CHAT_MSG_FLAG  chat_flag = 20; //flag
 }
 
 
@@ -50,7 +59,8 @@ message GroupInfo {
 message GroupBlobData {
   int32 visible = 1; //default 0: group is invisible
   int32 visible_score = 2;
-  string group_desc = 20;  
+  string group_desc = 20;
+  string head_url = 21;  
 }
 
 
@@ -59,4 +69,5 @@ message GroupGroudItem {
   string grp_name = 2;
   int32 mem_count = 3;
   string desc = 4;
+  string head_url = 5;
 }

@@ -6,9 +6,14 @@ import (
 	"time"
 )
 
+const (
+	FORM_QUERY_KEY = "query_key"
+)
+
 type HttpServer struct {
 	pconfig   *Config
 	serv_addr string
+	query_key string
 }
 
 //var all_server_info AllServerInfo
@@ -22,6 +27,7 @@ func StartHttpServer(pconfig *Config) *HttpServer {
 	hs := new(HttpServer)
 	hs.pconfig = pconfig
 	hs.serv_addr = pconfig.FileConfig.HttpAddr
+	hs.query_key = pconfig.FileConfig.QueryKey
 	log.Info("%s at %s finish!", _func_, hs.serv_addr)
 
 	go hs.start_serv()
@@ -50,6 +56,24 @@ func (hs *HttpServer) index_handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (hs *HttpServer) query_handler(w http.ResponseWriter, r *http.Request) {
+	var _func_ = "<query_handler>"
+	log := hs.pconfig.Comm.Log
+
+	//get key
+	query_key := r.FormValue(FORM_QUERY_KEY)
+	if len(query_key)<=0 {
+		log.Err("%s query_key not valid!" , _func_)
+		fmt.Fprintf(w, "{}")
+		return
+	}
+
+	if query_key != hs.query_key {
+		log.Err("%s query_key not match!client:%s server:%s" , _func_ , query_key , hs.query_key)
+		fmt.Fprintf(w, "{}")
+		return
+	}
+
+
 	resp_str := GenServerResponseStr(hs.pconfig, hs.pconfig.ServerInfo)
 	if resp_str == "" {
 		fmt.Fprintf(w, "{}")

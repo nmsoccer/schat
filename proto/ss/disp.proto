@@ -45,7 +45,8 @@ enum DISP_PROTO_TYPE {
   DISP_QUERY_GROUP_REQ = 11;
   DISP_SYNC_GROUP_INFO = 12;
   DISP_CHG_GROUP_ATTR_REQ = 13;
-  DISP_CHG_GROUP_ATTR_RSP = 14; 
+  DISP_CHG_GROUP_ATTR_RSP = 14;
+  DISP_COMMON_QUERY  = 15;  
   //Add Proto Should Also Modify servers/comm/disp.go:GenDispMsg  
 }
 
@@ -76,7 +77,8 @@ message MsgDisp {
     MsgQueryGroupReq query_group_req = 31;
     MsgSyncGroupInfo sync_group_info = 32;
     MsgChgGroupAttrReq chg_group_attr_req = 33;
-    MsgChgGroupAttrRsp chg_group_attr_rsp = 34;    
+    MsgChgGroupAttrRsp chg_group_attr_rsp = 34;
+    MsgCommonQuery  common_query = 35;    
   }  
 }
 
@@ -162,6 +164,8 @@ enum COMMON_NOTIFY_TYPE {
   NOTIFY_ADD_MEMBER  = 11; //group add member
   NOTIFY_DEL_MEMBER  = 12; //group del member
   NOTIFY_FILE_TOKEN  = 13; //file_server token to dir
+  NOTIFY_HEAD_URL    = 14; //change head url
+  NOTIFY_ENTER_GROUP = 15; //user enter group
 }
 
 message MsgCommonNotify {
@@ -174,6 +178,7 @@ message MsgCommonNotify {
   map<int64 , int32> members = 20;
   ChatMsg chat_msg = 21;
   repeated string strs = 22;
+  int64 occupy = 23;
 }
 
 //enter group
@@ -259,6 +264,17 @@ message MsgChgGroupAttrRsp {
   int64 grp_id = 4;
   int64 int_v = 5;
   string str_v = 6;
+  
+  int64 occupy = 20;
+}
+
+//CommonQuery client --> server
+message MsgCommonQuery {
+  int32 query_type = 1; //refer SS_COMMON_QUERY_TYPE_xx
+  int64 uid = 2;
+  int64 grp_id = 3;
+  int64 int_v = 4;
+  string str_v = 5;
   
   int64 occupy = 20;
 }

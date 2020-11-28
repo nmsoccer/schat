@@ -115,6 +115,16 @@ func RecvMsg(pconfig *Config) int64 {
 			RecvGroupGroundReq(pconfig, ss_msg.GetGroupGroundReq())
 		case ss.SS_PROTO_TYPE_GROUP_GROUND_RSP:
 			RecvGroupGroundRsp(pconfig, ss_msg.GetGroupGroundRsp(), msg)
+		case ss.SS_PROTO_TYPE_COMMON_QUERY:
+			RecvCommonQuery(pconfig , ss_msg.GetCommonQuery())
+		case ss.SS_PROTO_TYPE_UPDATE_USER_REQ:
+			RecvUpdateUserReq(pconfig , ss_msg.GetUpdateUserReq())
+		case ss.SS_PROTO_TYPE_UPDATE_USER_RSP:
+			RecvUpdateUserRsp(pconfig , ss_msg.GetUpdateUserRsp() , msg)
+		case ss.SS_PROTO_TYPE_UPDATE_CHAT_REQ:
+			RecvUpdateChatReq(pconfig , ss_msg.GetUpdateChatReq() , msg)
+		case ss.SS_PROTO_TYPE_UPDATE_CHAT_RSP:
+			RecvUpdateChatRsp(pconfig , ss_msg.GetUpdateChatRsp() , msg)
 		default:
 			log.Err("%s fail! unknown proto type:%v", _func_, ss_msg.ProtoType)
 		}

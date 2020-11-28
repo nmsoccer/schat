@@ -115,6 +115,16 @@ func ChgGroupAttr(pconfig *Config, preq *ss.MsgChgGroupAttrReq, logic_serv int) 
 			preq.StrV)
 		pgrp_info.db_group_info.BlobInfo.GroupDesc = preq.StrV
 		direct_back = true //back to client
+	case ss.GROUP_ATTR_TYPE_GRP_ATTR_GRP_NAME:
+		log.Info("%s will set group name! uid:%d grp_id:%d %s-->%s", _func_, uid, grp_id , pgrp_info.db_group_info.GroupName ,
+			preq.StrV)
+		pgrp_info.db_group_info.GroupName = preq.StrV
+		direct_back = true
+	case ss.GROUP_ATTR_TYPE_GRP_ATTR_HEAD_URL:
+		log.Info("%s will change heal url! uid:%d grp_id:%d %s-->%s", _func_, uid, grp_id , pgrp_info.db_group_info.BlobInfo.HeadUrl ,
+			preq.StrV)
+		pgrp_info.db_group_info.BlobInfo.HeadUrl = preq.StrV
+		direct_back = true
 	default:
 		log.Err("%s illegal attr:%d uid:%d grp_id:%d", _func_, preq.Attr, uid, grp_id)
 		return

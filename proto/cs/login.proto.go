@@ -30,9 +30,25 @@ type CSRegReq struct {
 	RoleName string `json:"role_name"`
 	Sex  uint8  `json:"sex"`
 	Addr string `json:"addr"`
+	Desc string `json:"desc"`
 }
 
 type CSRegRsp struct {
-	Result int    `json:result`
+	Result int    `json:"result"`
 	Name   string `json:"name"`
+}
+
+type CSUpdateUserReq struct {
+	RoleName string `json:"role_name"`//if len>0 means update
+	Addr string `json:"addr"`//if len>0 means update
+	Desc string `json:"desc"`//if len>0 means update
+	Passwd string `json:"pass"`//if len>0 will update
+}
+
+type CSUpdateUserRsp struct {
+	Result int `json:"result"` //common result
+	RoleName string `json:"role_name"`//if len>0 means update
+	Addr string `json:"addr"`//if len>0 means update
+	Desc string `json:"desc"`//if len>0 means update
+	Passwd string `json:"pass"`//if len>0 will update
 }

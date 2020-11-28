@@ -35,6 +35,36 @@ func InitUserChatInfo(pconfig *Config, pinfo *ss.UserChatInfo, uid int64) {
 	log.Info("%s finish! uid:%d", _func_, uid)
 }
 
+func GetUserGroup(pconfig *Config , uid int64 , grp_id int64) *ss.UserChatGroup {
+	var _func_ = "<GetUserGroup>"
+	log := pconfig.Comm.Log
+
+	//online
+	puser_info := GetUserInfo(pconfig , uid)
+	if puser_info == nil {
+		log.Err("%s user offline! uid:%d" , _func_ , uid)
+		return nil
+	}
+
+	//chat info
+	pchat_info := puser_info.user_info.BlobInfo.ChatInfo
+	if pchat_info.AllGroup <= 0 || pchat_info.AllGroups==nil {
+		log.Err("%s user in no group! uid:%d" , _func_ , uid)
+		return nil
+	}
+
+	pgrp_info , ok := pchat_info.AllGroups[grp_id]
+    if !ok {
+		log.Err("%s user no in group! uid:%d grp_id:%d" , _func_ , uid , grp_id)
+		return nil
+	}
+
+	return pgrp_info
+}
+
+
+
+
 //check user in group
 //@return (bool , error)
 func UserInGroup(pconfig *Config, uid int64, grp_id int64) (bool, error) {
@@ -144,8 +174,9 @@ func RecvCreateGroupReq(pconfig *Config, preq *ss.MsgCreateGrpReq, msg []byte) {
 	}
 
 	//check max
-	if pchat_info.MasterGroup >= 100 {
-		log.Err("%s fail! master group to max! uid:%d", _func_, uid)
+	if pchat_info.MasterGroup >= int32(pconfig.FileConfig.MaxCreateGroup) {
+		log.Err("%s fail! master group to max! uid:%d curr_count:%d max:%d", _func_, uid , pchat_info.MasterGroup ,
+			pconfig.FileConfig.MaxCreateGroup)
 		SendCreateGroupErrRsp(pconfig, uid, ss.CREATE_GROUP_RESULT_CREATE_RET_MAX_NUM)
 		return
 	}
@@ -160,6 +191,7 @@ func RecvCreateGroupReq(pconfig *Config, preq *ss.MsgCreateGrpReq, msg []byte) {
 			}
 		}
 	}
+
 
 	//To DB
 	SendToDb(pconfig, msg)
@@ -474,6 +506,10 @@ func RecvApplyGroupAuditNotify(pconfig *Config, pnotify *ss.MsgCommonNotify) {
 		log.Err("%s offline! uid:%d grp_id:%d", _func_, uid , grp_id)
 		return
 	}
+	if puser.conn_valid == false {
+		log.Err("%s connection lost! do not fetch now! uid:%d" , _func_ , uid)
+		return
+	}
 	log.Debug("%s get auidit notify! uid:%d grp_id:%d", _func_, uid , grp_id)
 
 	//fetch
@@ -665,8 +701,24 @@ func RecvEnterGroupRsp(pconfig *Config, prsp *ss.MsgEnterGroupRsp) {
 			pchat_info.AllGroup++
 			log.Info("%s enter group success! uid:%d grp_id:%d grp_name:%s", _func_, uid, grp_id, prsp.GrpName)
 
+			//Notify to client
+			pnotify := new(ss.MsgCommonNotify)
+			pnotify.GrpId = grp_id
+			pnotify.NotifyType = ss.COMMON_NOTIFY_TYPE_NOTIFY_ENTER_GROUP
+			pnotify.Uid = uid
+			pnotify.StrV = prsp.GrpName
+			var ss_msg ss.SSMsg
+			err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_COMMON_NOTIFY , pnotify)
+			if err != nil {
+				log.Err("%s gen notify failed! err:%v uid:%d" , _func_ , err , uid)
+			} else {
+				SendToConnect(pconfig , &ss_msg)
+			}
+
 			//Fetch Group Chat
 			//SendFetchChatReq(pconfig , uid , grp_id)
+			send_content := fmt.Sprintf("%s 加入群组" , puser_info.user_info.BasicInfo.Name)
+			SendSysChat(pconfig , grp_id , send_content , ss.CHAT_MSG_FLAG_CHAT_FLAG_NORMAL)
 		}
 	} else { //no group
 		log.Info("%s group not exist anymore! uid:%d grp_id:%d", _func_, uid, grp_id)
@@ -688,7 +740,7 @@ func TickFetchApplyGroup(arg interface{}) {
 	//fetch
 	if pconfig.Users.curr_online > 0 {
 		for uid, info := range pconfig.Users.user_map {
-			if info != nil && info.fetch_apply_complete == false {
+			if info != nil && info.fetch_apply_complete == false  && info.conn_valid==true {
 				SendFetchApplyGroupReq(pconfig, uid)
 			}
 		}
@@ -736,6 +788,36 @@ func RecvSendChatReq(pconfig *Config, preq *ss.MsgSendChatReq) {
 	//send
 	SendToDisp(pconfig, 0, pss_msg)
 }
+
+func SendSysChat(pconfig *Config , grp_id int64 , content string , chat_flag ss.CHAT_MSG_FLAG) {
+	var _func_ = "<SendSysChat>"
+	log := pconfig.Comm.Log
+
+	//fill req
+	preq := new(ss.MsgSendChatReq)
+	preq.Uid = int64(ss.SS_SPEC_UID_SYS_UID)
+	preq.TempId = 111
+	preq.ChatMsg = new(ss.ChatMsg)
+	preq.ChatMsg.GroupId = grp_id
+	preq.ChatMsg.ChatType = ss.CHAT_MSG_TYPE_CHAT_TYPE_TEXT
+	preq.ChatMsg.Sender = ""
+	preq.ChatMsg.SenderUid = preq.Uid
+	preq.ChatMsg.Content = content
+	preq.ChatMsg.ChatFlag = chat_flag
+
+	//disp ss
+	pss_msg, err := comm.GenDispMsg(ss.DISP_MSG_TARGET_CHAT_SERVER, ss.DISP_MSG_METHOD_HASH, ss.DISP_PROTO_TYPE_DISP_SEND_CHAT_REQ,
+		0, pconfig.ProcId, preq.ChatMsg.GroupId, preq)
+	if err != nil {
+		log.Err("%s gen disp ss fail! uid:%d err:%v", _func_, preq.Uid, err)
+		return
+	}
+
+	//send
+	SendToDisp(pconfig, 0, pss_msg)
+}
+
+
 
 func RecvSendChatRsp(pconfig *Config, prsp *ss.MsgSendChatRsp) {
 	var _func_ = "<RecvSendChatRsp>"
@@ -1032,6 +1114,18 @@ func RecvNewMsgNotify(pconfig *Config, preq *ss.MsgCommonNotify) {
 		return
 	}
 
+	//set group name
+	log.Debug("%s grp_id:%d grp_name:%s new_grp_name:%s" , _func_ , grp_id , pgrp_info.GroupName , preq.StrV)
+	pgrp_info.GroupName = preq.StrV
+
+	//if client lost connection not further more
+	if puser_info.conn_valid == false {
+		log.Err("%s connection lost! uid:%d" , _func_ , uid)
+		StoreNewMsgNotify(pconfig , uid , grp_id)
+		return
+	}
+
+
 	//Check Msg
 	//proper next msg direct to client
 	if preq.ChatMsg != nil && preq.ChatMsg.MsgId == pgrp_info.LastReadId+1 {
@@ -1153,6 +1247,10 @@ func RecvExitGroupRsp(pconfig *Config, prsp *ss.MsgExitGroupRsp) {
 	if prsp.Result != ss.SS_COMMON_RESULT_SUCCESS {
 		return
 	}
+
+	//send sys chat
+	send_content := fmt.Sprintf("%s 离开群组" , puser_info.user_info.BasicInfo.Name)
+	SendSysChat(pconfig , grp_id , send_content , ss.CHAT_MSG_FLAG_CHAT_FLAG_NORMAL)
 
 	// gen notify
 	pnotify := new(ss.MsgCommonNotify)

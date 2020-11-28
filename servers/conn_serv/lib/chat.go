@@ -16,6 +16,10 @@ func SendCreateGroupReq(pconfig *Config, uid int64, preq *cs.CSCreateGroupReq) b
 	pCreateGroupReq.Uid = uid
 	pCreateGroupReq.GrpName = preq.Name
 	pCreateGroupReq.GrpPass = preq.Pass
+	pCreateGroupReq.Desc = preq.Desc
+	if len(pCreateGroupReq.Desc) <= 0 {
+		pCreateGroupReq.Desc = "..."
+	}
 
 	//fill
 	err := comm.FillSSPkg(&ss_msg, ss.SS_PROTO_TYPE_CREATE_GROUP_REQ, pCreateGroupReq)
@@ -56,10 +60,11 @@ func RecvCreateGroupRsp(pconfig *Config, prsp *ss.MsgCreateGrpRsp) {
 	//fill
 	if prsp.Ret == ss.CREATE_GROUP_RESULT_CREATE_RET_SUCCESS {
 		pmsg.Name = prsp.GrpName
-		pmsg.Result = 0
+		pmsg.Result = int(ss.SS_COMMON_RESULT_SUCCESS)
 		pmsg.CreateTs = prsp.CreateTs
 		pmsg.GrpId = prsp.GrpId
 		pmsg.MemberCnt = int(prsp.MemCount)
+		pmsg.Desc = prsp.Desc
 	} else {
 		pmsg.Result = int(prsp.Ret)
 	}
@@ -301,6 +306,7 @@ func RecvSyncChatList(pconfig *Config, prsp *ss.MsgSyncChatList) {
 		pchat.SendTs = prsp.ChatList[i].SendTs
 		pchat.Content = prsp.ChatList[i].Content
 		pchat.ChatType = int(prsp.ChatList[i].ChatType)
+		pchat.Flag = int64(prsp.ChatList[i].ChatFlag)
 		pmsg.ChatList[i] = pchat
 	}
 
@@ -477,6 +483,7 @@ func RecvSyncGroupInfo(pconfig *Config, pinfo *ss.MsgSyncGroupInfo) {
 		pmsg.GrpInfo.MemCount = pinfo.GrpInfo.MemCount
 		pmsg.GrpInfo.Visible = pinfo.GrpInfo.BlobInfo.Visible
 		pmsg.GrpInfo.Desc = pinfo.GrpInfo.BlobInfo.GroupDesc
+		pmsg.GrpInfo.HeadUrl = pinfo.GrpInfo.BlobInfo.HeadUrl
 		if pinfo.GrpInfo.MemCount > 0 || pinfo.GrpInfo.Members != nil {
 			pmsg.GrpInfo.Members = make(map[int64]int32)
 			pmsg.GrpInfo.Members = pinfo.GrpInfo.Members
@@ -494,6 +501,7 @@ func RecvSyncGroupInfo(pconfig *Config, pinfo *ss.MsgSyncGroupInfo) {
 		pmsg.GrpSnap.GrpName = pinfo.GrpSnap.GrpName
 		pmsg.GrpSnap.MemCount = pinfo.GrpSnap.MemCount
 		pmsg.GrpSnap.Desc = pinfo.GrpSnap.Desc
+		pmsg.GrpSnap.HeadUrl = pinfo.GrpSnap.HeadUrl
 	default:
 		log.Err("%s unknwon field:%d uid:%d grp_id:%d", _func_, pinfo.Field, uid, grp_id)
 		return
@@ -521,6 +529,12 @@ func SendChgGroupAttrReq(pconfig *Config, uid int64, pchg *cs.CSChgGroupAttrReq)
 		preq.Attr = ss.GROUP_ATTR_TYPE_GRP_ATTR_INVISIBLE
 	case cs.GROUP_ATTR_DESC:
 		preq.Attr = ss.GROUP_ATTR_TYPE_GRP_ATTR_DESC
+		preq.StrV = pchg.StrV
+	case cs.GROUP_ATTR_GRP_NAME:
+		preq.Attr = ss.GROUP_ATTR_TYPE_GRP_ATTR_GRP_NAME
+		preq.StrV = pchg.StrV
+	case cs.GROUP_ATTR_GRP_HEAD:
+		preq.Attr = ss.GROUP_ATTR_TYPE_GRP_ATTR_HEAD_URL
 		preq.StrV = pchg.StrV
 	default:
 		log.Err("%s illegal attr:%d uid:%d", _func_, pchg.Attr, uid)
@@ -576,6 +590,12 @@ func RecvChgGroupAttrRsp(pconfig *Config, prsp *ss.MsgChgGroupAttrRsp) {
 		pmsg.Attr = cs.GROUP_ATTR_INVISIBLE
 	case ss.GROUP_ATTR_TYPE_GRP_ATTR_DESC:
 		pmsg.Attr = cs.GROUP_ATTR_DESC
+		pmsg.StrV = prsp.StrV
+	case ss.GROUP_ATTR_TYPE_GRP_ATTR_GRP_NAME:
+		pmsg.Attr = cs.GROUP_ATTR_GRP_NAME
+		pmsg.StrV = prsp.StrV
+	case ss.GROUP_ATTR_TYPE_GRP_ATTR_HEAD_URL:
+		pmsg.Attr = cs.GROUP_ATTR_GRP_HEAD
 		pmsg.StrV = prsp.StrV
 	default:
 		log.Err("%s illegal attr:%d uid:%d grp_id:%d", _func_, prsp.Attr, uid, grp_id)
@@ -643,9 +663,68 @@ func RecvGroupGroundRsp(pconfig *Config, prsp *ss.MsgGroupGroudRsp) {
 		pitem.GrpName = prsp.ItemList[i].GrpName
 		pitem.MemCount = prsp.ItemList[i].MemCount
 		pitem.Desc = prsp.ItemList[i].Desc
+		pitem.HeadUrl = prsp.ItemList[i].HeadUrl
 		pmsg.ItemList[i] = pitem
 	}
 
 	//to client
 	SendToClient(pconfig, c_key, cs.CS_PROTO_GROUP_GROUND_RSP, pmsg)
+}
+
+func SendUpdateChatReq(pconfig *Config, uid int64, pcs *cs.CSUpdateChatReq) {
+	var _func_ = "<SendGroupGroundReq>"
+	log := pconfig.Comm.Log
+
+	//req
+	preq := new(ss.MsgUpdateChatReq)
+	preq.Uid = uid
+	preq.UpdateType = ss.UPDATE_CHAT_TYPE(pcs.UpdateType)
+	preq.GrpId = pcs.Grpid
+	preq.MsgId = pcs.MsgId
+
+	//ss
+	var ss_msg ss.SSMsg
+	err := comm.FillSSPkg(&ss_msg, ss.SS_PROTO_TYPE_UPDATE_CHAT_REQ, preq)
+	if err != nil {
+		log.Err("%s gen ss failed! err:%v uid:%d", _func_, err, uid)
+		return
+	}
+
+	//to logic
+	SendToLogic(pconfig, &ss_msg)
+}
+
+func RecvUpdateChatRsp(pconfig *Config, prsp *ss.MsgUpdateChatRsp) {
+	var _func_ = "<RecvGroupGroundRsp>"
+	log := pconfig.Comm.Log
+	uid := prsp.Uid
+
+	//c_key
+	c_key := GetClientKey(pconfig, uid)
+	if c_key <= 0 {
+		log.Err("%s user offline! uid:%d", _func_, uid)
+		return
+	}
+
+	//cs
+	pv, err := cs.Proto2Msg(cs.CS_PROTO_UPDATE_CHAT_RSP)
+	if err != nil {
+		log.Err("%s get msg fail! uid:%d err:%v", _func_, uid, err)
+		return
+	}
+	pmsg, ok := pv.(*cs.CSUpdateChatRsp)
+	if !ok {
+		log.Err("%s not CSUpdateChatRsp! uid:%d", _func_, uid)
+		return
+	}
+
+	log.Debug("%s uid:%d grp_id:%d result:%d msg_id:%d type:%d", _func_, uid, prsp.GrpId , prsp.Result , prsp.MsgId , prsp.UpdateType)
+	//fill info
+	pmsg.UpdateType = int(prsp.UpdateType)
+	pmsg.GrpId = prsp.GrpId
+	pmsg.Result = int(prsp.Result)
+	pmsg.MsgId = prsp.MsgId
+
+	//to client
+	SendToClient(pconfig , c_key , cs.CS_PROTO_UPDATE_CHAT_RSP , pmsg)
 }

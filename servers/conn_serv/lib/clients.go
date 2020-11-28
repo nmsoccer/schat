@@ -292,6 +292,24 @@ func HandleClientPkg(pconfig *Config, pclient *comm.ClientPkg) {
 			SendGroupGroundReq(pconfig, uid, pmsg)
 			conv_err = false
 		}
+	case cs.CS_PROTO_COMMON_QUERY:
+		pmsg, ok := gmsg.SubMsg.(*cs.CSCommonQuery)
+		if ok {
+			SendCommonQuery(pconfig, uid, pmsg)
+			conv_err = false
+		}
+	case cs.CS_PROTO_UPDATE_USER_REQ:
+		pmsg, ok := gmsg.SubMsg.(*cs.CSUpdateUserReq)
+		if ok {
+			SendUpdateUserReq(pconfig, uid, pmsg)
+			conv_err = false
+		}
+	case cs.CS_PROTO_UPDATE_CHAT_REQ:
+		pmsg, ok := gmsg.SubMsg.(*cs.CSUpdateChatReq)
+		if ok {
+			SendUpdateChatReq(pconfig, uid, pmsg)
+			conv_err = false
+		}
 	default:
 		log.Err("%s illegal proto:%d", _func_, proto_id)
 		return

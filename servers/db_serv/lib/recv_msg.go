@@ -98,6 +98,12 @@ func RecvMsg(pconfig *Config) int64 {
 			RecvChgGroupAttrReq(pconfig, ss_msg.GetChgGroupAttrReq(), pmsg.sender)
 		case ss.SS_PROTO_TYPE_GROUP_GROUND_REQ:
 			RecvGroupGroundReq(pconfig, ss_msg.GetGroupGroundReq(), pmsg.sender)
+		case ss.SS_PROTO_TYPE_BATCH_QUERY_GROUP_SNAP:
+			RecvBatchQueryGroupSnap(pconfig , ss_msg.GetBatchQueryGroupSnap() , pmsg.sender)
+		case ss.SS_PROTO_TYPE_UPDATE_USER_REQ:
+			RecvUpdateUserReq(pconfig , ss_msg.GetUpdateUserReq() , pmsg.sender)
+		case ss.SS_PROTO_TYPE_UPDATE_CHAT_REQ:
+			RecvUpdateChatReq(pconfig , ss_msg.GetUpdateChatReq() , pmsg.sender)
 		default:
 			log.Err("%s fail! unknown proto type:%v", _func_, ss_msg.ProtoType)
 		}

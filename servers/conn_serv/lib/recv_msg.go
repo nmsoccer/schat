@@ -92,6 +92,10 @@ func RecvMsg(pconfig *Config) int64 {
 			RecvChgGroupAttrRsp(pconfig, ss_msg.GetChgGroupAttrRsp())
 		case ss.SS_PROTO_TYPE_GROUP_GROUND_RSP:
 			RecvGroupGroundRsp(pconfig, ss_msg.GetGroupGroundRsp())
+		case ss.SS_PROTO_TYPE_UPDATE_USER_RSP:
+			RecvUpdateUserRsp(pconfig , ss_msg.GetUpdateUserRsp())
+		case ss.SS_PROTO_TYPE_UPDATE_CHAT_RSP:
+			RecvUpdateChatRsp(pconfig , ss_msg.GetUpdateChatRsp())
 		default:
 			log.Err("%s fail! unknown proto type:%v", _func_, ss_msg.ProtoType)
 		}

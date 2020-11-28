@@ -20,6 +20,7 @@ type FileConfig struct {
 	MaxOnline     int      `json:"max_online"`
 	ClientTimeout int      `json:"client_timeout"`
 	MonitorInv    int      `json:"monitor_inv"` //monitor interval seconds
+	MaxCreateGroup  int      `json:"user_max_create_group"` //max create
 }
 
 type Config struct {
@@ -129,7 +130,7 @@ func LocalSet(pconfig *Config) bool {
 	//add ticker
 	pconfig.Comm.TickPool.AddTicker("heart_beat", comm.TICKER_TYPE_CIRCLE, 0, comm.PERIOD_HEART_BEAT_DEFAULT, SendHeartBeatMsg, pconfig)
 	pconfig.Comm.TickPool.AddTicker("report_sync", comm.TICKER_TYPE_CIRCLE, 0, comm.PERIOD_REPORT_SYNC_DEFAULT, ReportSyncServer, pconfig)
-	pconfig.Comm.TickPool.AddTicker("check_client_heart", comm.TICKER_TYPE_CIRCLE, 0, int64(pconfig.FileConfig.ClientTimeout*1000),
+	pconfig.Comm.TickPool.AddTicker("check_client_heart", comm.TICKER_TYPE_CIRCLE, 0, int64(30*1000),
 		CheckClientTimeout, pconfig)
 	pconfig.Comm.TickPool.AddTicker("recv_cmd", comm.TICKER_TYPE_CIRCLE, 0, comm.PERIOD_RECV_REPORT_CMD_DEFAULT, RecvReportCmd, pconfig)
 	pconfig.Comm.TickPool.AddTicker("tick_fetch", comm.TICKER_TYPE_CIRCLE, 0, PERIOD_FETCH_APPLY_GROUP_INTV, TickFetchApplyGroup, pconfig)

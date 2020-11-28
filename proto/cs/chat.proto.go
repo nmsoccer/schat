@@ -12,12 +12,15 @@ const (
   GROUP_ATTR_VISIBLE = 0
   GROUP_ATTR_INVISIBLE = 1
   GROUP_ATTR_DESC = 2
+  GROUP_ATTR_GRP_NAME = 3
+  GROUP_ATTR_GRP_HEAD = 4
 )
 
 //create group
 type CSCreateGroupReq struct {
 	Name string `json:"name"`
 	Pass string `json:"pass"`
+	Desc string `json:"desc"`
 }
 
 type CSCreateGroupRsp struct {
@@ -26,6 +29,7 @@ type CSCreateGroupRsp struct {
 	Name string `json:"name"`
 	MemberCnt int `json:"member_count"`
 	CreateTs int64 `json:"create_ts"`
+	Desc string `json:"desc"`
 }
 
 //apply group
@@ -101,6 +105,7 @@ type CSKickGroupReq struct {
 	KickUid int64 `json:"kick_uid"`
 }
 
+//QUERY_FLAG
 type CSQueryGroupReq struct {
 	GrpId  int64 `json:"grp_id"`
 }
@@ -143,4 +148,17 @@ type CSGroupGroundReq struct {
 type CSGroupGroundRsp struct {
 	Count int `json:"count"`
 	ItemList []*GroupGroundItem `json:"item_list"`
+}
+
+type CSUpdateChatReq struct {
+    UpdateType int `json:"upt_type"`
+    Grpid int64 `json:"grp_id"`
+    MsgId int64 `json:"msg_id"`
+}
+
+type CSUpdateChatRsp struct {
+	Result int   `json:"result"` //COMMON_RESULT_XX
+	UpdateType int `json:"upt_type"`
+	GrpId int64 `json:"grp_id"`
+	MsgId int64 `json:"msg_id"`
 }

@@ -21,6 +21,7 @@ func RecvNewMsgNotify(pconfig *Config, preq *ss.MsgCommonNotify) {
 	pnotify.GrpId = preq.GrpId
 	pnotify.NotifyType = ss.COMMON_NOTIFY_TYPE_NOTIFY_NEW_MSG
 	pnotify.ChatMsg = preq.ChatMsg
+	pnotify.StrV = preq.StrV
 
 	//to master
 	pusr_info := GetUserInfo(pconfig, preq.Uid)

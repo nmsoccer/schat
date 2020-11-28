@@ -5,6 +5,11 @@ enum SS_COMMON_RESULT {
   SUCCESS = 0;
   FAILED = 1;
   NOEXIST = 2;
+  PERMISSION = 3; //no permission
+}
+
+enum SS_SPEC_UID {
+  SYS_UID = 0;
 }
 
 
@@ -25,6 +30,10 @@ enum SS_OFFLINE_INFO_TYPE {
   OFT_KICK_GROUP = 0; //kick out group by master <type|grp_id|grp_name|kick_ts>
 }
 
+enum SS_COMMON_QUERY_TYPE {
+  QRY_OWN_SNAP = 0;
+}
+
 enum SS_GROUP_INFO_FIELD {
   GRP_FIELD_ALL = 0;
   GRP_FIELD_SNAP = 1;
@@ -34,4 +43,6 @@ enum GROUP_ATTR_TYPE {
   GRP_ATTR_VISIBLE = 0;		//cound be shown on panel
   GRP_ATTR_INVISIBLE = 1;	//only be searched by group id
   GRP_ATTR_DESC = 2;  //change group desc
+  GRP_ATTR_GRP_NAME = 3; //change group name
+  GRP_ATTR_HEAD_URL = 4; //group head url
 }

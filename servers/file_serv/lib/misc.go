@@ -10,7 +10,7 @@ import (
 
 const (
 	//TOKEN LEN
-	FILE_SERV_TOKEN_LEN = 12
+	FILE_SERV_TOKEN_LEN = 10
 
 	PERIOD_UPDATE_TOKEN = 3600000 //1h update token
 	PERIOD_SYNC_TOKEN   = 600000  //10min sync token to dir
@@ -37,7 +37,8 @@ func UpdateServToken(arg interface{}) {
 	log := pconfig.Comm.Log
 
 	//update token
-	new_token, err := comm.GenRandNumStr(FILE_SERV_TOKEN_LEN)
+	//new_token, err := comm.GenRandNumStr(FILE_SERV_TOKEN_LEN)
+	new_token , err := comm.GenRandStr(FILE_SERV_TOKEN_LEN)
 	if err != nil {
 		log.Err("%s fail! rand str err:%v", _func_, err)
 		return

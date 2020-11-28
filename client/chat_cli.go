@@ -35,6 +35,8 @@ const (
 	CMD_USER_PROFILE	   = "u_prof"
 	CMD_GROUP_ATTR		   = "g_attr"
 	CMD_GROUP_GROUND	   = "g_ground"
+	CMD_COMM_QUERY         = "comm_query"
+	CMD_UPDATE_CHAT        = "upt_chat"
 
 	BUFF_LEN = (10 * 1024)
 
@@ -82,6 +84,8 @@ func init() {
 	cmd_map[CMD_USER_PROFILE] = "user profile [uid1] [uid2] ..."
 	cmd_map[CMD_GROUP_ATTR] = "chg group attr <group_id><attr_id>[...]"
 	cmd_map[CMD_GROUP_GROUND] = "group ground <start_index>"
+	cmd_map[CMD_COMM_QUERY] = "common query <query_type>[grp_id][inv][strv]"
+	cmd_map[CMD_UPDATE_CHAT] = "update chat <grp_id><msg_id><upt_type>"
 }
 
 func v_print(format string, arg ...interface{}) {
@@ -502,10 +506,20 @@ func RecvPkg(conn *net.TCPConn) {
 				v_print("ground group count:%d\n" , prsp.Count)
 				if prsp.Count>0 && len(prsp.ItemList)>0 {
 					for i:=0; i<prsp.Count; i++ {
-						v_print("<%d> grp_id:%d grp_name:%s mem_count:%d desc:%s\n" , i , prsp.ItemList[i].GrpId , prsp.ItemList[i].GrpName,
-							prsp.ItemList[i].MemCount , prsp.ItemList[i].Desc)
+						v_print("<%d> grp_id:%d grp_name:%s mem_count:%d desc:%s head_url:%s\n" , i , prsp.ItemList[i].GrpId , prsp.ItemList[i].GrpName,
+							prsp.ItemList[i].MemCount , prsp.ItemList[i].Desc , prsp.ItemList[i].HeadUrl)
 					}
 				}
+				if *method == METHOD_COMMAND {
+					exit_ch <- true
+					return
+				}
+			}
+		case cs.CS_PROTO_UPDATE_CHAT_RSP:
+			prsp , ok := gmsg.SubMsg.(*cs.CSUpdateChatRsp)
+			if ok {
+				v_print("update chat result:%d msg_id:%d grp_id:%d upt_type:%d\n" , prsp.Result , prsp.MsgId , prsp.Grpid ,
+					prsp.UpdateType)
 				if *method == METHOD_COMMAND {
 					exit_ch <- true
 					return
@@ -721,7 +735,46 @@ func SendPkg(conn *net.TCPConn, cmd string) {
 		gmsg.ProtoId = cs.CS_PROTO_GROUP_GROUND_REQ
 		psub := new(cs.CSGroupGroundReq)
 		psub.StartIndex , _ = strconv.Atoi(args[1])
-		v_print("group group req:%v\n", *psub)
+		v_print("group ground req:%v\n", *psub)
+		gmsg.SubMsg = psub
+	case CMD_COMM_QUERY: //"common query <query_type>[grp_id][inv][strv]"
+	    if len(args) < 2 {
+	    	show_cmd()
+			return
+		}
+		gmsg.ProtoId = cs.CS_PROTO_COMMON_QUERY
+		psub := new(cs.CSCommonQuery)
+		psub.QueryType , _ = strconv.Atoi(args[1])
+		for {
+			if len(args) == 3 {
+				psub.GrpId , _ = strconv.ParseInt(args[2] , 10 , 64)
+				break
+			}
+
+			if len(args) == 4 {
+				psub.IntV , _ = strconv.ParseInt(args[3] , 10 , 64)
+				break
+			}
+
+			if len(args) == 5 {
+				psub.StrV = args[4]
+				break
+			}
+			break
+		}
+		v_print("common query:%v\n", *psub)
+		gmsg.SubMsg = psub
+	case CMD_UPDATE_CHAT: //"update chat <grp_id><msg_id><upt_type>"
+		if len(args) != 4 {
+			show_cmd()
+			return
+		}
+		gmsg.ProtoId = cs.CS_PROTO_UPDATE_CHAT_REQ
+		psub := new(cs.CSUpdateChatReq)
+		psub.Grpid , _ = strconv.ParseInt(args[1] , 10 , 64)
+		psub.MsgId , _ = strconv.ParseInt(args[2] , 10 , 64)
+		psub.UpdateType , _ = strconv.Atoi(args[3])
+		v_print("update chat req:%v\n", *psub)
 		gmsg.SubMsg = psub
 	default:
 		fmt.Printf("illegal cmd:%s\n", cmd)

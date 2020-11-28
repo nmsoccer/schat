@@ -2,6 +2,7 @@ package comm
 
 import (
 	"crypto/md5"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -46,11 +47,15 @@ const (
 	//FILE_URL_TYPE
 	FILE_URL_T_CHAT = 1
 	FILE_URL_T_HEAD = 2
+	FILE_URL_T_GROUP = 3 //group head url
 
 	//FILE_UPDATE_CHECK
 	FILE_UPT_CHECK_ONLINE = 1 //not online
 	FILE_UPT_CHECK_GROUP  = 2 //not in group
 	FILE_UPT_CHECK_DEL    = 3 //normal del
+
+	//FILE_TOKEN_KEY
+	FILE_TOKEN_KEY = "Be^^orNot&t*_be"
 
 	//SEX
 	SEX_INT_MALE   = 1
@@ -316,6 +321,19 @@ func EncMd5Bytes(p []byte) string {
 	block.Write(p)
 	return hex.EncodeToString(block.Sum(nil))
 }
+
+func EncSha256(p []byte) string {
+	block := sha256.New()
+	block.Write(p)
+	return hex.EncodeToString(block.Sum(nil))
+}
+
+func CalcUserToken(uid int64 , server_token string) string {
+	real_content := fmt.Sprintf("%d_%s_%s" , uid , server_token , FILE_TOKEN_KEY)
+	return EncSha256([]byte(real_content))
+}
+
+
 
 /*Read All File content
 @close:if close file after reading

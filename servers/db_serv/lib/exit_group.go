@@ -48,7 +48,7 @@ func RecvKickGroupReq(pconfig *Config, preq *ss.MsgKickGroupReq, from int) {
 		//handle
 		for {
 			//step1. check group exist
-			_, prsp.Result = GetGroupInfo(pclient, phead, grp_id, FILED_GROUP_INFO_NAME)
+			_, prsp.Result = GetGroupInfo(pclient, phead, grp_id, FIELD_GROUP_INFO_NAME)
 			if prsp.Result != ss.SS_COMMON_RESULT_SUCCESS {
 				break
 			}
@@ -111,8 +111,8 @@ func do_exit_group(pconfig *Config, preq *ss.MsgExitGroupReq, from int) {
 		prsp.Uid = uid
 		prsp.GrpName = preq.GrpName
 		for {
-			//check grp
-			_, result := GetGroupInfo(pclient, phead, grp_id, FILED_GROUP_INFO_NAME)
+			//check grpF
+			_, result := GetGroupInfo(pclient, phead, grp_id, FIELD_GROUP_INFO_NAME)
 			if result != ss.SS_COMMON_RESULT_SUCCESS {
 				prsp.Result = result
 				break
@@ -224,6 +224,12 @@ func do_del_group(pconfig *Config, preq *ss.MsgExitGroupReq, from int) {
 					}
 				}
 			}
+
+			//del profile
+			DelGroupProfile(pclient , phead , grp_id)
+
+			//Invisible
+			InvisibleGroup(pclient , phead , uid , grp_id)
 
 			break
 		}

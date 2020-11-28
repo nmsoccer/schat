@@ -45,9 +45,14 @@ const (
 	CS_PROTO_CHG_GROUP_ATTR_RSP = 28
 	CS_PROTO_GROUP_GROUND_REQ = 29
 	CS_PROTO_GROUP_GROUND_RSP = 30
+	CS_PROTO_COMMON_QUERY = 31
+	CS_PROTO_UPDATE_USER_REQ = 32
+	CS_PROTO_UPDATE_USER_RSP = 33
+	CS_PROTO_UPDATE_CHAT_REQ = 34
+	CS_PROTO_UPDATE_CHAT_RSP = 35
 	//PS:new proto added should modify 'Proto2Msg' function
 	//proto end = last + 1
-	CS_PROTO_END = 31
+	CS_PROTO_END = 36
 )
 
 /*
@@ -177,6 +182,16 @@ func Proto2Msg(proto_id int) (interface{}, error) {
 		pmsg = new(CSGroupGroundReq)
 	case CS_PROTO_GROUP_GROUND_RSP:
 		pmsg = new(CSGroupGroundRsp)
+	case CS_PROTO_COMMON_QUERY:
+		pmsg = new(CSCommonQuery)
+	case CS_PROTO_UPDATE_USER_REQ:
+		pmsg = new(CSUpdateUserReq)
+	case CS_PROTO_UPDATE_USER_RSP:
+		pmsg = new(CSUpdateUserRsp)
+	case CS_PROTO_UPDATE_CHAT_REQ:
+		pmsg = new(CSUpdateChatReq)
+	case CS_PROTO_UPDATE_CHAT_RSP:
+		pmsg = new(CSUpdateChatRsp)
 	default:
 		return nil, errors.New("proto illegal!")
 	}

@@ -152,6 +152,14 @@ func GenDispMsg(target ss.DISP_MSG_TARGET, method ss.DISP_MSG_METHOD, proto ss.D
 		}
 		disp_body.ChgGroupAttrRsp = pv
 		body.MsgDisp.DispBody = disp_body
+	case ss.DISP_PROTO_TYPE_DISP_COMMON_QUERY:
+		disp_body := new(ss.MsgDisp_CommonQuery)
+		pv, ok := disp_msg.(*ss.MsgCommonQuery)
+		if !ok {
+			return nil, errors.New("not MsgCommonQuery")
+		}
+		disp_body.CommonQuery = pv
+		body.MsgDisp.DispBody = disp_body
 	default:
 		return nil, errors.New(fmt.Sprintf("disp proto:%d not handled", proto))
 	}

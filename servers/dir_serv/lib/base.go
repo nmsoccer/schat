@@ -17,6 +17,7 @@ type FileConfig struct {
 	ConnServAddr   []string `json:"conn_serv_addr"`
 	ConnServWeigth []int    `json:"conn_serv_weight"`
 	ManageAddr     []string `json:"manage_addr"`
+	QueryKey       string   `json:"query_key"`
 	MonitorInv     int      `json:"monitor_inv"` //monitor interval seconds
 }
 
@@ -167,6 +168,9 @@ func AfterReLoadConfig(pconfig *Config, old_config *FileConfig, new_config *File
 	var _func_ = "<AfterReLoadConfig>"
 	log := pconfig.Comm.Log
 
+	if pconfig.HttpServer != nil {
+		pconfig.HttpServer.query_key = pconfig.FileConfig.QueryKey
+	}
 	log.Info("%s finish!", _func_)
 	return
 }

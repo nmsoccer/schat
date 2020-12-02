@@ -32,7 +32,7 @@ func RecvApplyGroupAudit(pconfig *Config , preq *ss.MsgApplyGroupAudit , from in
 		defer pclient.FreeSyncCmdHead(phead)
 
 		//v
-		push_v := fmt.Sprintf("%d|%s|%d", preq.GroupId, preq.GroupName, preq.Result)
+		push_v := fmt.Sprintf("%d|%s|%d|%d", preq.GroupId, preq.GroupName, preq.Result , preq.Flag)
 		tab_name := fmt.Sprintf(FORMAT_TAB_USER_GROUP_AUDITED+"%d", preq.ApplyUid)
 		_ , err := pclient.RedisExeCmdSync(phead , "RPUSH" , tab_name , push_v)
 		if err != nil {
@@ -131,7 +131,7 @@ func cb_range_user_audied(comm_config *comm.CommConfig, result interface{}, cb_a
 	//parse
 	for idx := 0; idx < len(res); idx++ { //content:grp_id|grp_name|result
 		splits := strings.Split(res[idx], "|")
-		if len(splits) != 3 {
+		if len(splits) != 4 {
 			log.Err("%s split:%s illegal! uid:%d", _func_, res[idx], preq.Uid)
 			continue
 		}
@@ -149,11 +149,19 @@ func cb_range_user_audied(comm_config *comm.CommConfig, result interface{}, cb_a
 			continue
 		}
 
+		aud_flag , err := strconv.Atoi(splits[3])
+		if err != nil {
+			log.Err("%s split:%s conv audit_flag failed! uid:%d err:%v", _func_, splits[3], preq.Uid, err)
+			continue
+		}
+
+
 		//fill
 		prsp.AuditList[i] = new(ss.MsgApplyGroupAudit)
 		prsp.AuditList[i].GroupId = grp_id
 		prsp.AuditList[i].GroupName = splits[1]
 		prsp.AuditList[i].Result = ss.APPLY_GROUP_RESULT(audit_result)
+		prsp.AuditList[i].Flag = int32(aud_flag)
 		i++
 	}
 	prsp.FetchCount = int32(i)

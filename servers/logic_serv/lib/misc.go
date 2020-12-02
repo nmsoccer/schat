@@ -5,6 +5,7 @@ import (
 	"schat/servers/comm"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func ParseOfflineInfo(pconfig *Config, uid int64, info string) {
@@ -415,6 +416,9 @@ func RecvCommonQuery(pconfig *Config , preq *ss.MsgCommonQuery) {
 	case ss.SS_COMMON_QUERY_TYPE_QRY_OWN_SNAP:
 		log.Debug("%s query own group snap! uid:%d" , _func_ , uid)
 		SyncUserGroupSnap(pconfig , uid)
+	case ss.SS_COMMON_QUERY_TYPE_QRY_SET_HEART:
+		puser_info.hearbeat = time.Now().Unix()
+		log.Debug("%s set hearbeat! uid:%d heart:%d" , _func_ , uid , puser_info.hearbeat)
 	default:
 		log.Err("%s illegal query type:%d uid:%d" , _func_ , preq.QueryType , uid)
 	}

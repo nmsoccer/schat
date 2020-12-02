@@ -44,6 +44,7 @@ type CSApplyGroupRsp struct {
 	Result  int `json:"result"`
 	GrpId   int64  `json:"grp_id"`
 	GrpName string `json:"grp_name"`
+	Flag      int    `json:"flag"` //0:normal 1:master activate invite
 }
 
 type CSApplyGroupNotify struct {
@@ -59,6 +60,7 @@ type CSApplyGroupAudit struct {
 	ApplyUid  int64  `json:"apply_uid"`
 	GrpId     int64  `json:"grp_id"`
 	GrpName   string `json:"grp_name"`
+	Flag      int    `json:"flag"` //0:normal 1:master activate invite
 }
 
 //Send Chat

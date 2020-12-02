@@ -606,12 +606,16 @@ func RecvFetchAuditGroupRsp(pconfig *Config, prsp *ss.MsgFetchAuditGrpRsp) {
 			SendEnterGroupReq(pconfig, uid, paudit.GroupId)
 		}
 
+
+
 		//send to client apply result
 		papply := new(ss.MsgApplyGroupRsp)
 		papply.Result = prsp.AuditList[i].Result
 		papply.GroupName = prsp.AuditList[i].GroupName
 		papply.GroupId = prsp.AuditList[i].GroupId
 		papply.ApplyUid = prsp.Uid
+		papply.Flag = prsp.AuditList[i].Flag
+
 
 		err := comm.FillSSPkg(&ss_msg, ss.SS_PROTO_TYPE_APPLY_GROUP_RSP, papply)
 		if err != nil {

@@ -69,7 +69,8 @@ const (
 	FIELD_GROUP_INFO_MSG_COUNT   = "msg_count"
 	FIELD_GROUP_INFO_NAME        = "name"
 	FIELD_GROUP_BLOB_NAME        = "blob_info"
-	FILED_USER_INFO_HEAD_URL     = "head_url"
+	FIELD_USER_INFO_HEAD_URL     = "head_url"
+	FIELD_USER_INFO_BLOB         = "blob_info"
 
 	//other
 )

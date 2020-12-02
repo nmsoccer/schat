@@ -124,6 +124,7 @@ message MsgApplyGroupRsp {
   int64 apply_uid = 4;
   string apply_name = 5;
   int64  occupy = 20; //payload
+  int32 flag = 21; //0:normal 1:master activate invite
 }
 
 message MsgApplyGroupNotify {
@@ -146,6 +147,7 @@ message MsgApplyGroupAudit { //master audit apply
   int64 uid = 5;
   
   int32 from_db = 20; //0: logic --> db 1:db --> logic
+  int32 flag = 21; //0:normal 1:master activate invite
 }
 
 //common notify

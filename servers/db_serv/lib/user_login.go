@@ -116,7 +116,7 @@ func RecvUserLogoutReq(pconfig *Config, preq *ss.MsgLogoutReq, from int) {
 			}
 			res, err = pclient.RedisExeCmdSync(phead, "HMSET", user_tab, "addr",
 				puser_info.BasicInfo.Addr, "level", puser_info.BasicInfo.Level, FIELD_USER_INFO_ONLINE_LOGIC, -1, "blob_info", string(user_blob),
-				FILED_USER_INFO_HEAD_URL, puser_info.BasicInfo.HeadUrl , FIELD_USER_INFO_NAME , puser_info.BasicInfo.Name)
+				FIELD_USER_INFO_HEAD_URL, puser_info.BasicInfo.HeadUrl , FIELD_USER_INFO_NAME , puser_info.BasicInfo.Name)
 		} else { //only update online-logic
 			res, err = pclient.RedisExeCmdSync(phead, "HSET", user_tab, FIELD_USER_INFO_ONLINE_LOGIC, -1)
 		}
@@ -151,6 +151,18 @@ func RecvUserLogoutReq(pconfig *Config, preq *ss.MsgLogoutReq, from int) {
 				SaveUserProfile(pclient, phead, preq.Uid, string(enc_data))
 			}
 		}
+
+		//del lock
+		log.Debug("%s try to unlock login. uid:%d", _func_, preq.Uid)
+		tab_name := fmt.Sprintf(FORMAT_TAB_USER_LOGIN_LOCK_PREFIX+"%d", preq.Uid)
+		_, err = pclient.RedisExeCmdSync(phead, "DEL", tab_name)
+		if err != nil {
+			log.Err("%s unlock login-lock failed! name:%s uid:%d", _func_, tab_name, preq.Uid)
+			return
+		} else {
+			log.Debug("%s unlock login-lock done! name:%s uid:%d", _func_, tab_name, preq.Uid)
+		}
+
 
 		return
 	}()
@@ -397,7 +409,7 @@ func user_login_get_info(pconfig *Config, result interface{}, preq *ss.MsgLoginR
 		prsp.UserInfo.BlobInfo = puser_blob
 
 		//head_url
-		if v, ok := sm[FILED_USER_INFO_HEAD_URL]; ok {
+		if v, ok := sm[FIELD_USER_INFO_HEAD_URL]; ok {
 			pbasic.HeadUrl = v
 		}
 

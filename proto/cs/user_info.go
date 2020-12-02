@@ -33,6 +33,7 @@ type UserDetail struct {
 	//Depot *UserDepot `json:"user_depot"`
 	ChatInfo *UserChatInfo `json:"chat_info"`
 	Desc string `json:"desc"`
+	ClientDesKey string `json:"c_des_key"`
 }
 
 type UserProfile struct {

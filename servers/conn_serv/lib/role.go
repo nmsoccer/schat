@@ -85,6 +85,7 @@ func RecvFetchUserProfileRsp(pconfig *Config, prsp *ss.MsgFetchUserProfileRsp) {
 		cs_info.Level = ss_info.Level
 		cs_info.Name = ss_info.Name
 		cs_info.HeadUrl = ss_info.HeadUrl
+		cs_info.Desc = ss_info.UserDesc
 		pmsg.Profiles[tuid] = cs_info
 	}
 

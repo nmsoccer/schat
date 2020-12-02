@@ -75,7 +75,7 @@ func init() {
 	cmd_map[CMD_REG] = "register <name> <pass> <role_name> <sex:1|2> <addr>"
 	cmd_map[CMD_CREATE_GROUP] = "create group <group_name> <group_pass>"
 	cmd_map[CMD_APPLY_GROUP] = "apply group <group_id> <group_pass> <apply_msg>"
-	cmd_map[CMD_AUDIT_GROUP] = "audit group apply <group_id><grp_name><apply_uid><audit 0|1>"
+	cmd_map[CMD_AUDIT_GROUP] = "audit group apply <group_id><grp_name><apply_uid><audit 0|1>[master invite 0|1]"
 	cmd_map[CMD_CHAT] = "chat <chat_type><group_id><msg>" //type:0:text 1:img
 	cmd_map[CMD_QUIT] = "quit group <group_id>"
 	cmd_map[CMD_HISTORY] = "chat history <group_id><now_msg_id>"
@@ -379,7 +379,7 @@ func RecvPkg(conn *net.TCPConn) {
 		case cs.CS_PROTO_APPLY_GRP_RSP:
 			prsp, ok := gmsg.SubMsg.(*cs.CSApplyGroupRsp)
 			if ok {
-				v_print("apply group result:%d grp_name:%s grp_id:%d\n", prsp.Result, prsp.GrpName, prsp.GrpId)
+				v_print("apply group result:%d grp_name:%s grp_id:%d flag:%d\n", prsp.Result, prsp.GrpName, prsp.GrpId , prsp.Flag)
 				if *method == METHOD_COMMAND {
 					exit_ch <- true
 					return
@@ -518,7 +518,7 @@ func RecvPkg(conn *net.TCPConn) {
 		case cs.CS_PROTO_UPDATE_CHAT_RSP:
 			prsp , ok := gmsg.SubMsg.(*cs.CSUpdateChatRsp)
 			if ok {
-				v_print("update chat result:%d msg_id:%d grp_id:%d upt_type:%d\n" , prsp.Result , prsp.MsgId , prsp.Grpid ,
+				v_print("update chat result:%d msg_id:%d grp_id:%d upt_type:%d\n" , prsp.Result , prsp.MsgId , prsp.GrpId ,
 					prsp.UpdateType)
 				if *method == METHOD_COMMAND {
 					exit_ch <- true
@@ -628,8 +628,8 @@ func SendPkg(conn *net.TCPConn, cmd string) {
 		psub.Msg = args[3]
 		v_print("apply group grp_id:%d pass:%s\n", psub.GrpId, psub.Pass)
 		gmsg.SubMsg = psub
-	case CMD_AUDIT_GROUP: //<group_id><grp_name><apply_uid><audit 0|1>
-		if len(args) != 5 {
+	case CMD_AUDIT_GROUP: //<group_id><grp_name><apply_uid><audit 0|1>[master invite 0|1]
+		if len(args) < 5 {
 			show_cmd()
 			return
 		}
@@ -640,6 +640,9 @@ func SendPkg(conn *net.TCPConn, cmd string) {
 		psub.GrpName = args[2]
 		psub.ApplyUid, _ = strconv.ParseInt(args[3], 10, 64)
 		psub.Audit, _ = strconv.Atoi(args[4])
+		if len(args) == 6 {
+			psub.Flag , _ = strconv.Atoi(args[5])
+		}
 		v_print("audit group request:%v\n", *psub)
 		gmsg.SubMsg = psub
 	case CMD_CHAT: //send_chat <chat_type><group_id><msg>

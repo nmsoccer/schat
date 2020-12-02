@@ -2,6 +2,7 @@ package lib
 
 import (
 	"fmt"
+	lnet "schat/lib/net"
 	"schat/proto/ss"
 	"schat/servers/comm"
 	"time"
@@ -80,6 +81,7 @@ func RecvLoginRsp(pconfig *Config, prsp *ss.MsgLoginRsp, msg []byte) {
 
 			//use online info
 			ponline.conn_valid = true
+			ponline.hearbeat = curr_ts
 			puser_info.BasicInfo = ponline.user_info.BasicInfo
 			puser_info.BlobInfo = ponline.user_info.BlobInfo
 			new_login = false
@@ -355,14 +357,30 @@ func CheckClientTimeout(arg interface{}) {
 func InitUserInfo(pconfig *Config, pinfo *ss.UserInfo, uid int64) {
 	var _func_ = "<InitUserInfo>"
 	log := pconfig.Comm.Log
+	var err error
 
 	log.Debug("%s uid:%d", _func_, uid)
-
+	pblob := pinfo.BlobInfo
 	//init blob
 	if pinfo.BlobInfo.ChatInfo == nil {
 		pinfo.BlobInfo.ChatInfo = new(ss.UserChatInfo)
 	}
 	InitUserChatInfo(pconfig, pinfo.BlobInfo.ChatInfo, uid)
+
+	//reg time
+	if pblob.RegTime <=0 {
+		pblob.RegTime = time.Now().Unix()
+	}
+
+	if len(pblob.ClientEncDesKey) <= 0 {
+		pblob.ClientEncDesKey , err = comm.GenRandStr(lnet.ENCRY_DES_KEY_LEN)
+		if err != nil {
+			log.Err("%s gen client des key failed! uid:%d err:%v" , _func_ , uid , err)
+		} else {
+			log.Err("%s gen client des key done! uid:%d key:%s" , _func_ , uid , pblob.ClientEncDesKey)
+		}
+	}
+
 }
 
 //after login success

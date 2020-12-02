@@ -127,6 +127,7 @@ func RecvApplyGroupRsp(pconfig *Config, prsp *ss.MsgApplyGroupRsp) {
 	pmsg.GrpId = prsp.GroupId
 	pmsg.Result = int(prsp.Result)
 	pmsg.GrpName = prsp.GroupName
+	pmsg.Flag = int(prsp.Flag)
 
 	//to client
 	SendToClient(pconfig, c_key, cs.CS_PROTO_APPLY_GRP_RSP, pmsg)
@@ -178,6 +179,7 @@ func SendApplyGroupAudit(pconfig *Config, uid int64, paudit *cs.CSApplyGroupAudi
 	preq.ApplyUid = paudit.ApplyUid
 	preq.GroupId = paudit.GrpId
 	preq.GroupName = paudit.GrpName
+	preq.Flag = int32(paudit.Flag)
 	preq.Uid = uid
 	if paudit.Audit == 1 {
 		preq.Result = ss.APPLY_GROUP_RESULT_APPLY_GRP_ALLOW

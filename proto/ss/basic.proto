@@ -32,6 +32,7 @@ enum SS_OFFLINE_INFO_TYPE {
 
 enum SS_COMMON_QUERY_TYPE {
   QRY_OWN_SNAP = 0;
+  QRY_SET_HEART = 1; //set client hearbeat
 }
 
 enum SS_GROUP_INFO_FIELD {

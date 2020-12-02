@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"schat/proto/ss"
 	"schat/servers/comm"
+	"time"
 )
 
 func RecvRegReq(pconfig *Config, preq *ss.MsgRegReq, from int) {
@@ -244,6 +245,18 @@ func cb_set_global_info(comm_config *comm.CommConfig, result interface{}, cb_arg
 		SendRegRsp(pconfig, preq, from, ss.REG_RESULT_REG_DB_ERR)
 		return
 	}
+
+	//blob
+	blob_info := new(ss.UserBlob)
+	init_reg_blob(blob_info)
+	user_blob, err := ss.Pack(blob_info)
+	if err != nil {
+		log.Err("%s pack user_info failed! pack blob info fail! err:%v uid:%d name:%s", _func_, err, uid , preq.Name)
+		SendRegRsp(pconfig, preq, from, ss.REG_RESULT_REG_DB_ERR)
+		return
+	}
+
+
 	//res should always right
 	log.Info("%s res:%s name:%s uid:%d will set user info", _func_, res, preq.Name, uid)
 	tab_name := fmt.Sprintf(FORMAT_TAB_USER_INFO_REFIX+"%d", uid)
@@ -261,7 +274,7 @@ func cb_set_global_info(comm_config *comm.CommConfig, result interface{}, cb_arg
 	}
 
 	pclient.RedisExeCmd(pconfig.Comm, cb_reg_set_user_info, cb_arg, "HMSET", tab_name, "uid", uid,
-		"name", preq.RoleName, "addr", preq.Addr, "sex", sex_v, "online_logic", -1)
+		FIELD_USER_INFO_NAME, preq.RoleName, "addr", preq.Addr, "sex", sex_v, FIELD_USER_INFO_ONLINE_LOGIC , -1 , FIELD_USER_INFO_BLOB , string(user_blob))
 }
 
 func cb_reg_set_user_info(comm_config *comm.CommConfig, result interface{}, cb_arg []interface{}) {
@@ -314,4 +327,8 @@ func cb_reg_set_user_info(comm_config *comm.CommConfig, result interface{}, cb_a
 	//res should always right
 	log.Info("%s res:%s name:%s uid:%d success!", _func_, res, preq.Name, uid)
 	SendRegRsp(pconfig, preq, from, ss.REG_RESULT_REG_SUCCESS)
+}
+
+func init_reg_blob(blob_info *ss.UserBlob) {
+	blob_info.RegTime = time.Now().Unix()
 }

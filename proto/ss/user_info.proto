@@ -22,6 +22,8 @@ message UserBlob {
   //UserDepot depot = 23;
   UserChatInfo chat_info = 23;
   string user_desc = 24;
+  int64 reg_time = 25;
+  string client_enc_des_key = 26; //enc client data des key
 }
 
 

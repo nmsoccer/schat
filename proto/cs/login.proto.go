@@ -5,6 +5,7 @@ type CSLoginReq struct {
 	Pass   string `json:"pass"`
 	Device string `json:"device"`
 	Version string `json:"version"`
+	Flag    int64 `json:"flag"`
 }
 
 type CSLoginRsp struct {
@@ -12,6 +13,7 @@ type CSLoginRsp struct {
 	Name   string     `json:"name"`
 	Basic  UserBasic  `json:"basic"`
 	Detail UserDetail `json:"user_detail"`
+	Flag    int64 `json:"flag"`
 }
 
 type CSLogoutReq struct {

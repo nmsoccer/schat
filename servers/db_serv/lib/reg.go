@@ -249,6 +249,7 @@ func cb_set_global_info(comm_config *comm.CommConfig, result interface{}, cb_arg
 	//blob
 	blob_info := new(ss.UserBlob)
 	init_reg_blob(blob_info)
+	blob_info.UserDesc = preq.Desc
 	user_blob, err := ss.Pack(blob_info)
 	if err != nil {
 		log.Err("%s pack user_info failed! pack blob info fail! err:%v uid:%d name:%s", _func_, err, uid , preq.Name)

@@ -150,13 +150,19 @@ message MsgPingRsp {
 
 
 //login
+enum USER_LOGIN_FLAG {
+  LOGIN_FLG_NORMAL = 0;
+  LOGIN_FLG_RESET_CLIENT_KEY = 1;
+}
+
 message MsgLoginReq { 
   int64 c_key = 20;
   int64 uid = 21; //0 use default role
   string name = 22; //acc name
   string pass=23;
   string device=24;
-  string version=25;  
+  string version=25;
+  USER_LOGIN_FLAG flag = 26;  
 }
 
 enum USER_LOGIN_RET {
@@ -174,6 +180,7 @@ message MsgLoginRsp {
   int64 uid = 4; //may empty
   UserInfo user_info=20;
   int32 online_logic=21;
+  USER_LOGIN_FLAG flag = 22;
 }
 
 //logout

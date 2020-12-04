@@ -10,7 +10,7 @@ func SendLoginReq(pconfig *Config, client_key int64, plogin_req *cs.CSLoginReq) 
 	var _func_ = "<SendLoginReq>"
 	log := pconfig.Comm.Log
 
-	log.Debug("%s send login pkg to logic! user:%s device:%s", _func_, plogin_req.Name, plogin_req.Device)
+	log.Debug("%s send login pkg to logic! user:%s device:%s version:%s", _func_, plogin_req.Name, plogin_req.Device , plogin_req.Version)
 	//create pkg
 	var ss_msg ss.SSMsg
 	pLoginReq := new(ss.MsgLoginReq)
@@ -19,6 +19,7 @@ func SendLoginReq(pconfig *Config, client_key int64, plogin_req *cs.CSLoginReq) 
 	pLoginReq.Pass = plogin_req.Pass
 	pLoginReq.Device = plogin_req.Device
 	pLoginReq.Version = plogin_req.Version
+	pLoginReq.Flag = ss.USER_LOGIN_FLAG(plogin_req.Flag)
 
 	//ss_msg
 	err := comm.FillSSPkg(&ss_msg, ss.SS_PROTO_TYPE_LOGIN_REQ, pLoginReq)
@@ -68,6 +69,8 @@ func RecvLoginRsp(pconfig *Config, prsp *ss.MsgLoginRsp) {
 				pmsg.Result = int(ss.USER_LOGIN_RET_LOGIN_MULTI_ON)
 				break
 			}
+			//1v
+			pmsg.Flag = int64(prsp.Flag)
 
 			//basic
 			pmsg.Basic.Uid = prsp.GetUserInfo().BasicInfo.Uid

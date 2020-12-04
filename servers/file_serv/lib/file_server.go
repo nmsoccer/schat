@@ -40,6 +40,7 @@ const (
 	UPLOAD_RESULT_SUCCESS = 0
 	UPLOAD_RESULT_FAILED  = 1
 	UPLOAD_RESULT_SIZE    = 2
+	UPLOAD_RESULT_TYPE    = 3
 
 	FILE_MSG_CHAN_SIZE = 1000
 	MAX_FETCH_PER_TICK = 10
@@ -63,6 +64,7 @@ const (
 	//MAX_SUB_DIR
 	MAX_HEAD_SUB_DIRS = 64 //uid % dirs
 	MAX_GROUP_HEAD_SUB_DIRS = 61 //grp_id % dirs
+
 
 )
 
@@ -120,6 +122,32 @@ type UploadResult struct {
 var chat_fs http.Handler //chat file server
 var head_fs http.Handler //head file server
 var group_head_fs http.Handler //group head file server
+
+type AccMIME struct {
+	sync.RWMutex
+	inner_map map[string]bool
+}
+
+func (pa *AccMIME) Accept(mime_type string) bool {
+	pa.RLock()
+	defer pa.RUnlock()
+
+	_ , ok := pa.inner_map[mime_type]
+	return ok
+}
+
+var accept_mime *AccMIME
+
+func init() {
+	accept_mime = new(AccMIME)
+	inner_map := make(map[string] bool)
+	inner_map[".jpg"] = true
+	inner_map[".jpeg"] = true
+	inner_map[".png"] = true
+	//inner_map["mp4"] = true
+	accept_mime.inner_map = inner_map
+}
+
 
 func StartFileServer(pconfig *Config) *FileServer {
 	var _func_ = "<StartFileServer>"
@@ -745,6 +773,14 @@ func (fs *FileServer) upload_chat_file(w http.ResponseWriter, r *http.Request, u
 		fmt.Fprintf(w, convert_upload_result(UPLOAD_RESULT_SIZE, "file type error", tmp_id))
 		return
 	}
+	//check mime
+	if accept_mime.Accept(file_endings[0]) == false {
+		log.Err("%s mime not accept! uid:%d mime_type:%v", _func_, uid, file_endings[0])
+		fmt.Fprintf(w, convert_upload_result(UPLOAD_RESULT_TYPE, "file type error", tmp_id))
+		return
+	}
+
+
 	file_name := fmt.Sprintf("%4d%02d_%s_%s", year, month, md5_str, file_endings[0])
 
 	//create file
@@ -846,6 +882,13 @@ func (fs *FileServer) upload_head_file(w http.ResponseWriter, r *http.Request, u
 		fmt.Fprintf(w, convert_upload_result(UPLOAD_RESULT_SIZE, "file type error", tmp_id))
 		return
 	}
+	//check mime
+	if accept_mime.Accept(file_endings[0]) == false {
+		log.Err("%s mime not accept! uid:%d mime_type:%v", _func_, uid, file_endings[0])
+		fmt.Fprintf(w, convert_upload_result(UPLOAD_RESULT_TYPE, "file type error", tmp_id))
+		return
+	}
+
 	file_name := fmt.Sprintf("%d_%s_%s", uid, md5_str, file_endings[0])
 
 	//create file
@@ -948,6 +991,13 @@ func (fs *FileServer) upload_group_head_file(w http.ResponseWriter, r *http.Requ
 		fmt.Fprintf(w, convert_upload_result(UPLOAD_RESULT_SIZE, "file type error", tmp_id))
 		return
 	}
+	//check mime
+	if accept_mime.Accept(file_endings[0]) == false {
+		log.Err("%s mime not accept! uid:%d mime_type:%v", _func_, uid, file_endings[0])
+		fmt.Fprintf(w, convert_upload_result(UPLOAD_RESULT_TYPE, "file type error", tmp_id))
+		return
+	}
+
 	file_name := fmt.Sprintf("%d_%s_%s", grp_id, md5_str, file_endings[0])
 
 	//create file

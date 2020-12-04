@@ -114,16 +114,19 @@ func cb_query_grp_info(comm_config *comm.CommConfig, result interface{}, cb_arg 
 		SendApplyGroupRsp(pconfig, preq, from, ss.APPLY_GROUP_RESULT_APPLY_GRP_ERR)
 		return
 	}
+	/* no need to check pass
 	pass := res[2]
 	salt := res[3]
 
 	//valid pass
+
 	enc_pass := comm.EncPassString(preq.Pass, salt)
 	if enc_pass != pass {
 		log.Err("%s group pass not match! grp_id:%d apply_uid:%d", _func_, preq.GroupId, preq.ApplyUid)
 		SendApplyGroupRsp(pconfig, preq, from, ss.APPLY_GROUP_RESULT_APPLY_GRP_PASS)
 		return
 	}
+	 */
 
 	//pclient
 	pclient := SelectRedisClient(pconfig , REDIS_OPT_R)

@@ -2,6 +2,7 @@
 import os
 import sys,getopt
 import time
+import commands
 
 #BRIDGE_USER="nmsoccer"
 #BRIDGE_DIR="/home/nmsoccer/proc_bridge"

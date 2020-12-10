@@ -55,6 +55,7 @@ func ReadUploadMsg(pconfig *Config, pmsg *FileMsg) {
 	pnotify.Uid = pmsg.uid
 	pnotify.StrV = pmsg.url
 	pnotify.IntV = pmsg.int_v
+	pnotify.Occupy = int64(pmsg.file_type)
 
 	pss_msg, err := comm.GenDispMsg(ss.DISP_MSG_TARGET_ONLINE_SERVER, ss.DISP_MSG_METHOD_RAND, ss.DISP_PROTO_TYPE_DISP_COMMON_NOTIFY, 0,
 		pconfig.ProcId, 0, pnotify)

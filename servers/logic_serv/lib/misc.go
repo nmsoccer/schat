@@ -64,11 +64,12 @@ func RecvUploadFileNotify(pconfig *Config, pnotify *ss.MsgCommonNotify, file_ser
 	log := pconfig.Comm.Log
 	uid := pnotify.Uid
 	url := pnotify.StrV
+	file_type := pnotify.Occupy
 
 	//url_type
 	url_type, err := comm.GetUrlType(url)
 	if err != nil {
-		log.Err("%s parse url failed! url:%s uid:%d", _func_, url, uid)
+		log.Err("%s parse url failed! url:%s uid:%d file_type:%d", _func_, url, uid , file_type)
 		return
 	}
 
@@ -214,9 +215,10 @@ func UploadChatFileNotify(pconfig *Config, pnotify *ss.MsgCommonNotify, file_ser
 	uid := pnotify.Uid
 	grp_id := pnotify.GrpId
 	url := pnotify.StrV
+	file_type := pnotify.Occupy
 	check_err := 0
 
-	log.Debug("%s. uid:%d grp_id:%d url:%s tmp_id:%d", _func_, uid, grp_id, pnotify.StrV, pnotify.IntV)
+	log.Debug("%s. uid:%d grp_id:%d url:%s tmp_id:%d file_type:%d", _func_, uid, grp_id, pnotify.StrV, pnotify.IntV , file_type)
 	for {
 		//check online
 		puser_info = GetUserInfo(pconfig, uid)
@@ -241,6 +243,7 @@ func UploadChatFileNotify(pconfig *Config, pnotify *ss.MsgCommonNotify, file_ser
 			break
 		}
 
+
 		break
 	}
 	//check value
@@ -261,7 +264,19 @@ func UploadChatFileNotify(pconfig *Config, pnotify *ss.MsgCommonNotify, file_ser
 
 	//check passed
 	//create req
-	log.Debug("%s check passed! will create chat_msg! uid:%d grp_id:%d url:%s", _func_, uid, grp_id, url)
+	chat_type := ss.CHAT_MSG_TYPE_CHAT_TYPE_IMG //default image
+	switch int(file_type) {
+	case comm.FILE_TYPE_IMAGE:
+		//nothing
+	case comm.FILE_TYPE_MP4:
+		chat_type = ss.CHAT_MSG_TYPE_CHAT_TYPE_MP4
+	default:
+		log.Err("%s illegal file_type:%d uid:%d" , _func_ , file_type , uid)
+		return
+	}
+	log.Debug("%s check passed! will create chat_msg! uid:%d grp_id:%d url:%s file_type:%d chat_type:%d", _func_, uid, grp_id, url , file_type ,
+		chat_type)
+
 	preq := new(ss.MsgSendChatReq)
 	preq.Uid = uid
 	preq.TempId = pnotify.IntV
@@ -270,7 +285,7 @@ func UploadChatFileNotify(pconfig *Config, pnotify *ss.MsgCommonNotify, file_ser
 	pchat.Content = url
 	pchat.SenderUid = uid
 	pchat.Sender = puser_info.user_info.BasicInfo.Name
-	pchat.ChatType = ss.CHAT_MSG_TYPE_CHAT_TYPE_IMG
+	pchat.ChatType = chat_type
 	preq.ChatMsg = pchat
 
 	//ss

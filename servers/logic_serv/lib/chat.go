@@ -889,16 +889,19 @@ func DoFetchChatHistroy(pconfig *Config, preq *ss.MsgFetchChatReq) {
 		return
 	}
 
+	if preq.FetchCount<=0 || preq.FetchCount > FETCH_CHAT_COUNT {
+		preq.FetchCount = FETCH_CHAT_COUNT
+	}
+
 	//fill info
 	if preq.LatestMsgId == 0 {
 		preq.LatestMsgId = pgrp.LastReadId
 	}
-	preq.LatestMsgId -= FETCH_CHAT_COUNT //fetch before 40items
+	preq.LatestMsgId -= int64(preq.FetchCount) //fetch most before 40items
 	preq.LatestMsgId -= 1
 	if preq.LatestMsgId < 0 {
 		preq.LatestMsgId = 0
 	}
-	preq.FetchCount = FETCH_CHAT_COUNT
 
 	//ss
 	var ss_msg ss.SSMsg

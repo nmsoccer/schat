@@ -10,8 +10,9 @@ func RecvUploadFileNotify(pconfig *Config, pnotify *ss.MsgCommonNotify, file_ser
 	log := pconfig.Comm.Log
 	uid := pnotify.Uid
 	grp_id := pnotify.GrpId
+	file_type := pnotify.Occupy
 
-	log.Debug("%s. uid:%d grp_id:%d url:%s", _func_, uid, grp_id, pnotify.StrV)
+	log.Debug("%s. uid:%d grp_id:%d url:%s file_type:%d", _func_, uid, grp_id, pnotify.StrV , file_type)
 	//check online
 	puser_info := GetUserInfo(pconfig, uid)
 	if puser_info == nil {

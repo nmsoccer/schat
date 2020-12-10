@@ -75,6 +75,7 @@ type FileMsg struct {
 	url      string
 	int_v    int64
 	str_v    string
+	file_type int //refer FILE_UPDATE_FILE
 }
 
 type suspect_item struct {
@@ -125,25 +126,53 @@ var group_head_fs http.Handler //group head file server
 
 type AccMIME struct {
 	sync.RWMutex
-	inner_map map[string]bool
+	inner_map map[string]int
 }
 
-func (pa *AccMIME) Accept(mime_type string) bool {
+func (pa *AccMIME) Accept(mime_type string) (int , bool) {
 	pa.RLock()
 	defer pa.RUnlock()
 
-	_ , ok := pa.inner_map[mime_type]
-	return ok
+	file_type , ok := pa.inner_map[mime_type]
+	if !ok {
+		return -1 , false
+	}
+	return file_type , true
 }
-
 var accept_mime *AccMIME
 
+type MiMeRefer struct {
+	sync.RWMutex
+	refer_map map[string]string
+}
+func (pm *MiMeRefer) GetEnding(file_type string) (string , bool){
+	pm.RLock()
+	defer pm.RUnlock()
+
+	ending , ok := pm.refer_map[file_type]
+	if !ok {
+		return "" , false
+	} else {
+		return ending , true
+	}
+}
+var local_mime *MiMeRefer
+
+
 func init() {
+	//mime refer
+	local_mime = new(MiMeRefer)
+	refer_map := make(map[string]string)
+	refer_map["video/mp4"] = ".mp4"
+	local_mime.refer_map = refer_map
+
+	//accept mime
 	accept_mime = new(AccMIME)
-	inner_map := make(map[string] bool)
-	inner_map[".jpg"] = true
-	inner_map[".jpeg"] = true
-	inner_map[".png"] = true
+	inner_map := make(map[string] int)
+	inner_map[".jpg"] = comm.FILE_TYPE_IMAGE
+	inner_map[".jpeg"] = comm.FILE_TYPE_IMAGE
+	inner_map[".png"] = comm.FILE_TYPE_IMAGE
+	inner_map[".mp4"] = comm.FILE_TYPE_MP4
 	//inner_map["mp4"] = true
 	accept_mime.inner_map = inner_map
 }
@@ -723,7 +752,7 @@ func (fs *FileServer) upload_chat_file(w http.ResponseWriter, r *http.Request, u
 	log := fs.pconfig.Comm.Log
 	defer func() {
 		if err := recover(); err != nil {
-			log.Fatal("%s recover from panic! uid:%d", _func_, uid)
+			log.Fatal("%s recover from panic! uid:%d err:%v", _func_, uid , err)
 		}
 	}()
 
@@ -750,6 +779,7 @@ func (fs *FileServer) upload_chat_file(w http.ResponseWriter, r *http.Request, u
 		return
 	}
 
+
 	//check type
 	file_type := http.DetectContentType(file_bytes)
 
@@ -770,19 +800,30 @@ func (fs *FileServer) upload_chat_file(w http.ResponseWriter, r *http.Request, u
 	file_endings, err := mime.ExtensionsByType(file_type)
 	if err != nil {
 		log.Err("%s extension failed! uid:%d err:%v", _func_, uid, err)
-		fmt.Fprintf(w, convert_upload_result(UPLOAD_RESULT_SIZE, "file type error", tmp_id))
+		fmt.Fprintf(w, convert_upload_result(UPLOAD_RESULT_SIZE, "file size error", tmp_id))
 		return
 	}
+	if len(file_endings) <= 0 { //try inner mime type
+		file_end , ok := local_mime.GetEnding(file_type)
+		if !ok {
+			log.Err("%s file_ending error! uid:%d ending:%v file_type:%s file_end:%v", _func_, uid, file_endings, file_type, file_end)
+			fmt.Fprintf(w, convert_upload_result(UPLOAD_RESULT_TYPE, "file type error", tmp_id))
+			return
+		}
+
+		file_endings = append(file_endings , file_end)
+		log.Debug("%s inner mime refer matched! uid:%d file_type:%s file_endings:%v" , _func_ , uid , file_type , file_endings)
+	}
+
 	//check mime
-	if accept_mime.Accept(file_endings[0]) == false {
+	file_update_type , ok := accept_mime.Accept(file_endings[0])
+	if ok == false {
 		log.Err("%s mime not accept! uid:%d mime_type:%v", _func_, uid, file_endings[0])
 		fmt.Fprintf(w, convert_upload_result(UPLOAD_RESULT_TYPE, "file type error", tmp_id))
 		return
 	}
 
-
 	file_name := fmt.Sprintf("%4d%02d_%s_%s", year, month, md5_str, file_endings[0])
-
 	//create file
 	new_path := filepath.Join(file_dir, file_name)
 	log.Debug("%s will locate on:%s uid:%d", _func_, new_path, uid)
@@ -824,6 +865,7 @@ func (fs *FileServer) upload_chat_file(w http.ResponseWriter, r *http.Request, u
 	pmsg.grp_id = grp_id
 	pmsg.url = file_url
 	pmsg.int_v = tmp_id
+	pmsg.file_type = file_update_type
 	fs.snd_chan <- pmsg
 }
 
@@ -883,11 +925,19 @@ func (fs *FileServer) upload_head_file(w http.ResponseWriter, r *http.Request, u
 		return
 	}
 	//check mime
-	if accept_mime.Accept(file_endings[0]) == false {
+	file_update_type , ok := accept_mime.Accept(file_endings[0])
+	if ok == false {
 		log.Err("%s mime not accept! uid:%d mime_type:%v", _func_, uid, file_endings[0])
 		fmt.Fprintf(w, convert_upload_result(UPLOAD_RESULT_TYPE, "file type error", tmp_id))
 		return
 	}
+	//only for image
+	if file_update_type != comm.FILE_TYPE_IMAGE {
+		log.Err("%s only for image! uid:%d mime_type:%v", _func_, uid, file_endings[0])
+		fmt.Fprintf(w, convert_upload_result(UPLOAD_RESULT_TYPE, "file type error", tmp_id))
+		return
+	}
+
 
 	file_name := fmt.Sprintf("%d_%s_%s", uid, md5_str, file_endings[0])
 
@@ -992,14 +1042,20 @@ func (fs *FileServer) upload_group_head_file(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	//check mime
-	if accept_mime.Accept(file_endings[0]) == false {
+	file_update_type , ok := accept_mime.Accept(file_endings[0])
+	if ok == false {
 		log.Err("%s mime not accept! uid:%d mime_type:%v", _func_, uid, file_endings[0])
+		fmt.Fprintf(w, convert_upload_result(UPLOAD_RESULT_TYPE, "file type error", tmp_id))
+		return
+	}
+	//only for image
+	if file_update_type != comm.FILE_TYPE_IMAGE {
+		log.Err("%s only for image! uid:%d mime_type:%v", _func_, uid, file_endings[0])
 		fmt.Fprintf(w, convert_upload_result(UPLOAD_RESULT_TYPE, "file type error", tmp_id))
 		return
 	}
 
 	file_name := fmt.Sprintf("%d_%s_%s", grp_id, md5_str, file_endings[0])
-
 	//create file
 	new_path := filepath.Join(file_dir, file_name)
 	log.Debug("%s will locate on:%s uid:%d grp_id:%d", _func_, new_path, uid , grp_id)

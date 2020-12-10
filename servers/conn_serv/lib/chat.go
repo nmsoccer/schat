@@ -384,6 +384,7 @@ func SendFetchChatHistroyReq(pconfig *Config, uid int64, pfetch *cs.CSChatHistor
 	if preq.LatestMsgId < 0 {
 		preq.LatestMsgId = 0
 	}
+	preq.FetchCount = pfetch.Count
 
 	var ss_msg ss.SSMsg
 	err := comm.FillSSPkg(&ss_msg, ss.SS_PROTO_TYPE_FETCH_CHAT_REQ, preq)

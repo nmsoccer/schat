@@ -57,6 +57,10 @@ const (
 	//FILE_TOKEN_KEY
 	FILE_TOKEN_KEY = "Be^^orNot&t*_be"
 
+	//FILE_UPDATE_FILE
+	FILE_TYPE_IMAGE int = 0
+	FILE_TYPE_MP4   int = 1
+
 	//SEX
 	SEX_INT_MALE   = 1
 	SEX_INT_FEMALE = 2

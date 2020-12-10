@@ -5,6 +5,7 @@ package ss;
 enum CHAT_MSG_TYPE {
   CHAT_TYPE_TEXT = 0; //text
   CHAT_TYPE_IMG = 1; //msg
+  CHAT_TYPE_MP4 = 2; //mp4
 }
 
 enum CHAT_MSG_FLAG {

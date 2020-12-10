@@ -98,8 +98,9 @@ type CSExitGroupRsp  struct {
 
 type CSChatHistoryReq struct {
 	GrpId  int64 `json:"grp_id"`
-	//fetch chat history before now_mst_id(not include now_msg_id) max 40. aka from [now_msg_id-40 , now_msg_id) if 0 fetch from latest_msg_id
+	//fetch chat history before now_mst_id(not include now_msg_id) max 40. aka from [now_msg_id-count , now_msg_id) if 0 fetch from latest_msg_id
 	NowMsgId int64 `json:"now_msg_id"`
+	Count  int32 `json:"count"`
 }
 
 type CSKickGroupReq struct {

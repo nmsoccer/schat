@@ -63,7 +63,8 @@ schat基于sgame框架，所以其安装环境与sgame流程一致，这里摘�
 * **GO**  
 下载页面https://golang.google.cn/dl/ 或者 https://golang.org/dl/  这里下载并使用go 1.14版本，然后
   * tar -C /usr/local -xzf go1.14.6.linux-amd64.tar.gz  
-  * 修改本地.bashrc export PATH=$PATH:/usr/local/go/bin export GOPATH=/home/nmsoccer/go 
+  * 修改本地.bashrc export PATH=$PATH:/usr/local/go/bin export GOPATH=/home/nmsoccer/go
+  * mkdir -p $GOPATH/src $GOPATH/bin $GOPATH/pkg
 
 * **PROTOBUF**  
 下载页面https://github.com/protocolbuffers/protobuf/releases  这里选择下载protobuf-all-3.11.4.tar.gz.
@@ -209,12 +210,21 @@ sxx库是几个支持库，安装简单且基本无依赖,下面均以手动安�
       * 如果拉起进程顺利，我们可以打开页面查看，默认端口是8080同时需要用户名及密码,默认选项配置于spush/tmpl/manage_serv.tmpl:auth,登陆查看：
     ![管理页面](https://github.com/nmsoccer/schat/blob/master/pic/schat_index.png)   
     
+  * 对外服务  
+    如果要提供公网服务，则需要打开防火墙端口，以及修改dir配置
     * 防火墙及端口  
       如果防火墙策略则需要开放框架对外的几个端口:
       * 列出框架监听的端口 `netstat -nlp |grep serv |grep -v redis` 
       * 开放对应的端口以便接入 `firewall-cmd --permanent --add-port=xxx/tcp;`
       * `firewall-cmd --reload`
-      
+    * 修改dir配置
+      * 修改$GOPATH/src/schat/servers/spush/tmp/dir_serv.tmpl
+        ```
+        "file_serv_addr":["xx.xx.xx.xx:port","xx.xx.xx.xx:port"],
+        ...  
+        "conn_serv_addr":["xx.xx.xx.xx:port","xx.xx.xx.xx:port"],
+        ```
+        修改file_serv和conn_serv的对外服务IP地址。注意只修改为公网IP地址即可，端口与file_serv.tmpl和conn_serv.tmpl里的配置保持一致
   
 ### 简单演示
 源码附带了一个本地命令行客户端功能测试工具.进入schat/client/目录，go build chat_cli.go 生成chat_cli客户端

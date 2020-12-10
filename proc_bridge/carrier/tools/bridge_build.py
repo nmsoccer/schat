@@ -2,7 +2,6 @@
 import os
 import sys,getopt
 import time
-import commands
 
 #BRIDGE_USER="nmsoccer"
 #BRIDGE_DIR="/home/nmsoccer/proc_bridge"
@@ -33,7 +32,9 @@ print("version:%d" % (PY_VERSION));
 
 #version set
 if PY_VERSION == 3:
+	import subprocess
 	import operator;
+	commands = subprocess;
 	def cmp(a, b):		
 		if operator.eq(a,b):
 			return 0;

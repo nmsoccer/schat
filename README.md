@@ -415,5 +415,19 @@ please input:>>
       [0]<7>sender:10010 name:zergling content:1:1:5025:202010_540f35fe0a34e1f8deba6b6692315339_.jpg time:1603096561 type:1 grp_id:5025
       ```
         
-  更多客户端功能请参考wiki
+  更多客户端功能请参考wiki  
+  
+  ### 服务迁移  
+  当原服务器不可用时，想要迁移到新服务器的处理步骤:
+  * 在新服务器搭建schat的运行环境，如上所述
+  * 迁移基础redis数据: 
+    * 拷贝old_server:/home/nmsoccer/redis_pool/6600/dump.rdb 到新服务器new_server:/home/nmsoccer/redis_pool/6600
+    * 重新拉起新服务器的redis实例
+  * 迁移静态文件
+    * 打包old_server各file_serv下的files目录，比如打包~/schat/file_serev/group1/files --> files1.tar.gz ~/schat/file_serev/group2/files --> files2.tar.gz
+    * 分别将对应的序号拷贝到一致的新服务器目录下。这里的序号源于spush/tmpl/file_serv.tmpl里的```serv_index":$serv_index,```项目。新老服务器需保持对应关系
+    * 解包为files
+  * 修改spush/tmpl/dir_serv.tmpl里的file_serv和conn_serv对外服务IP地址。注意只修改为公网IP地址即可，端口与file_serv.tmpl和conn_serv.tmpl里的配置保持一致    
+  * 拉起新服务即可  
+  
  

@@ -213,7 +213,7 @@ sxx库是几个支持库，安装简单且基本无依赖,下面均以手动安�
   * 对外服务  
     如果要提供公网服务，则需要打开防火墙端口，以及修改dir配置等
     * 防火墙及端口  
-      如果防火墙策略则需要开放框架对外的几个端口:
+      如果防火墙策略限制,则需要开放框架对外的几个端口:
       * 列出框架监听的端口 `netstat -nlp |grep serv |grep -v redis` 
       * 开放对应的端口以便接入 `firewall-cmd --permanent --add-port=xxx/tcp;`
       * `firewall-cmd --reload`

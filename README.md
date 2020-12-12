@@ -225,6 +225,12 @@ sxx库是几个支持库，安装简单且基本无依赖,下面均以手动安�
         "conn_serv_addr":["xx.xx.xx.xx:port","xx.xx.xx.xx:port"],
         ```
         修改file_serv和conn_serv的对外服务IP地址。注意只修改为公网IP地址即可，端口与file_serv.tmpl和conn_serv.tmpl里的配置保持一致
+    * 修改dir及file_server的https证书
+      * 进入$GOPATH/src/schat/servers/dir_serv/cfg/
+        * openssl genrsa -out key.pem 2048
+        * openssl req -new -x509 -key key.pem -out cert.pem -days 3650
+      * 进入$GOPATH/src/scaht/servers/file_serv/
+        * cp ../dir_serv/cfg/* cfg/  
     * 修改connect_serv的更新演示用的RSA密钥(如果加密等级为3)
       * 进入$GOPATH/src/schat/servers/conn_serv/cfg
       * ```openssl genrsa -out rsa_private_key.pem 1024``` 生成密钥

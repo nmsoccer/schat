@@ -346,7 +346,7 @@ func SendToClient(pconfig *Config, client_key int64, proto int, pmsg interface{}
 		log.Err("%s encode msg failed! key:%v err:%v", _func_, client_key, err)
 		return false
 	}
-	log.Debug("%s msg:%v len:%d" , _func_ , string(enc_data) , len(enc_data))
+	log.Debug("%s  len:%d" , _func_  , len(enc_data))
 
 	//zlib
 	if pconfig.FileConfig.ZlibOn == 1 {

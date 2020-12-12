@@ -270,7 +270,7 @@ func RecvUpdateChatRsp(pconfig *Config , prsp *ss.MsgUpdateChatRsp , msg []byte)
 			SendSysChat(pconfig , grp_id , send_content , ss.CHAT_MSG_FLAG_CHAT_FLAG_CANCELLER)
 
 			//del old file
-			if prsp.SrcType == ss.CHAT_MSG_TYPE_CHAT_TYPE_IMG && len(prsp.SrcContent)>0 {
+			if prsp.SrcType != ss.CHAT_MSG_TYPE_CHAT_TYPE_TEXT && len(prsp.SrcContent)>0 {
 				log.Info("%s will del old chat img! uid:%d grp_id:%d del_url:%s" , _func_ , uid , grp_id , prsp.SrcContent)
 				SendDelOldFile(pconfig , prsp.SrcContent , uid , grp_id)
 			}

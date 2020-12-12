@@ -137,8 +137,8 @@ func ValidConnection(conn *net.TCPConn) bool {
 	return true
 }
 
-func RsaNegotiateDesKey(conn *net.TCPConn, inn_key []byte, rsa_pub []byte) bool {
-	var _func_ = "<RsaNegotiateDesKey>"
+func RsaNegotiateAesKey(conn *net.TCPConn, inn_key []byte, rsa_pub []byte) bool {
+	var _func_ = "<RsaNegotiateAesKey>"
 	//encrypt by rsa
 	encoded, err := lnet.RsaEncrypt(inn_key, rsa_pub)
 	if err != nil {
@@ -201,8 +201,8 @@ func RecvConnSpecPkg(tag uint8, data []byte) {
 			//v_print("%s rsa_pub_key:%s\n" , _func_ , string(rsa_pub_key))
 
 			//RSA ENC
-			enc_key = []byte("12345678")
-			ok := RsaNegotiateDesKey(tcp_conn, enc_key, rsa_pub_key)
+			enc_key = []byte("1234567887654321")
+			ok := RsaNegotiateAesKey(tcp_conn, enc_key, rsa_pub_key)
 			if !ok {
 				enc_key = enc_key[:0] //clear
 			}
@@ -210,12 +210,12 @@ func RecvConnSpecPkg(tag uint8, data []byte) {
 	case lnet.PKG_OP_RSA_NEGO:
 		v_print("%s rsa_nego pkg! result:%s\n", _func_, string(data))
 		if bytes.Compare(data[:2], []byte("ok")) == 0 {
-			enc_block, err = des.NewCipher(enc_key)
+			enc_block, err = aes.NewCipher(enc_key)
 			if err != nil {
-				v_print("%s new des block by rsa-nego failed! err:%v", _func_, err)
+				v_print("%s new aes block by rsa-nego failed! err:%v", _func_, err)
 			}
 		} else {
-			v_print("%s nego des key failed for:%s", _func_, string(data))
+			v_print("%s nego aes key failed for:%s", _func_, string(data))
 		}
 	default:
 		v_print("%s unkonwn option:%d\n", _func_, pkg_option)
@@ -244,9 +244,9 @@ func DecryptRecv(src_data []byte) []byte {
 			return nil
 		}
 	case lnet.NET_ENCRYPT_RSA:
-		pkg_data, err = lnet.DesDecrypt(enc_block, pkg_data, enc_key)
+		pkg_data, err = lnet.AesDecrypt(enc_block, pkg_data, enc_key)
 		if err != nil {
-			v_print("%s rsa_des decrypt failed! err:%v", _func_, err)
+			v_print("%s rsa_aes decrypt failed! err:%v", _func_, err)
 			return nil
 		}
 	default:
@@ -821,9 +821,9 @@ func SendPkg(conn *net.TCPConn, cmd string) {
 				return
 			}
 		case lnet.NET_ENCRYPT_RSA:
-			enc_data, err = lnet.DesEncrypt(enc_block, enc_data, enc_key)
+			enc_data, err = lnet.AesEncrypt(enc_block, enc_data, enc_key)
 			if err != nil {
-				v_print("%s rsa_des encrypt failed! err:%v", _func_, err)
+				v_print("%s rsa_aes encrypt failed! err:%v", _func_, err)
 				return
 			}
 		default:

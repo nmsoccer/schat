@@ -713,21 +713,21 @@ func (pclient *tcp_client) handle_spec_pkg(pconfig *CommConfig, pserv *TcpServ, 
 				copy(pdata.data, "fail")
 				break
 			}
-			if len(decoded) != lnet.ENCRY_DES_KEY_LEN {
+			if len(decoded) != lnet.ENCRY_AES_KEY_LEN {
 				log.Err("%s RsaDecrypt inner key lenth:%d illegal!", _func_, len(decoded))
 				copy(pdata.data, "key_len")
 				break
 			}
-			enc_block, err := des.NewCipher(decoded)
+			enc_block, err := aes.NewCipher(decoded)
 			if err != nil {
-				log.Err("%s new des cipher for key:%v failed! err:%v", _func_, decoded, err)
+				log.Err("%s new aes cipher for key:%v failed! err:%v", _func_, decoded, err)
 				copy(pdata.data, "sys_err")
 				break
 			}
-			//accept des key
-			log.Info("%s accept des key:%v c_key:%d", _func_, decoded, pclient.key)
+			//accept aes key
+			log.Info("%s accept aes key:%v c_key:%d", _func_, decoded, pclient.key)
 			copy(pdata.data, "ok")
-			pclient.enc_key = make([]byte, lnet.ENCRY_DES_KEY_LEN)
+			pclient.enc_key = make([]byte, lnet.ENCRY_AES_KEY_LEN)
 			copy(pclient.enc_key, decoded)
 			pclient.enc_block = enc_block
 			break
@@ -842,11 +842,11 @@ func (pclient *tcp_client) encrypt(src []byte) ([]byte, error) {
 			return nil, errors.New("aes encrypt failed! err:" + err.Error())
 		}
 	case lnet.NET_ENCRYPT_RSA:
-		//must negotiate des key first by option:PKG_OP_RSA_NEGO
-		if pclient.enc_block == nil || len(pclient.enc_key) != lnet.ENCRY_DES_KEY_LEN {
-			return nil, errors.New("Rsa method must negotiate des key first!")
+		//must negotiate aes key first by option:PKG_OP_RSA_NEGO
+		if pclient.enc_block == nil || len(pclient.enc_key) != lnet.ENCRY_AES_KEY_LEN {
+			return nil, errors.New("Rsa method must negotiate aes key first!")
 		}
-		encoded, err = lnet.DesEncrypt(pclient.enc_block, src, pclient.enc_key)
+		encoded, err = lnet.AesEncrypt(pclient.enc_block, src, pclient.enc_key)
 		if err != nil {
 			return nil, errors.New("rsa_des encrypt failed! err:" + err.Error())
 		}
@@ -877,11 +877,11 @@ func (pclient *tcp_client) decrypt(src []byte) ([]byte, error) {
 			return nil, errors.New("aes decrypt failed! err:" + err.Error())
 		}
 	case lnet.NET_ENCRYPT_RSA:
-		//must negotiate des key first by option:PKG_OP_RSA_NEGO
-		if pclient.enc_block == nil || len(pclient.enc_key) != lnet.ENCRY_DES_KEY_LEN {
-			return nil, errors.New("Rsa method must negotiate des key first!")
+		//must negotiate aes key first by option:PKG_OP_RSA_NEGO
+		if pclient.enc_block == nil || len(pclient.enc_key) != lnet.ENCRY_AES_KEY_LEN {
+			return nil, errors.New("Rsa method must negotiate aes key first!")
 		}
-		decoded, err = lnet.DesDecrypt(pclient.enc_block, src, pclient.enc_key)
+		decoded, err = lnet.AesDecrypt(pclient.enc_block, src, pclient.enc_key)
 		if err != nil {
 			return nil, errors.New("rsa_des decrypt failed! err:" + err.Error())
 		}

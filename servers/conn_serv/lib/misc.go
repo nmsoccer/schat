@@ -78,6 +78,14 @@ func RecvCommonNotify(pconfig *Config, pnotify *ss.MsgCommonNotify) {
 		pmsg.GrpId = pnotify.GrpId
 		pmsg.StrV = pnotify.StrV
 		log.Debug("%s enter_group grp_id:%d grp_name:%s", _func_, pmsg.GrpId , pmsg.StrV)
+	case ss.COMMON_NOTIFY_TYPE_NOTIFY_SERVER_SET:
+		if len(pnotify.StrV) <= 0 {
+			log.Err("%s setting info nil! uid:%d" , _func_ , uid)
+			return
+		}
+		pmsg.NotifyType = cs.COMMON_NOTIFY_T_SERVER_SETTING
+		pmsg.StrV = pnotify.StrV
+		log.Debug("%s server_setting:%s uid:%d", _func_, pmsg.StrV , uid)
 	default:
 		log.Err("%s unknown proto:%d uid:%d", _func_, pnotify.NotifyType, uid)
 		return

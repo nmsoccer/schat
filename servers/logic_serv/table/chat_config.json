@@ -1,0 +1,15 @@
+{
+  "chat_config_table":
+  {
+    "count": 6,
+    "res":
+    [
+      {"name":"max_create_group", "value":"10"},
+      {"name":"max_reconnect_times", "value":"5"},
+      {"name":"heart_frequent", "value":"15"},
+      {"name":"req_timeout", "value":"10"},
+      {"name":"upload_file_size" , "value":"20971520"},
+      {"name":"upload_img_size" , "value":"20971520"}
+    ]
+  }
+}

@@ -65,7 +65,9 @@ const (
 	MAX_HEAD_SUB_DIRS = 64 //uid % dirs
 	MAX_GROUP_HEAD_SUB_DIRS = 61 //grp_id % dirs
 
-
+    //HTTPS
+    KEY_FILE_PATH = "./cfg/key.pem"
+    CERT_FILE_PATH = "./cfg/cert.pem"
 )
 
 type FileMsg struct {
@@ -278,7 +280,8 @@ func (fs *FileServer) start_serv() {
 		http.Handle(URL_HEAD_HEADS + "/", http.HandlerFunc(fs.head_handler))
 		http.Handle(URL_HEAD_G_HEADS + "/", http.HandlerFunc(fs.group_head_handler))
 
-		err := http.ListenAndServe(fs.http_addr, nil)
+		//err := http.ListenAndServe(fs.http_addr, nil)
+		err := http.ListenAndServeTLS(fs.http_addr , CERT_FILE_PATH , KEY_FILE_PATH , nil)
 		if err != nil {
 			log.Err("file_server start_serv at %s failed! err:%v", fs.http_addr, err)
 		}

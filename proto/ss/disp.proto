@@ -168,6 +168,7 @@ enum COMMON_NOTIFY_TYPE {
   NOTIFY_FILE_TOKEN  = 13; //file_server token to dir
   NOTIFY_HEAD_URL    = 14; //change head url
   NOTIFY_ENTER_GROUP = 15; //user enter group
+  NOTIFY_SERVER_SET  = 16; //chat server set --> client
 }
 
 message MsgCommonNotify {

@@ -402,10 +402,36 @@ func AfterLoginSucess(pconfig *Config, uid int64 , new_login bool) {
 		SyncUserGroupSnap(pconfig , uid)
 		SendFetchChatReq(pconfig, uid, 0) //fetch all group chat
 	}
+	send_server_setting(pconfig , uid)
 	SendFetchOfflineInfoReq(pconfig, uid)
 	SendFetchApplyGroupReq(pconfig, uid)
 	SendFetchAuditGroupReq(pconfig, uid)
 	//SendFetchChatReq(pconfig, uid, 0)
 	CheckNewMsgNotify(pconfig , uid) //fetch new msg when connection lost
 	QueryFileServAddr(pconfig, uid)
+}
+
+
+func send_server_setting(pconfig *Config , uid int64) {
+	var _func_ = "<SendServerSetting>"
+	log := pconfig.Comm.Log
+
+	//get config
+	config_str := ChatConfig2Str(pconfig)
+	log.Debug("%s chat_config:%s" , _func_ , config_str)
+
+	//ss
+	var ss_msg ss.SSMsg
+	pnotify := new(ss.MsgCommonNotify)
+	pnotify.NotifyType = ss.COMMON_NOTIFY_TYPE_NOTIFY_SERVER_SET
+	pnotify.Uid = uid
+	pnotify.StrV = config_str
+	err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_COMMON_NOTIFY , pnotify)
+	if err != nil {
+		log.Err("%s gen ss failed! uid:%d err:%v" , _func_ , uid , err)
+		return
+	}
+
+	//to connect
+	SendToConnect(pconfig , &ss_msg)
 }

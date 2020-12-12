@@ -8,6 +8,10 @@ import (
 
 const (
 	FORM_QUERY_KEY = "query_key"
+
+	//HTTPS
+	KEY_FILE_PATH = "./cfg/key.pem"
+	CERT_FILE_PATH = "./cfg/cert.pem"
 )
 
 type HttpServer struct {
@@ -41,7 +45,7 @@ func (hs *HttpServer) start_serv() {
 		http.Handle("/query", http.HandlerFunc(hs.query_handler))
 
 		//listen
-		http.ListenAndServe(hs.serv_addr, nil)
+		http.ListenAndServeTLS(hs.serv_addr, CERT_FILE_PATH , KEY_FILE_PATH , nil)
 	}()
 
 	//main proc

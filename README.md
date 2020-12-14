@@ -233,7 +233,7 @@ sxx库是几个支持库，安装简单且基本无依赖,下面均以手动安�
         * cp ../dir_serv/cfg/* cfg/  
     * 修改connect_serv的更新演示用的RSA密钥(如果加密等级为3)
       * 进入$GOPATH/src/schat/servers/conn_serv/cfg
-      * ```openssl genrsa -out rsa_private_key.pem 1024``` 生成密钥
+      * ```openssl genrsa -out rsa_private_key.pem 2048``` 生成密钥
       * ```openssl rsa -in rsa_private_key.pem -pubout -out rsa_public_key.pem``` 生成公钥
   
 ### 客户端演示

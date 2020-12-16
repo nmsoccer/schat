@@ -229,12 +229,14 @@ sxx库是几个支持库，安装简单且基本无依赖,下面均以手动安�
       * 进入$GOPATH/src/schat/servers/dir_serv/cfg/
         * openssl genrsa -out key.pem 2048
         * openssl req -new -x509 -key key.pem -out cert.pem -days 3650
+        * 如果客户端设置需要锁定服务器证书，同时将cert.pem发送给客户端保存
       * 进入$GOPATH/src/scaht/servers/file_serv/
         * cp ../dir_serv/cfg/* cfg/  
-    * 修改connect_serv的更新演示用的RSA密钥(如果加密等级为3)
+    * 修改connect_serv的更新演示用的RSA密钥(如果加密类型为3)
       * 进入$GOPATH/src/schat/servers/conn_serv/cfg
       * ```openssl genrsa -out rsa_private_key.pem 2048``` 生成密钥
       * ```openssl rsa -in rsa_private_key.pem -pubout -out rsa_public_key.pem``` 生成公钥
+      * 如果客户端需要校验公钥，则执行``openssl dgst -sha256 rsa_public_key.pem`` 将生成的sha2码发送给客户端保存
   
 ### 客户端演示
   如果使用android手机在release页面下载apk文件安装后，连接xxx:10801即可
@@ -413,7 +415,7 @@ please input:>>
       please input:>>      
       ```      
     * 发送  
-      通过浏览器打开``http://aaa.aa.aa.aaa:22341/upload?token=735104392095``会显示一个测试用的上传页面![上传页面](https://github.com/nmsoccer/schat/blob/master/pic/schat_upload.png)    
+      通过浏览器打开``https://aaa.aa.aa.aaa:22341/upload?token=735104392095``会显示一个测试用的上传页面![上传页面](https://github.com/nmsoccer/schat/blob/master/pic/schat_upload.png)    
     * 同步  
       发送成功后，发送者zerg的终端都会收到新的信息：
       ```

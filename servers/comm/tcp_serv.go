@@ -704,7 +704,9 @@ func (pclient *tcp_client) handle_spec_pkg(pconfig *CommConfig, pserv *TcpServ, 
 	case lnet.PKG_OP_RSA_NEGO:
 		log.Info("%s pkg option:%d [rsa_nego]", _func_, pdata.flag)
 		//resp
-		pdata.data = make([]byte, 12)
+		msg, _ := GenRandStr(128)
+		pdata.data = make([]byte, len(msg))
+		copy(pdata.data, msg)
 		//decode by rsa_priv
 		decoded, err := lnet.RsaDecrypt(pkg_data, pserv.rsa_pri_key)
 		for {
@@ -725,8 +727,14 @@ func (pclient *tcp_client) handle_spec_pkg(pconfig *CommConfig, pserv *TcpServ, 
 				break
 			}
 			//accept aes key
-			log.Info("%s accept aes key:%v c_key:%d", _func_, decoded, pclient.key)
 			copy(pdata.data, "ok")
+			//gen and copy sha2
+			hash_enc_key := EncSha256(decoded)
+			log.Info("%s accept aes key:%v c_key:%d sha2:%s", _func_, decoded, pclient.key , hash_enc_key)
+			pdata.data[8] = byte(len(hash_enc_key))
+			copy(pdata.data[9:] , hash_enc_key)
+
+			//set enc_key
 			pclient.enc_key = make([]byte, lnet.ENCRY_AES_KEY_LEN)
 			copy(pclient.enc_key, decoded)
 			pclient.enc_block = enc_block
@@ -844,7 +852,7 @@ func (pclient *tcp_client) encrypt(src []byte) ([]byte, error) {
 	case lnet.NET_ENCRYPT_RSA:
 		//must negotiate aes key first by option:PKG_OP_RSA_NEGO
 		if pclient.enc_block == nil || len(pclient.enc_key) != lnet.ENCRY_AES_KEY_LEN {
-			return nil, errors.New("Rsa method must negotiate aes key first!")
+			return nil, errors.New("rsa method must negotiate aes key first")
 		}
 		encoded, err = lnet.AesEncrypt(pclient.enc_block, src, pclient.enc_key)
 		if err != nil {

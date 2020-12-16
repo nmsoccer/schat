@@ -20,7 +20,7 @@ const (
 	NET_ENCRYPT_NONE int8 = 0
 	NET_ENCRYPT_DES_ECB int8 = 1 //desc-ecb
 	NET_ENCRYPT_AES_CBC_128 int8 = 2 //aes-cbc-128
-	NET_ENCRYPT_RSA int8     = 3 //rsa + des
+	NET_ENCRYPT_RSA int8     = 3 //rsa + des or aes
 )
 
 //pad & unpad
@@ -137,9 +137,9 @@ func AesDecrypt(block cipher.Block , cryted []byte, key []byte) ([]byte  , error
 }
 
 /*******************RSA***********************/
-// 加密
+// 公钥加密
 func RsaEncrypt(origData []byte , publicKey []byte) ([]byte, error) {
-	//解密pem格式的公钥
+	//用pem格式的公钥加密
 	block, _ := pem.Decode(publicKey)
 	if block == nil {
 		return nil, errors.New("public key error")
@@ -155,7 +155,7 @@ func RsaEncrypt(origData []byte , publicKey []byte) ([]byte, error) {
 	return rsa.EncryptPKCS1v15(rand.Reader, pub, origData)
 }
 
-// 解密 PKCS1
+// 私钥解密 PKCS1
 func RsaDecrypt(ciphertext []byte , privateKey []byte) ([]byte, error) {
 	//解密
 	block, _ := pem.Decode(privateKey)

@@ -239,7 +239,7 @@ sxx库是几个支持库，安装简单且基本无依赖,下面均以手动安�
       * 如果客户端需要校验公钥，则执行``openssl dgst -sha256 rsa_public_key.pem`` 将生成的sha2码发送给客户端保存
   
 ### 客户端演示
-  如果使用android手机在release页面下载apk文件安装后，连接xxx:10801即可
+  如果使用android手机在release页面下载apk文件安装后，连接xxx:11802即可
   
 ### 命令行演示
   源码附带了一个本地命令行客户端功能测试工具.进入schat/client/目录，go build chat_cli.go 生成chat_cli客户端

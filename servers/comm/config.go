@@ -60,6 +60,7 @@ const (
 	//FILE_UPDATE_FILE
 	FILE_TYPE_IMAGE int = 0
 	FILE_TYPE_MP4   int = 1
+	FILE_TYPE_VOICE int = 2
 
 	//SEX
 	SEX_INT_MALE   = 1

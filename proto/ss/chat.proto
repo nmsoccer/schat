@@ -6,6 +6,7 @@ enum CHAT_MSG_TYPE {
   CHAT_TYPE_TEXT = 0; //text
   CHAT_TYPE_IMG = 1; //msg
   CHAT_TYPE_MP4 = 2; //mp4
+  CHAT_TYPE_VOICE = 3; //voice
 }
 
 enum CHAT_MSG_FLAG {

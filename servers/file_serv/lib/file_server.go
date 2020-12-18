@@ -166,6 +166,7 @@ func init() {
 	local_mime = new(MiMeRefer)
 	refer_map := make(map[string]string)
 	refer_map["video/mp4"] = ".mp4"
+	refer_map["application/octet-stream"] = ".amr" //voice audio
 	local_mime.refer_map = refer_map
 
 	//accept mime
@@ -175,6 +176,8 @@ func init() {
 	inner_map[".jpeg"] = comm.FILE_TYPE_IMAGE
 	inner_map[".png"] = comm.FILE_TYPE_IMAGE
 	inner_map[".mp4"] = comm.FILE_TYPE_MP4
+	inner_map[".amr"] = comm.FILE_TYPE_VOICE
+	inner_map[".bin"] = comm.FILE_TYPE_VOICE //default
 	//inner_map["mp4"] = true
 	accept_mime.inner_map = inner_map
 }

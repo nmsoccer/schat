@@ -270,6 +270,8 @@ func UploadChatFileNotify(pconfig *Config, pnotify *ss.MsgCommonNotify, file_ser
 		//nothing
 	case comm.FILE_TYPE_MP4:
 		chat_type = ss.CHAT_MSG_TYPE_CHAT_TYPE_MP4
+	case comm.FILE_TYPE_VOICE:
+		chat_type = ss.CHAT_MSG_TYPE_CHAT_TYPE_VOICE
 	default:
 		log.Err("%s illegal file_type:%d uid:%d" , _func_ , file_type , uid)
 		return

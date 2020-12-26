@@ -9,7 +9,8 @@
       {"name":"heart_frequent", "value":"15"},
       {"name":"req_timeout", "value":"10"},
       {"name":"upload_file_size" , "value":"20971520"},
-      {"name":"upload_img_size" , "value":"20971520"}
+      {"name":"upload_img_size" , "value":"20971520"},
+      {"name":"cancel_secs", "value":"86400"}
     ]
   }
 }

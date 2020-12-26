@@ -14,6 +14,7 @@ type CSLoginRsp struct {
 	Basic  UserBasic  `json:"basic"`
 	Detail UserDetail `json:"user_detail"`
 	Flag    int64 `json:"flag"`
+	LastLogout int64 `json:"last_logout"`
 }
 
 type CSLogoutReq struct {

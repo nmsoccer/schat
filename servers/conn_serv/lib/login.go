@@ -91,6 +91,7 @@ func RecvLoginRsp(pconfig *Config, prsp *ss.MsgLoginRsp) {
 			pmsg.Detail.Exp = prsp.UserInfo.BlobInfo.Exp
 			pmsg.Detail.ChatInfo = new(cs.UserChatInfo)
 			pmsg.Detail.Desc = prsp.UserInfo.BlobInfo.UserDesc
+			pmsg.LastLogout = prsp.UserInfo.BlobInfo.LastLogoutTs
 			pmsg.Detail.ClientDesKey = prsp.UserInfo.BlobInfo.ClientEncDesKey
 			if pblob.ChatInfo != nil && pblob.ChatInfo.AllGroup > 0 {
 				blob_chat_info := pblob.GetChatInfo()
